@@ -29,91 +29,105 @@ class CustomGrip(QWidget):
 
         # SHOW TOP GRIP
         if position == Qt.TopEdge:
-            self.wi.top(self)
-            self.setGeometry(0, 0, self.parent.width(), 10)
-            self.setMaximumHeight(10)
-
-            # GRIPS
-            top_left = QSizeGrip(self.wi.top_left)
-            top_right = QSizeGrip(self.wi.top_right)
-
-            # RESIZE TOP
-            def resize_top(event):
-                delta = event.pos()
-                height = max(self.parent.minimumHeight(), self.parent.height() - delta.y())
-                geo = self.parent.geometry()
-                geo.setTop(geo.bottom() - height)
-                self.parent.setGeometry(geo)
-                event.accept()
-            self.wi.top.mouseMoveEvent = resize_top
-
-            # ENABLE COLOR
-            if disable_color:
-                self.wi.top_left.setStyleSheet("background: transparent")
-                self.wi.top_right.setStyleSheet("background: transparent")
-                self.wi.top.setStyleSheet("background: transparent")
+            self._init_top_grip(disable_color)
 
         # SHOW BOTTOM GRIP
         elif position == Qt.BottomEdge:
-            self.wi.bottom(self)
-            self.setGeometry(0, self.parent.height() - 10, self.parent.width(), 10)
-            self.setMaximumHeight(10)
-
-            # GRIPS
-            self.bottom_left = QSizeGrip(self.wi.bottom_left)
-            self.bottom_right = QSizeGrip(self.wi.bottom_right)
-
-            # RESIZE BOTTOM
-            def resize_bottom(event):
-                delta = event.pos()
-                height = max(self.parent.minimumHeight(), self.parent.height() + delta.y())
-                self.parent.resize(self.parent.width(), height)
-                event.accept()
-            self.wi.bottom.mouseMoveEvent = resize_bottom
-
-            # ENABLE COLOR
-            if disable_color:
-                self.wi.bottom_left.setStyleSheet("background: transparent")
-                self.wi.bottom_right.setStyleSheet("background: transparent")
-                self.wi.bottom.setStyleSheet("background: transparent")
+            self._init_bottom_grip(disable_color)
 
         # SHOW LEFT GRIP
         elif position == Qt.LeftEdge:
-            self.wi.left(self)
-            self.setGeometry(0, 10, 10, self.parent.height())
-            self.setMaximumWidth(10)
-
-            # RESIZE LEFT
-            def resize_left(event):
-                delta = event.pos()
-                width = max(self.parent.minimumWidth(), self.parent.width() - delta.x())
-                geo = self.parent.geometry()
-                geo.setLeft(geo.right() - width)
-                self.parent.setGeometry(geo)
-                event.accept()
-            self.wi.leftgrip.mouseMoveEvent = resize_left
-
-            # ENABLE COLOR
-            if disable_color:
-                self.wi.leftgrip.setStyleSheet("background: transparent")
+            self._init_left_grip(disable_color)
 
         # RESIZE RIGHT
         elif position == Qt.RightEdge:
-            self.wi.right(self)
-            self.setGeometry(self.parent.width() - 10, 10, 10, self.parent.height())
-            self.setMaximumWidth(10)
+            self._init_right_grip(disable_color)
 
-            def resize_right(event):
-                delta = event.pos()
-                width = max(self.parent.minimumWidth(), self.parent.width() + delta.x())
-                self.parent.resize(width, self.parent.height())
-                event.accept()
-            self.wi.rightgrip.mouseMoveEvent = resize_right
+    def _init_top_grip(self, disable_color: bool = False):
+        self.wi.top(self)
+        self.setGeometry(0, 0, self.parent.width(), 10)
+        self.setMaximumHeight(10)
 
-            # ENABLE COLOR
-            if disable_color:
-                self.wi.rightgrip.setStyleSheet("background: transparent")
+        QSizeGrip(self.wi.top_left)
+        QSizeGrip(self.wi.top_right)
 
+        self.wi.top.mouseMoveEvent = self._resize_top
+
+        if disable_color:
+            self._set_transparent_styles([
+                self.wi.top_left,
+                self.wi.top_right,
+                self.wi.top
+            ])
+
+    def _resize_top(self, event: QMouseEvent):
+        delta = event.pos()
+        height = max(self.parent.minimumHeight(), self.parent.height() - delta.y())
+        geo = self.parent.geometry()
+        geo.setTop(geo.bottom() - height)
+        self.parent.setGeometry(geo)
+        event.accept()
+
+    def _init_bottom_grip(self, disable_color: bool = False):
+        self.wi.bottom(self)
+        self.setGeometry(0, self.parent.height() - 10, self.parent.width(), 10)
+        self.setMaximumHeight(10)
+
+        QSizeGrip(self.wi.bottom_left)
+        QSizeGrip(self.wi.bottom_right)
+
+        self.wi.bottom.mouseMoveEvent = self._resize_bottom
+
+        if disable_color:
+            self._set_transparent_styles([
+                self.wi.bottom_left,
+                self.wi.bottom_right,
+                self.wi.bottom
+            ])
+
+    def _resize_bottom(self, event: QMouseEvent):
+        delta = event.pos()
+        height = max(self.parent.minimumHeight(), self.parent.height() + delta.y())
+        self.parent.resize(self.parent.width(), height)
+        event.accept()
+
+    def _init_left_grip(self, disable_color: bool = False):
+        self.wi.left(self)
+        self.setGeometry(0, 10, 10, self.parent.height())
+        self.setMaximumWidth(10)
+
+        self.wi.leftgrip.mouseMoveEvent = self._resize_left
+
+        if disable_color:
+            self._set_transparent_styles([self.wi.leftgrip])
+
+    def _resize_left(self, event: QMouseEvent):
+        delta = event.pos()
+        width = max(self.parent.minimumWidth(), self.parent.width() - delta.x())
+        geo = self.parent.geometry()
+        geo.setLeft(geo.right() - width)
+        self.parent.setGeometry(geo)
+        event.accept()
+
+    def _init_right_grip(self, disable_color: bool = False):
+        self.wi.right(self)
+        self.setGeometry(self.parent.width() - 10, 10, 10, self.parent.height())
+        self.setMaximumWidth(10)
+
+        self.wi.rightgrip.mouseMoveEvent = self._resize_right
+
+        if disable_color:
+            self._set_transparent_styles([self.wi.rightgrip])
+
+    def _resize_right(self, event: QMouseEvent):
+        delta = event.pos()
+        width = max(self.parent.minimumWidth(), self.parent.width() + delta.x())
+        self.parent.resize(width, self.parent.height())
+        event.accept()
+
+    def _set_transparent_styles(self, widgets: list[QWidget]):
+        for widget in widgets:
+            widget.setStyleSheet("background: transparent")
 
     def mouseReleaseEvent(self, event):
         self.mousePos = None
