@@ -26,8 +26,7 @@ class MainWindow(QMainWindow):
         self.left_grip = CustomGrip(self, Qt.LeftEdge)
         self.right_grip = CustomGrip(self, Qt.RightEdge)
 
-# TODO, fix this
-#        self.ui.title_bar.mouseMoveEvent = self.moveWindow
+        self.ui.title_bar.mouseMoveEvent = self.moveWindow
 
     def resizeEvent(self, event):
         """Ensure grips stay positioned on window resize."""

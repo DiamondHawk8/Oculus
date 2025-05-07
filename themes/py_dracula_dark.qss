@@ -513,6 +513,8 @@ Button */
 	background-color: rgb(35, 40, 49);
 	border: 2px solid rgb(43, 50, 61);
 }
-
+#title_bar {
+    background-color: #21252e;
+}
 
 
