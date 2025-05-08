@@ -4,7 +4,7 @@
   <qresource prefix="/themes">
   <file>themes/py_dracula_dark.qss</file>
 </qresource>
-  <qresource prefix="../icons">
+  <qresource prefix="/">
     <file>icons/cil-3d.png</file>
     <file>icons/cil-4k.png</file>
     <file>icons/cil-account-logout.png</file>
