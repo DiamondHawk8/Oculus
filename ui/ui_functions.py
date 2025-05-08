@@ -87,6 +87,7 @@ class UIFunctions(MainWindow):
             self.animation.setEasingCurve(QEasingCurve.InOutQuart)
             self.animation.start()
 
+
     # TOGGLE LEFT BOX
     # ///////////////////////////////////////////////////////////////
     def toggleLeftBox(self, enable):
@@ -145,6 +146,7 @@ class UIFunctions(MainWindow):
 
             UIFunctions.start_box_animation(self, widthLeftBox, width, "right")
 
+
     def start_box_animation(self, left_box_width, right_box_width, direction):
         right_width = 0
         left_width = 0 
@@ -179,6 +181,8 @@ class UIFunctions(MainWindow):
         self.group.addAnimation(self.left_box)
         self.group.addAnimation(self.right_box)
         self.group.start()
+
+
 
     # SELECT/DESELECT MENU
     # ///////////////////////////////////////////////////////////////
