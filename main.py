@@ -1,10 +1,17 @@
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtCore import QFile, QTextStream
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 
-from ui.ui_main import Ui_MainWindow  # From main.ui
-from ui.custom_grips import CustomGrip  # Your refactored grips
+import resources.resources_rc
+
+from ui.ui_main import Ui_MainWindow
+from ui.custom_grips import CustomGrip
+from PySide6.QtCore import QPoint
+
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,7 +24,7 @@ class MainWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMinimumSize(400, 300)
 
-        # Set icon (optional, from PyDracula or your own)
+        # Set icon
         self.setWindowIcon(QIcon(":/icons/icon.ico"))
 
         # Load custom grips
@@ -27,6 +34,8 @@ class MainWindow(QMainWindow):
         self.right_grip = CustomGrip(self, Qt.RightEdge)
 
         self.ui.title_bar.mouseMoveEvent = self.moveWindow
+
+        self.dragPos = QPoint()
 
     def resizeEvent(self, event):
         """Ensure grips stay positioned on window resize."""
@@ -50,9 +59,19 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    with open("themes/py_dracula_dark.qss", "r") as f:
-        style = f.read()
-        app.setStyleSheet(style)
+    qss_file = QFile("resources/themes/py_dracula_dark.qss")
+    if not qss_file.exists():
+        print("QSS file not found.")
+    elif not qss_file.open(QFile.ReadOnly | QFile.Text):
+        print("QSS file could not be opened.")
+    else:
+        print("QSS loaded successfully.")
+        stream = QTextStream(qss_file)
+        qss = stream.readAll()
+        print(f"QSS size: {len(qss)} characters")
+        print(qss)
+        app.setStyleSheet(qss)
+
 
     window = MainWindow()
     window.show()

@@ -210,6 +210,8 @@ class UIFunctions(MainWindow):
 
     # IMPORT THEMES FILES QSS/CSS
     # ///////////////////////////////////////////////////////////////
+
+
     def theme(self, file, useCustomTheme):
         if useCustomTheme:
             str = open(file, 'r').read()
