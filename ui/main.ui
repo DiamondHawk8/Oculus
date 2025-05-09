@@ -829,7 +829,8 @@ url(:/icons/icon_menu.png)</string>
                    <enum>Qt::LayoutDirection::LeftToRight</enum>
                   </property>
                   <property name="styleSheet">
-                   <string notr="true">background-image: url(:/icons/images/icons/cil-home.png);</string>
+                   <string notr="true">background-image: 
+url(:/icons/cil-home.png)</string>
                   </property>
                   <property name="text">
                    <string>Home</string>
@@ -837,7 +838,7 @@ url(:/icons/icon_menu.png)</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="btn_widgets">
+                 <widget class="QPushButton" name="btn_adv">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -865,7 +866,7 @@ url(:/icons/icon_menu.png)</string>
                    <enum>Qt::LayoutDirection::LeftToRight</enum>
                   </property>
                   <property name="styleSheet">
-                   <string notr="true">background-image: url(:/icons/images/icons/cil-gamepad.png);</string>
+                   <string notr="true">background-image: url(:/icons/cil-library.png)</string>
                   </property>
                   <property name="text">
                    <string>Widgets</string>
@@ -901,10 +902,47 @@ url(:/icons/icon_menu.png)</string>
                    <enum>Qt::LayoutDirection::LeftToRight</enum>
                   </property>
                   <property name="styleSheet">
-                   <string notr="true">background-image: url(:/icons/images/icons/cil-file.png);</string>
+                   <string notr="true">background-image: 
+url(:/icons/cil-file.png)</string>
                   </property>
                   <property name="text">
                    <string>New</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btn_session">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>45</height>
+                   </size>
+                  </property>
+                  <property name="font">
+                   <font>
+                    <family>Segoe UI</family>
+                    <pointsize>10</pointsize>
+                    <italic>false</italic>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>PointingHandCursor</cursorShape>
+                  </property>
+                  <property name="layoutDirection">
+                   <enum>Qt::LayoutDirection::LeftToRight</enum>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-image: url(:/icons/cil-cloud-download.png)</string>
+                  </property>
+                  <property name="text">
+                   <string>Save</string>
                   </property>
                  </widget>
                 </item>
@@ -937,43 +975,8 @@ url(:/icons/icon_menu.png)</string>
                    <enum>Qt::LayoutDirection::LeftToRight</enum>
                   </property>
                   <property name="styleSheet">
-                   <string notr="true">background-image: url(:/icons/images/icons/cil-save.png)</string>
-                  </property>
-                  <property name="text">
-                   <string>Save</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="btn_exit">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>45</height>
-                   </size>
-                  </property>
-                  <property name="font">
-                   <font>
-                    <family>Segoe UI</family>
-                    <pointsize>10</pointsize>
-                    <italic>false</italic>
-                    <bold>false</bold>
-                   </font>
-                  </property>
-                  <property name="cursor">
-                   <cursorShape>PointingHandCursor</cursorShape>
-                  </property>
-                  <property name="layoutDirection">
-                   <enum>Qt::LayoutDirection::LeftToRight</enum>
-                  </property>
-                  <property name="styleSheet">
-                   <string notr="true">background-image: url(:/icons/images/icons/cil-x.png);</string>
+                   <string notr="true">background-image: 
+url(:/icons/cil-save.png)</string>
                   </property>
                   <property name="text">
                    <string>Exit</string>
@@ -1609,6 +1612,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   <property name="toolTip">
                    <string>Settings</string>
                   </property>
+                  <property name="styleSheet">
+                   <string notr="true">
+background-repeat: no-repeat;
+background-image: url(:/icons/cil-settings.png);
+background-position: center;
+background-origin: content;
+background-clip: border;
+background-size: cover; </string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1643,6 +1655,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   </property>
                   <property name="toolTip">
                    <string>Minimize</string>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">
+background-repeat: no-repeat;
+background-image: url(:/icons/cil-window-minimize.png);
+background-position: top;
+background-origin: content;
+background-clip: border;
+background-size: cover; </string>
                   </property>
                   <property name="text">
                    <string/>
@@ -1688,6 +1709,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   <property name="toolTip">
                    <string>Maximize</string>
                   </property>
+                  <property name="styleSheet">
+                   <string notr="true">background-image: url(:/icons/cil-window-restore.png);
+background-repeat: no-repeat;
+background-position: center;
+background-origin: content;
+background-clip: border;
+background-size: cover; </string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1722,6 +1751,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
                   </property>
                   <property name="toolTip">
                    <string>Close</string>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">
+background-repeat: no-repeat;
+background-image: url(:/icons/cil-x.png);
+background-position: center;
+background-origin: content;
+background-clip: border;
+background-size: cover; </string>
                   </property>
                   <property name="text">
                    <string/>
@@ -2678,6 +2716,9 @@ background-repeat: no-repeat;</string>
                       <layout class="QVBoxLayout" name="verticalLayout_20">
                        <item>
                         <widget class="QLabel" name="label">
+                         <property name="styleSheet">
+                          <string notr="true"/>
+                         </property>
                          <property name="text">
                           <string>NEW PAGE TEST</string>
                          </property>
