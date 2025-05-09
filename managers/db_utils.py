@@ -1,79 +1,73 @@
-import sqlite3
-import psycopg2
-import json
+"""
+
+Supports:
+    SQLite (default – zero-config, file-based)
+    PostgreSQL (when `backend="postgres"` or env var DB_BACKEND = "postgres")
+
+env vars are postgres only:
+----------------------
+DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+"""
+from __future__ import annotations
+
 import os
+import sqlite3
 import logging
+from typing import Sequence, Tuple, Optional
 
-def generate_insert_sql(table_name=None, columns = [], values = [], backend="sqlite"):
+try:
+    import psycopg2
+except ModuleNotFoundError:
+    psycopg2 = None
 
-    if not table_name or values == []:
-        return None
-
-    if columns != []:
-        columns = '(' + ", ".join(columns) + ')'
-    # Choose placeholders
-    if backend == "postgres":
-        placeholders = ", ".join(["%s"] * len(values))
-    else:  # Default to sqlite
-        placeholders = ", ".join(["?"] * len(values))
-
-    command = f"INSERT INTO {table_name} {columns} VALUES ({placeholders});"
-    return command, tuple(values)
+logger = logging.getLogger(__name__)
 
 
-
-
-
-def get_db_connection(db_path=None, backend=None):
+def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: Optional[str] = None, ) \
+        -> "sqlite3.Connection | psycopg2.extensions.connection":
     """
-    Open a database connection based on the DB_BACKEND environment variable.
-
-    Usage:
-        connection = get_db_connection()
-        # connection is either an SQLite or PostgreSQL connection object.
-
-    Environment Variables:
-        DB_BACKEND (str): "sqlite" or "postgres"
-
-    For PostgreSQL
-        DB_HOST (str): Host of the PostgreSQL server
-        DB_PORT (str): Port number for PostgreSQL
-        DB_NAME (str): Database name
-        DB_USER (str): Username
-        DB_PASSWORD (str): Password
-
-    Returns:
-        A connection object for the selected database backend.
+    If backend is None, fall back to DB_BACKEND env-var or sqlite.
     """
-
+    backend = backend or os.getenv("DB_BACKEND", "sqlite").lower()
 
     if backend == "postgres":
-        print("Using PostgreSQL database")
-        try:
-            conn = psycopg2.connect(
-                host=os.getenv("DB_HOST", "localhost"),
-                port=os.getenv("DB_PORT", "5432"),
-                dbname=os.getenv("DB_NAME", "DWS_db"),
-                user=os.getenv("DB_USER", "postgres"),
-                password=os.getenv("DB_PASSWORD", "secret")
-            )
-            conn.autocommit = True
-            return conn
-        except Exception as e:
-            print("Unable to connect to PostgreSQL database")
-            raise e
+        if psycopg2 is None:
+            raise RuntimeError("psycopg2 not installed; cannot use PostgreSQL")
 
-    elif backend == "sqlite":
-        print("Using SQLite database")
-        if db_path:
-            connection = sqlite3.connect(db_path)
-        else:
-            connection = sqlite3.connect("DWS_scraper.db")
-        return connection
-    else:
-        print(f"Unknown DB_BACKEND='{backend}', defaulting to SQLite file='DWS_scraper.db'")
-        try:
-            connection = sqlite3.connect("DWS_scraper.db")
-            return connection
-        except Exception as e:
-            print("Unable to connect to SQLite database")
+        logger.info("Connecting to PostgreSQL…")
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            port=os.getenv("DB_PORT", "5432"),
+            dbname=os.getenv("DB_NAME", "oculus_db"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "secret"),
+        )
+        conn.autocommit = False
+        return conn
+
+    # ---- SQLite (default) ----
+    logger.info("Connecting to SQLite…")
+    sqlite_path = str(db_path or "oculus.db")
+    conn = sqlite3.connect(sqlite_path)
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
+
+
+def generate_insert_sql(
+        table: str,
+        columns: Sequence[str],
+        values: Sequence,
+        *,
+        backend: str = "sqlite",
+) -> Tuple[str, Tuple]:
+    """
+    Produce an INSERT … VALUES statement + param tuple for either backend.
+    """
+    if not table or not columns or len(columns) != len(values):
+        raise ValueError("table, columns, and values must be non-empty & aligned")
+
+    cols = f"({', '.join(columns)})"
+    placeholder = "%s" if backend == "postgres" else "?"
+    placeholders = ", ".join([placeholder] * len(values))
+    sql = f"INSERT INTO {table} {cols} VALUES ({placeholders});"
+    return sql, tuple(values)
