@@ -1,78 +1,98 @@
+from pathlib import Path
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QFile, QTextStream
-from PySide6.QtCore import Qt
+import logging
+
 from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PySide6.QtCore import Qt, QPoint, QFile, QTextStream
 
-import resources.resources_rc
-
-from ui.ui_main import Ui_MainWindow
 from ui.custom_grips import CustomGrip
-from PySide6.QtCore import QPoint
+from ui.ui_main import Ui_MainWindow
+from managers.media_manager import MediaManager
+from managers.search_manager import SearchManager
 
-
+ACTIVE_BACKEND = "sqlite"
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+
+    def __init__(self) -> None:
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        # Make the window frameless and translucent
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setMinimumSize(400, 300)
+        # backend managers
+        self.media = MediaManager(parent=self)
+        self.search = SearchManager(Path("oculus.db"), backend=ACTIVE_BACKEND)
 
-        # Set icon
-        self.setWindowIcon(QIcon(":/icons/icon.ico"))
+        # Connect Import page
+        self.ui.chooseBtn.clicked.connect(self._choose_folder)
+        self.media.scan_finished.connect(self._on_scan_finished)
 
-        # Load custom grips
-        self.top_grip = CustomGrip(self, Qt.TopEdge)
-        self.bottom_grip = CustomGrip(self, Qt.BottomEdge)
-        self.left_grip = CustomGrip(self, Qt.LeftEdge)
-        self.right_grip = CustomGrip(self, Qt.RightEdge)
+        # connect Gallery page
+        # storage: path is QListWidgetItem (inserted on scan)
+        self._gallery_items: dict[str, int] = {}
+        self.media.thumb_ready.connect(self._on_thumb_ready)
 
-        self.ui.title_bar.mouseMoveEvent = self.moveWindow
+        # Connect Search page
+        self.ui.searchBtn.clicked.connect(self._exec_search)
+        self.ui.searchEdit.returnPressed.connect(self._exec_search)
 
-        self.dragPos = QPoint()
+    # Import page slots
+    def _choose_folder(self) -> None:
+        folder = QFileDialog.getExistingDirectory(self, "Choose image folder")
+        if folder:
+            self.ui.import_page.importStatus.setText("Scanning…")
+            self.media.scan_folder(folder)
 
-    def resizeEvent(self, event):
-        """Ensure grips stay positioned on window resize."""
-        self.top_grip.setGeometry(0, 0, self.width(), 10)
-        self.bottom_grip.setGeometry(0, self.height() - 10, self.width(), 10)
-        self.left_grip.setGeometry(0, 10, 10, self.height() - 20)
-        self.right_grip.setGeometry(self.width() - 10, 10, 10, self.height() - 20)
-        super().resizeEvent(event)
+    def _on_scan_finished(self, paths: list[str]) -> None:
+        self.ui.import_page.importStatus.setText(f"Found {len(paths)} files")
+        self._populate_gallery(paths)
+        self.ui.pages.setCurrentWidget(self.ui.gallery_page)
 
-    def moveWindow(self, event):
-        """Allow dragging the window by the title bar."""
-        if event.buttons() == Qt.LeftButton:
-            self.move(self.pos() + event.globalPosition().toPoint() - self.dragPos)
-            self.dragPos = event.globalPosition().toPoint()
-            event.accept()
+    # Gallery helpers
+    # ----------------
+    def _populate_gallery(self, paths: list[str]) -> None:
+        glist = self.ui.gallery_page.galleryList
+        glist.clear()
+        self._gallery_items.clear()
 
-    def mousePressEvent(self, event):
-        self.dragPos = event.globalPosition().toPoint()
-        super().mousePressEvent(event)
+        for p in paths:
+            row = glist.count()
+            item = glist.addItem(str(Path(p).name))
+            self._gallery_items[p] = row
+            # request thumb → will arrive async
+            self.media.thumb(p)
+
+    def _on_thumb_ready(self, path: str, pix) -> None:
+        """Update QListWidgetItem icon when thumbnail arrives."""
+        idx = self._gallery_items.get(path)
+        if idx is None:
+            return
+        item = self.ui.gallery_page.galleryList.item(idx)
+        item.setIcon(pix)
+
+    def _exec_search(self) -> None:
+        term = self.ui.searchEdit.text().strip()
+        if not term:
+            return
+        # OR / , / () => tag expression
+        if any(sym in term for sym in "|,()"):
+            paths = self.search.tag_search(term)
+        else:
+            paths = self.search.simple_search(term)
+
+        rlist = self.ui.search_page.resultsList
+        rlist.clear()
+        for p in paths:
+            rlist.addItem(str(Path(p).name))
+            self.media.thumb(p)  # cache
+
+        self.ui.pages.setCurrentWidget(self.ui.search_page)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
-    qss_file = QFile("resources/themes/py_dracula_dark.qss")
-    if not qss_file.exists():
-        print("QSS file not found.")
-    elif not qss_file.open(QFile.ReadOnly | QFile.Text):
-        print("QSS file could not be opened.")
-    else:
-        print("QSS loaded successfully.")
-        stream = QTextStream(qss_file)
-        qss = stream.readAll()
-        print(f"QSS size: {len(qss)} characters")
-        print(qss)
-        app.setStyleSheet(qss)
-
-
-    window = MainWindow()
-    window.show()
+    win = MainWindow()
+    win.show()
     sys.exit(app.exec())
