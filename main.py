@@ -12,6 +12,10 @@ from managers.media_manager import MediaManager
 from managers.search_manager import SearchManager
 
 ACTIVE_BACKEND = "sqlite"
+GALLERY_PAGE_INDEX = 0
+WIDGET_PAGE_INDEX = 1
+IMPORT_PAGE_INDEX = 2
+SEARCH_PAGE_INDEX = 3
 
 
 class MainWindow(QMainWindow):
@@ -37,6 +41,13 @@ class MainWindow(QMainWindow):
         # Connect Search page
         self.ui.searchBtn.clicked.connect(self._exec_search)
         self.ui.searchEdit.returnPressed.connect(self._exec_search)
+
+        # Connect page buttons
+        self.ui.btn_home.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(GALLERY_PAGE_INDEX))
+        self.ui.btn_adv.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(WIDGET_PAGE_INDEX))
+        self.ui.btn_import.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(IMPORT_PAGE_INDEX))
+        self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
+
 
     # Import page slots
     def _choose_folder(self) -> None:
