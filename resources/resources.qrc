@@ -2,9 +2,9 @@
   <qresource prefix="images">
   </qresource>
 
-  <qresource prefix="/themes">
-    <file alias="themes/py_dracula_dark.qss">themes/py_dracula_dark.qss</file>
-  <file>themes/py_dracula_dark.qss</file>
+  <qresource prefix="/">
+    <file alias="themes/py_dracula_dark.qss">py_dracula_dark.qss</file>
+  <file>py_dracula_dark.qss</file>
 </qresource>
   <qresource prefix="/">
     <file>icons/cil-3d.png</file>
