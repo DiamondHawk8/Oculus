@@ -89,6 +89,23 @@ class TagManager:
         self.cur.execute(self._CREATE_MEDIA_TABLE)
         self.cur.execute(self._CREATE_TAG_TABLE)
 
+    def add_media(self, path: str) -> int:
+        """
+        Insert path into the media table if it is not already present.
+        Returns the media.id
+        """
+        ph = "%s" if self.backend == "postgres" else "?"
+        sql = f"""INSERT INTO media (path)
+                  VALUES ({ph})
+                  ON CONFLICT(path) DO NOTHING;"""
+
+        self.cur.execute(sql, (path,))
+        self.conn.commit()
+
+        # fetch id
+        self.cur.execute(f"SELECT id FROM media WHERE path = {ph};", (path,))
+        return self.cur.fetchone()[0]
+
 
 """        if self.backend == "sqlite":
             try:
