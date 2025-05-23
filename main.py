@@ -53,13 +53,13 @@ class MainWindow(QMainWindow):
     def _choose_folder(self) -> None:
         folder = QFileDialog.getExistingDirectory(self, "Choose image folder")
         if folder:
-            self.ui.import_page.importStatus.setText("Scanning…")
+            self.ui.importStatus.setText("Scanning…")
             self.media.scan_folder(folder)
 
     def _on_scan_finished(self, paths: list[str]) -> None:
-        self.ui.import_page.importStatus.setText(f"Found {len(paths)} files")
+        self.ui.importStatus.setText(f"Found {len(paths)} files")
         self._populate_gallery(paths)
-        self.ui.pages.setCurrentWidget(self.ui.gallery_page)
+        self.ui.stackedWidget.setCurrentWidget(self.ui.gallery_page)
 
     # Gallery helpers
     # ----------------
@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
             rlist.addItem(str(Path(p).name))
             self.media.thumb(p)  # cache
 
-        self.ui.pages.setCurrentWidget(self.ui.search_page)
+        self.ui.stackedWidget.setCurrentWidget(self.ui.search_page)
 
 
 if __name__ == "__main__":
