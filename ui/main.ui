@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1197</width>
-    <height>899</height>
+    <width>1347</width>
+    <height>848</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1579,7 +1579,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
                    </font>
                   </property>
                   <property name="text">
-                   <string>PyDracula APP - Theme with colors based on Dracula for Python.</string>
+                   <string>Oculus APP</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
@@ -1860,7 +1860,7 @@ background-size: cover; </string>
                 <item>
                  <widget class="QFrame" name="pagesContainer">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
@@ -1896,7 +1896,7 @@ background-size: cover; </string>
                       <string notr="true">background: transparent;</string>
                      </property>
                      <property name="currentIndex">
-                      <number>3</number>
+                      <number>0</number>
                      </property>
                      <widget class="QWidget" name="gallery_page">
                       <property name="styleSheet">
@@ -1904,16 +1904,71 @@ background-size: cover; </string>
 background-position: center;
 background-repeat: no-repeat;</string>
                       </property>
-                      <widget class="QListWidget" name="galleryList">
-                       <property name="geometry">
-                        <rect>
-                         <x>5</x>
-                         <y>1</y>
-                         <width>1181</width>
-                         <height>611</height>
-                        </rect>
-                       </property>
-                      </widget>
+                      <layout class="QVBoxLayout" name="verticalLayout_25">
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_13">
+                         <property name="leftMargin">
+                          <number>10</number>
+                         </property>
+                         <property name="topMargin">
+                          <number>10</number>
+                         </property>
+                         <property name="rightMargin">
+                          <number>10</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>10</number>
+                         </property>
+                         <item>
+                          <spacer name="horizontalSpacer">
+                           <property name="orientation">
+                            <enum>Qt::Orientation::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>40</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                         <item>
+                          <widget class="QComboBox" name="cmb_gallery_size"/>
+                         </item>
+                         <item>
+                          <widget class="QToolButton" name="btn_gallery_view">
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                           <property name="icon">
+                            <iconset resource="../resources/resources.qrc">
+                             <normaloff>:/icons/cil-size-grip.png</normaloff>
+                             <normalon>:/icons/cil-featured-playlist.png</normalon>:/icons/cil-size-grip.png</iconset>
+                           </property>
+                           <property name="checkable">
+                            <bool>true</bool>
+                           </property>
+                           <property name="checked">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <widget class="QListWidget" name="galleryList">
+                         <property name="iconSize">
+                          <size>
+                           <width>64</width>
+                           <height>64</height>
+                          </size>
+                         </property>
+                         <property name="viewMode">
+                          <enum>QListView::ViewMode::IconMode</enum>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
                      </widget>
                      <widget class="QWidget" name="widgets">
                       <property name="styleSheet">
@@ -2210,7 +2265,7 @@ background-repeat: no-repeat;</string>
                                 <rect>
                                  <x>0</x>
                                  <y>0</y>
-                                 <width>390</width>
+                                 <width>382</width>
                                  <height>218</height>
                                 </rect>
                                </property>
@@ -2928,25 +2983,6 @@ background-repeat: no-repeat;</string>
                                   <property name="bottomMargin">
                                    <number>0</number>
                                   </property>
-                                  <item row="0" column="0">
-                                   <widget class="QLineEdit" name="searchEdit">
-                                    <property name="minimumSize">
-                                     <size>
-                                      <width>0</width>
-                                      <height>30</height>
-                                     </size>
-                                    </property>
-                                    <property name="styleSheet">
-                                     <string notr="true">background-color: rgb(33, 37, 43);</string>
-                                    </property>
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                    <property name="placeholderText">
-                                     <string>Type here</string>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="0" column="1">
                                    <widget class="QPushButton" name="searchBtn">
                                     <property name="minimumSize">
@@ -2978,6 +3014,52 @@ background-repeat: no-repeat;</string>
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="0" column="0">
+                                   <widget class="QLineEdit" name="searchEdit">
+                                    <property name="minimumSize">
+                                     <size>
+                                      <width>0</width>
+                                      <height>30</height>
+                                     </size>
+                                    </property>
+                                    <property name="styleSheet">
+                                     <string notr="true">background-color: rgb(33, 37, 43);</string>
+                                    </property>
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="placeholderText">
+                                     <string>Type here</string>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="3">
+                                   <widget class="QToolButton" name="btn_search_view">
+                                    <property name="sizePolicy">
+                                     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                      <horstretch>0</horstretch>
+                                      <verstretch>0</verstretch>
+                                     </sizepolicy>
+                                    </property>
+                                    <property name="autoFillBackground">
+                                     <bool>false</bool>
+                                    </property>
+                                    <property name="text">
+                                     <string>...</string>
+                                    </property>
+                                    <property name="icon">
+                                     <iconset resource="../resources/resources.qrc">
+                                      <normaloff>:/icons/cil-size-grip.png</normaloff>
+                                      <normalon>:/icons/cil-featured-playlist.png</normalon>:/icons/cil-size-grip.png</iconset>
+                                    </property>
+                                    <property name="checkable">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>true</bool>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="1" column="0" colspan="2">
                                    <widget class="QLabel" name="searchDesc">
                                     <property name="styleSheet">
@@ -2994,6 +3076,30 @@ background-repeat: no-repeat;</string>
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="0" column="2">
+                                   <widget class="QComboBox" name="cmb_search_size">
+                                    <item>
+                                     <property name="text">
+                                      <string>Small</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Medium</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Large</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>XL</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
                                  </layout>
                                 </item>
                                </layout>
@@ -3006,7 +3112,35 @@ background-repeat: no-repeat;</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QListView" name="resultsList"/>
+                        <widget class="QListWidget" name="resultsList">
+                         <property name="horizontalScrollBarPolicy">
+                          <enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum>
+                         </property>
+                         <property name="sizeAdjustPolicy">
+                          <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
+                         </property>
+                         <property name="iconSize">
+                          <size>
+                           <width>64</width>
+                           <height>64</height>
+                          </size>
+                         </property>
+                         <property name="resizeMode">
+                          <enum>QListView::ResizeMode::Adjust</enum>
+                         </property>
+                         <property name="spacing">
+                          <number>4</number>
+                         </property>
+                         <property name="gridSize">
+                          <size>
+                           <width>100</width>
+                           <height>100</height>
+                          </size>
+                         </property>
+                         <property name="viewMode">
+                          <enum>QListView::ViewMode::IconMode</enum>
+                         </property>
+                        </widget>
                        </item>
                       </layout>
                      </widget>
@@ -3288,7 +3422,7 @@ background-repeat: no-repeat;</string>
                    </font>
                   </property>
                   <property name="text">
-                   <string>By: Wanderson M. Pimenta</string>
+                   <string>By: DiamondHawk8</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
@@ -3298,7 +3432,7 @@ background-repeat: no-repeat;</string>
                 <item>
                  <widget class="QLabel" name="version">
                   <property name="text">
-                   <string>v1.0.3</string>
+                   <string>v0.4</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>

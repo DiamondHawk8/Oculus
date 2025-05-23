@@ -519,3 +519,8 @@ Button */
 }
 
 
+QToolButton:checked {
+    background-color: rgb(52, 59, 72)
+    background: transparent;
+    border: none;
+}
