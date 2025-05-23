@@ -1,5 +1,5 @@
 """
-search_manager.py – filename + advanced tag search (AND / OR / parentheses)
+search_manager.py – filename + advanced tag search
 """
 
 from __future__ import annotations
@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import List, Set, Union
 
-from db_utils import get_db_connection
+import managers.db_utils as db_utils
 
 _LOG = logging.getLogger(__name__)
 
@@ -78,15 +78,13 @@ def _parse(tokens: List[str]) -> AST:
     return ast
 
 
-# --------------------------------------------------------------------------- #
-#  SearchManager
-# --------------------------------------------------------------------------- #
+
 class SearchManager:
 
 
     def __init__(self, db_path: str | Path, backend: str = "sqlite") -> None:
         self.backend = backend.lower()
-        self.conn = get_db_connection(db_path=db_path, backend=self.backend)
+        self.conn = db_utils.get_db_connection(db_path=db_path, backend=self.backend)
         self.cur = self.conn.cursor()
 
     def simple_search(self, term: str) -> List[str]:
