@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
     # Gallery helpers
     # ----------------
     def _populate_gallery(self, paths: list[str]) -> None:
-        glist = self.ui.gallery_page.galleryList
+        glist = self.ui.galleryList
         glist.clear()
         self._gallery_items.clear()
 
@@ -80,7 +80,7 @@ class MainWindow(QMainWindow):
         idx = self._gallery_items.get(path)
         if idx is None:
             return
-        item = self.ui.gallery_page.galleryList.item(idx)
+        item = self.ui.galleryList.item(idx)
         item.setIcon(pix)
 
     def _exec_search(self) -> None:
