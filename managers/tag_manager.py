@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import List, Iterable, Tuple, Sequence
 
-from db_utils import get_db_connection, generate_insert_sql
+from managers.db_utils import get_db_connection, generate_insert_sql
 
 logger = logging.getLogger(__name__)
 

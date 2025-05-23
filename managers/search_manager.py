@@ -9,6 +9,8 @@ from typing import List, Set, Union
 
 import managers.db_utils as db_utils
 
+from managers.tag_manager import TagManager
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -83,7 +85,12 @@ class SearchManager:
 
 
     def __init__(self, db_path: str | Path, backend: str = "sqlite") -> None:
+
+        # handles creation of relevant tables as well
+        self.tags = TagManager(db_path, backend=backend)
+
         self.backend = backend.lower()
+        self.db_path = db_path
         self.conn = db_utils.get_db_connection(db_path=db_path, backend=self.backend)
         self.cur = self.conn.cursor()
 

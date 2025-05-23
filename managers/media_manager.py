@@ -9,6 +9,7 @@ from functools import lru_cache
 from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObject
 from PySide6.QtGui import QPixmap
 
+from collections import OrderedDict
 
 class MediaManager(QObject):
     """
@@ -95,23 +96,28 @@ class _ThumbTask(QRunnable):
 # ------------ Can be adjusted
 
 _CACHE_CAPACITY = 512
+_THUMB_CACHE: "OrderedDict[tuple[str, int], QPixmap]" = OrderedDict()
 
 
-@lru_cache(maxsize=_CACHE_CAPACITY)
+def _thumbnail_cache_get(path: str, size: int) -> QPixmap | None:
+    key = (path, size)
+    pix = _THUMB_CACHE.get(key)
+    if pix is not None:
+        # Move to end -> marks as recently used
+        _THUMB_CACHE.move_to_end(key)
+    return pix
+
+
+def _thumbnail_cache_set(path: str, size: int, pix: QPixmap) -> None:
+    key = (path, size)
+    _THUMB_CACHE[key] = pix
+    _THUMB_CACHE.move_to_end(key)
+    if len(_THUMB_CACHE) > _CACHE_CAPACITY:
+        _THUMB_CACHE.popitem(last=False)  # discard oldest
+
 def _generate_thumbnail(path: str, size: int) -> QPixmap:
-    """
-    Load an image from*path and return a scaled QPixmap.
-    """
     pix = QPixmap(path)
     if pix.isNull():
         return QPixmap()
     return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
-
-def _thumbnail_cache_get(path: str, size: int) -> QPixmap | None:
-    return _generate_thumbnail.cache_get((path, size))
-
-
-def _thumbnail_cache_set(path: str, size: int, pix: QPixmap) -> None:
-    # Populate the cache manually so future calls hit the fast path.
-    _generate_thumbnail.cache_set((path, size), pix)
