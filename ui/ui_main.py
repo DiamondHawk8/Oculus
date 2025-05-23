@@ -18,17 +18,18 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QCheckBox,
     QComboBox, QCommandLinkButton, QFrame, QGridLayout,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QListWidget, QListWidgetItem, QMainWindow, QPlainTextEdit,
-    QPushButton, QRadioButton, QScrollArea, QScrollBar,
-    QSizePolicy, QSlider, QStackedWidget, QTableWidget,
-    QTableWidgetItem, QTextEdit, QVBoxLayout, QWidget)
+    QListView, QListWidget, QListWidgetItem, QMainWindow,
+    QPlainTextEdit, QPushButton, QRadioButton, QScrollArea,
+    QScrollBar, QSizePolicy, QSlider, QStackedWidget,
+    QTableWidget, QTableWidgetItem, QTextEdit, QVBoxLayout,
+    QWidget)
 from resources import resources_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1644, 899)
+        MainWindow.resize(1197, 899)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -1220,7 +1221,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 530, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 390, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1450,6 +1451,7 @@ class Ui_MainWindow(object):
         self.stackedWidget.addWidget(self.import_page)
         self.search_page = QWidget()
         self.search_page.setObjectName(u"search_page")
+        self.search_page.setStyleSheet(u"b")
         self.verticalLayout_24 = QVBoxLayout(self.search_page)
         self.verticalLayout_24.setSpacing(10)
         self.verticalLayout_24.setObjectName(u"verticalLayout_24")
@@ -1539,6 +1541,11 @@ class Ui_MainWindow(object):
 
 
         self.verticalLayout_24.addWidget(self.row_4, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.resultsList = QListView(self.search_page)
+        self.resultsList.setObjectName(u"resultsList")
+
+        self.verticalLayout_24.addWidget(self.resultsList)
 
         self.stackedWidget.addWidget(self.search_page)
 
