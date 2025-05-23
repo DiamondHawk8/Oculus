@@ -49,17 +49,14 @@ class MediaManager(QObject):
         task = _ThumbTask(path_str, self._thumb_size, self._on_thumb_complete)
         self._pool.start(task)
 
-
-    def _on_scan_complete(self, paths: List[str]) -> None:
-
-        # Queue the signal back to the main thread.
-        QMetaObject.invokeMethod(self, lambda: self.scan_finished.emit(paths), Qt.QueuedConnection)
+    def _on_scan_complete(self, paths: list[str]) -> None:
+        # Emit directly: Qt will queue to the main thread because MediaManager
+        # lives in the GUI thread and this call originates in a worker thread.
+        self.scan_finished.emit(paths)
 
     def _on_thumb_complete(self, path: str, pix: QPixmap) -> None:
-        # Cache & emit from the main thread.
         _thumbnail_cache_set(path, self._thumb_size, pix)
-        QMetaObject.invokeMethod(self, lambda: self.thumb_ready.emit(path, pix), Qt.QueuedConnection)
-
+        self.thumb_ready.emit(path, pix)
 
 class _ScanTask(QRunnable):
     """QRunnable that walks folder and reports image paths via callback"""
