@@ -1896,7 +1896,7 @@ background-size: cover; </string>
                       <string notr="true">background: transparent;</string>
                      </property>
                      <property name="currentIndex">
-                      <number>0</number>
+                      <number>3</number>
                      </property>
                      <widget class="QWidget" name="gallery_page">
                       <property name="styleSheet">
@@ -1962,6 +1962,12 @@ background-repeat: no-repeat;</string>
                            <width>64</width>
                            <height>64</height>
                           </size>
+                         </property>
+                         <property name="verticalScrollMode">
+                          <enum>QAbstractItemView::ScrollMode::ScrollPerItem</enum>
+                         </property>
+                         <property name="horizontalScrollMode">
+                          <enum>QAbstractItemView::ScrollMode::ScrollPerItem</enum>
                          </property>
                          <property name="viewMode">
                           <enum>QListView::ViewMode::IconMode</enum>
@@ -3077,28 +3083,7 @@ background-repeat: no-repeat;</string>
                                    </widget>
                                   </item>
                                   <item row="0" column="2">
-                                   <widget class="QComboBox" name="cmb_search_size">
-                                    <item>
-                                     <property name="text">
-                                      <string>Small</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>Medium</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>Large</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>XL</string>
-                                     </property>
-                                    </item>
-                                   </widget>
+                                   <widget class="QComboBox" name="cmb_search_size"/>
                                   </item>
                                  </layout>
                                 </item>

@@ -1110,6 +1110,8 @@ class Ui_MainWindow(object):
         self.galleryList = QListWidget(self.gallery_page)
         self.galleryList.setObjectName(u"galleryList")
         self.galleryList.setIconSize(QSize(64, 64))
+        self.galleryList.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerItem)
+        self.galleryList.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerItem)
         self.galleryList.setViewMode(QListView.ViewMode.IconMode)
 
         self.verticalLayout_25.addWidget(self.galleryList)
@@ -1577,10 +1579,6 @@ class Ui_MainWindow(object):
         self.gridLayout_3.addWidget(self.searchDesc, 1, 0, 1, 2)
 
         self.cmb_search_size = QComboBox(self.frame_content_wid_2)
-        self.cmb_search_size.addItem("")
-        self.cmb_search_size.addItem("")
-        self.cmb_search_size.addItem("")
-        self.cmb_search_size.addItem("")
         self.cmb_search_size.setObjectName(u"cmb_search_size")
 
         self.gridLayout_3.addWidget(self.cmb_search_size, 0, 2, 1, 1)
@@ -1759,7 +1757,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(0)
+        self.stackedWidget.setCurrentIndex(3)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1893,11 +1891,6 @@ class Ui_MainWindow(object):
         self.searchEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type here", None))
         self.btn_search_view.setText(QCoreApplication.translate("MainWindow", u"...", None))
         self.searchDesc.setText(QCoreApplication.translate("MainWindow", u"Label description", None))
-        self.cmb_search_size.setItemText(0, QCoreApplication.translate("MainWindow", u"Small", None))
-        self.cmb_search_size.setItemText(1, QCoreApplication.translate("MainWindow", u"Medium", None))
-        self.cmb_search_size.setItemText(2, QCoreApplication.translate("MainWindow", u"Large", None))
-        self.cmb_search_size.setItemText(3, QCoreApplication.translate("MainWindow", u"XL", None))
-
         self.btn_message.setText(QCoreApplication.translate("MainWindow", u"Message", None))
         self.btn_print.setText(QCoreApplication.translate("MainWindow", u"Print", None))
         self.btn_logout.setText(QCoreApplication.translate("MainWindow", u"Logout", None))

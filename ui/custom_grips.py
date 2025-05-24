@@ -1,19 +1,3 @@
-# ///////////////////////////////////////////////////////////////
-#
-# BY: WANDERSON M.PIMENTA
-# PROJECT MADE WITH: Qt Designer and PySide6
-# V: 1.0.0
-#
-# This project can be used freely for all uses, as long as they maintain the
-# respective credits only in the Python scripts, any information in the visual
-# interface (GUI) can be modified without any implication.
-#
-# There are limitations on Qt licenses if you want to use your products
-# commercially, I recommend reading them on the official website:
-# https://doc.qt.io/qtforpython/licenses.html
-#
-# ///////////////////////////////////////////////////////////////
-
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 from PySide6.QtWidgets import *
@@ -133,17 +117,20 @@ class CustomGrip(QWidget):
         self.mousePos = None
 
     def resizeEvent(self, event):
-        if hasattr(self.wi, 'container_top'):
-            self.wi.container_top.setGeometry(0, 0, self.width(), 10)
+        w, h = self.width(), self.height()
+        if hasattr(self.wi, "container_top"):  # top grip
+            self.wi.container_top.setGeometry(0, 0, w, 10)
 
-        elif hasattr(self.wi, 'container_bottom'):
-            self.wi.container_bottom.setGeometry(0, 0, self.width(), 10)
+        elif hasattr(self.wi, "container_bottom"):  # bottom grip
+            self.wi.container_bottom.setGeometry(0, 0, w, 10)
 
-        elif hasattr(self.wi, 'leftgrip'):
-            self.wi.leftgrip.setGeometry(0, 0, 10, self.height() - 20)
+        elif hasattr(self.wi, "leftgrip"):  # left grip
+            self.wi.leftgrip.setGeometry(0, 0, 10, h)
 
-        elif hasattr(self.wi, 'rightgrip'):
-            self.wi.rightgrip.setGeometry(0, 0, 10, self.height() - 20)
+        elif hasattr(self.wi, "rightgrip"):  # right grip
+            self.wi.rightgrip.setGeometry(0, 0, 10, h)
+
+
 
 class Widgets(object):
     def top(self, Form):
@@ -241,7 +228,6 @@ class Widgets(object):
     def right(self, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
-        Form.resize(500, 500)
         self.rightgrip = QFrame(Form)
         self.rightgrip.setObjectName(u"right")
         self.rightgrip.setGeometry(QRect(0, 0, 10, 500))
