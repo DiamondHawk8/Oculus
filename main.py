@@ -35,13 +35,11 @@ class MainWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground, False)
         # Make borderless
 
-
         self.tags = TagManager("oculus.db", backend=ACTIVE_BACKEND)
         self.search = SearchManager("oculus.db", backend=ACTIVE_BACKEND)
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-
 
         # Create grips for window
         self._grips = [
@@ -72,10 +70,10 @@ class MainWindow(QMainWindow):
         # search results widgets
         self._results_model = QStringListModel()
 
-
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
         self.ui.minimizeAppBtn.clicked.connect(self.showMinimized)
+
         def _toggle_max_restore():
             if self.isMaximized():
                 self.showNormal()
@@ -94,7 +92,7 @@ class MainWindow(QMainWindow):
         if cached_paths:
             self._populate_gallery(cached_paths)
 
-        # Apply gallery page appeareance options functionality
+        # Apply gallery page appearance options functionality
         self._gallery_grid = True  # default mode
         self._gallery_preset = "Medium"
         self._apply_view(self.ui.galleryList,
@@ -109,7 +107,7 @@ class MainWindow(QMainWindow):
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_gallery_size)
 
-        # Apply search page appeareance options functionality
+        # Apply search page appearance options functionality
         self._search_grid = True  # default Search = grid
         self._search_preset = "Medium"
         self._apply_view(self.ui.resultsList,
@@ -125,12 +123,6 @@ class MainWindow(QMainWindow):
         self.ui.cmb_search_size.addItems(SIZE_PRESETS.keys())
         self.ui.cmb_search_size.setCurrentText(self._search_preset)
         self.ui.cmb_search_size.currentTextChanged.connect(self._change_search_size)
-
-
-        # Set scrolling sppeds
-        self.ui.galleryList.verticalScrollBar().setSingleStep(30)
-        self.ui.resultsList.verticalScrollBar().setSingleStep(30)
-
 
     # Import page slots
     def _choose_folder(self) -> None:
@@ -222,6 +214,7 @@ class MainWindow(QMainWindow):
         self._apply_view(self.ui.galleryList,
                          grid=checked,
                          preset=self._gallery_preset)
+        self.ui.galleryList.verticalScrollBar().setSingleStep(300)
 
     def _change_gallery_size(self, preset: str):
         self._gallery_preset = preset
@@ -229,19 +222,19 @@ class MainWindow(QMainWindow):
                          grid=self._gallery_grid,
                          preset=preset)
 
-
     def _toggle_search_view(self, checked: bool):
         self._search_grid = checked
         self._apply_view(self.ui.resultsList,
                          grid=checked,
                          preset=self._search_preset)
+        # Set scrolling speeds
+        self.ui.resultsList.verticalScrollBar().setSingleStep(300)
 
     def _change_search_size(self, preset: str):
         self._search_preset = preset
         self._apply_view(self.ui.resultsList,
                          grid=self._search_grid,
                          preset=preset)
-
 
     # Glue edges
     def resizeEvent(self, event):
@@ -253,8 +246,6 @@ class MainWindow(QMainWindow):
         self._grips[1].setGeometry(w - g, g, g, h - 2 * g)
         self._grips[2].setGeometry(0, 0, w, g)
         self._grips[3].setGeometry(0, h - g, w, g)
-
-
 
 
 if __name__ == "__main__":
