@@ -106,6 +106,7 @@ class TagManager:
         self.cur.execute(f"SELECT id FROM media WHERE path = {ph};", (path,))
         return self.cur.fetchone()[0]
 
+    # Returns a list of all paths current present within the media table
     def all_paths(self) -> list[str]:
         self.cur.execute("SELECT path FROM media ORDER BY added;")
         return [row[0] for row in self.cur.fetchall()]
