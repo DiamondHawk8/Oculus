@@ -3,8 +3,8 @@ import sys
 import logging
 
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidget
-from PySide6.QtCore import Qt, QPoint, QFile, QTextStream
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PySide6.QtCore import Qt
 from PySide6.QtCore import QStringListModel, QSize
 
 from ui.custom_grips import CustomGrip
@@ -14,6 +14,8 @@ from managers.search_manager import SearchManager
 from managers.tag_manager import TagManager
 
 from controllers.gallery_controller import GalleryController
+from controllers.import_controller import ImportController
+from controllers.search_controller import SearchController
 
 ACTIVE_BACKEND = "sqlite"
 GALLERY_PAGE_INDEX = 0
@@ -57,18 +59,13 @@ class MainWindow(QMainWindow):
 
         # Logic Managers
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags)
+        self.search_controller = SearchController(self.ui, self.media, self.search)
+        # self.import_controller = ImportController(self.ui, self.media, self.tags)
 
         # Connect Import page
         self.ui.chooseBtn.clicked.connect(self._choose_folder)
         self.media.scan_finished.connect(self._on_scan_finished)
 
-        # Connect Search page
-        self.ui.searchBtn.clicked.connect(self._exec_search)
-        self.ui.searchEdit.returnPressed.connect(self._exec_search)
-        self._search_items: dict[str, int] = {}
-
-        # search results widgets
-        self._results_model = QStringListModel()
 
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
@@ -89,25 +86,6 @@ class MainWindow(QMainWindow):
         self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
 
 
-        # Apply search page appearance options functionality
-        self._search_grid = True  # default Search = grid
-        self._search_preset = "Medium"
-        view_utils.apply_view(self.ui.resultsList,
-                              grid=self._search_grid,
-                              preset=self._search_preset)
-
-        # toggle button
-        self.ui.btn_search_view.toggled.connect(self._toggle_search_view)
-
-        # size combo
-        self.ui.cmb_search_size.addItems(SIZE_PRESETS.keys())
-        self.ui.cmb_search_size.setCurrentText(self._search_preset)
-        self.ui.cmb_search_size.currentTextChanged.connect(self._change_search_size)
-
-
-        # LEAVE HERE FOR NOW SO THAT SEARCH CAN WORK
-        self.media.thumb_ready.connect(self._on_thumb_ready)
-
     # Import page slots
     def _choose_folder(self) -> None:
         folder = QFileDialog.getExistingDirectory(self, "Choose image folder")
@@ -125,50 +103,6 @@ class MainWindow(QMainWindow):
         self.gallery_controller.populate_gallery(paths)
         self.ui.stackedWidget.setCurrentWidget(self.ui.gallery_page)
 
-    def _on_thumb_ready(self, path: str, pix) -> None:
-        icon = QIcon(pix)
-
-        # Search update
-        idx = self._search_items.get(path)
-        if idx is not None:
-            self.ui.resultsList.item(idx).setIcon(icon)
-
-    def _exec_search(self) -> None:
-        term = self.ui.searchEdit.text().strip()
-        if not term:
-            return
-
-        paths = (self.search.tag_search(term)
-                 if any(sym in term for sym in "|,()")
-                 else self.search.simple_search(term))
-
-        rlist = self.ui.resultsList  # a QListWidget
-        rlist.clear()
-        self._search_items.clear()
-
-        for p in paths:
-            row = rlist.count()
-            rlist.addItem(Path(p).name)
-            self._search_items[p] = row
-            self.media.thumb(p)  # async thumb request
-
-        self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX)
-
-    # Search view functions
-
-    def _toggle_search_view(self, checked: bool):
-        self._search_grid = checked
-        view_utils.apply_view(self.ui.resultsList,
-                         grid=checked,
-                         preset=self._search_preset)
-        # Set scrolling speeds
-        self.ui.resultsList.verticalScrollBar().setSingleStep(300)
-
-    def _change_search_size(self, preset: str):
-        self._search_preset = preset
-        view_utils.apply_view(self.ui.resultsList,
-                         grid=self._search_grid,
-                         preset=preset)
 
     # Glue edges
     def resizeEvent(self, event):
