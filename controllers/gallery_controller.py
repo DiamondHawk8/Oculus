@@ -20,18 +20,21 @@ class GalleryController:
         self.tag_manager = tag_manager
 
         self._gallery_items: dict[str, int] = {}
-        self.media_manager.thumb_ready.connect(self._on_thumb_ready)
 
-        cached_paths = self.tag_manager.all_paths()
-        if cached_paths:
-            self.populate_gallery(cached_paths)
-
-        # Apply gallery page appearance options functionality
+        # Apply gallery defaults
         self._gallery_grid = True  # default mode
         self._gallery_preset = "Medium"
         view_utils.apply_view(self.ui.galleryList,
                               grid=self._gallery_grid,
                               preset=self._gallery_preset)
+
+        # Connect thumbnail method to media signals
+        self.media_manager.thumb_ready.connect(self._on_thumb_ready)
+
+        # Obtain any existing media paths
+        cached_paths = self.tag_manager.all_paths()
+        if cached_paths:
+            self.populate_gallery(cached_paths)
 
         # Connect button to toggle between list and grid view
         self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
