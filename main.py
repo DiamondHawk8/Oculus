@@ -60,12 +60,7 @@ class MainWindow(QMainWindow):
         # Logic Managers
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags)
         self.search_controller = SearchController(self.ui, self.media, self.search)
-        # self.import_controller = ImportController(self.ui, self.media, self.tags)
-
-        # Connect Import page
-        self.ui.chooseBtn.clicked.connect(self._choose_folder)
-        self.media.scan_finished.connect(self._on_scan_finished)
-
+        self.import_controller = ImportController(self, self.ui, self.media, self.tags, self._on_import_scan_finished)
 
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
@@ -85,24 +80,11 @@ class MainWindow(QMainWindow):
         self.ui.btn_import.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(IMPORT_PAGE_INDEX))
         self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
 
+    def _on_import_scan_finished(self, paths: list[str]) -> None:
 
-    # Import page slots
-    def _choose_folder(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Choose image folder")
-        if folder:
-            self.ui.importStatus.setText("Scanning…")
-            self.media.scan_folder(folder)
-
-    def _on_scan_finished(self, paths: list[str]) -> None:
-
-        # persist paths into DB so SearchManager can find them
-        for p in paths:
-            self.tags.add_media(p)
-
-        self.ui.importStatus.setText(f"Found {len(paths)} files")
         self.gallery_controller.populate_gallery(paths)
-        self.ui.stackedWidget.setCurrentWidget(self.ui.gallery_page)
 
+        self.ui.stackedWidget.setCurrentWidget(self.ui.gallery_page)
 
     # Glue edges
     def resizeEvent(self, event):
