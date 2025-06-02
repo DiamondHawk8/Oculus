@@ -21,8 +21,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplicat
     QListView, QMainWindow, QPlainTextEdit, QPushButton,
     QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
     QSlider, QSpacerItem, QStackedWidget, QTableWidget,
-    QTableWidgetItem, QTextEdit, QToolButton, QVBoxLayout,
-    QWidget)
+    QTableWidgetItem, QTextEdit, QToolButton, QTreeWidget,
+    QTreeWidgetItem, QVBoxLayout, QWidget)
 from resources import resources_rc
 
 class Ui_MainWindow(object):
@@ -565,12 +565,9 @@ class Ui_MainWindow(object):
 "}\n"
 "\n"
 "")
-        self.horizontalLayout_6 = QHBoxLayout(self.styleSheet)
-        self.horizontalLayout_6.setSpacing(0)
-        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
-        self.horizontalLayout_6.setContentsMargins(2, 2, 2, 2)
         self.bgApp = QFrame(self.styleSheet)
         self.bgApp.setObjectName(u"bgApp")
+        self.bgApp.setGeometry(QRect(2, 2, 1628, 997))
         self.bgApp.setStyleSheet(u"")
         self.bgApp.setFrameShape(QFrame.Shape.NoFrame)
         self.bgApp.setFrameShadow(QFrame.Shadow.Raised)
@@ -1539,29 +1536,49 @@ class Ui_MainWindow(object):
         self.stackedWidget.addWidget(self.widgets)
         self.import_page = QWidget()
         self.import_page.setObjectName(u"import_page")
-        self.verticalLayout_20 = QVBoxLayout(self.import_page)
-        self.verticalLayout_20.setObjectName(u"verticalLayout_20")
-        self.chooseBtn = QPushButton(self.import_page)
-        self.chooseBtn.setObjectName(u"chooseBtn")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.chooseBtn.sizePolicy().hasHeightForWidth())
-        self.chooseBtn.setSizePolicy(sizePolicy6)
-
-        self.verticalLayout_20.addWidget(self.chooseBtn)
-
+        self.gridLayout_4 = QGridLayout(self.import_page)
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.importStatus = QLabel(self.import_page)
         self.importStatus.setObjectName(u"importStatus")
+        font3 = QFont()
+        font3.setFamilies([u"Segoe UI"])
+        font3.setBold(True)
+        font3.setItalic(False)
+        font3.setStyleStrategy(QFont.PreferDefault)
+        self.importStatus.setFont(font3)
+        self.importStatus.setStyleSheet(u"QLabel#importStatus {\n"
+"    font-size: 18px;\n"
+"    font-weight: bold;\n"
+"}\n"
+"")
+        self.importStatus.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.verticalLayout_20.addWidget(self.importStatus)
+        self.gridLayout_4.addWidget(self.importStatus, 1, 2, 1, 1)
 
-        self.IMPORTPAGE = QLabel(self.import_page)
-        self.IMPORTPAGE.setObjectName(u"IMPORTPAGE")
-        self.IMPORTPAGE.setStyleSheet(u"")
-        self.IMPORTPAGE.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.verticalLayout_20.addWidget(self.IMPORTPAGE)
+        self.gridLayout_4.addItem(self.horizontalSpacer_2, 0, 0, 1, 1)
+
+        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_4.addItem(self.horizontalSpacer_3, 0, 2, 1, 1)
+
+        self.chooseBtn = QPushButton(self.import_page)
+        self.chooseBtn.setObjectName(u"chooseBtn")
+        sizePolicy1.setHeightForWidth(self.chooseBtn.sizePolicy().hasHeightForWidth())
+        self.chooseBtn.setSizePolicy(sizePolicy1)
+
+        self.gridLayout_4.addWidget(self.chooseBtn, 0, 1, 1, 1)
+
+        self.debugFolderTree = QTreeWidget(self.import_page)
+        __qtreewidgetitem = QTreeWidgetItem()
+        __qtreewidgetitem.setText(0, u"1");
+        self.debugFolderTree.setHeaderItem(__qtreewidgetitem)
+        self.debugFolderTree.setObjectName(u"debugFolderTree")
+        sizePolicy1.setHeightForWidth(self.debugFolderTree.sizePolicy().hasHeightForWidth())
+        self.debugFolderTree.setSizePolicy(sizePolicy1)
+
+        self.gridLayout_4.addWidget(self.debugFolderTree, 1, 1, 1, 1)
 
         self.stackedWidget.addWidget(self.import_page)
         self.search_page = QWidget()
@@ -1636,11 +1653,11 @@ class Ui_MainWindow(object):
 
         self.btn_search_view = QToolButton(self.frame_content_wid_2)
         self.btn_search_view.setObjectName(u"btn_search_view")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
-        self.btn_search_view.setSizePolicy(sizePolicy7)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
+        self.btn_search_view.setSizePolicy(sizePolicy6)
         palette3 = QPalette()
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
@@ -1818,11 +1835,11 @@ class Ui_MainWindow(object):
         self.creditsLabel = QLabel(self.bottomBar)
         self.creditsLabel.setObjectName(u"creditsLabel")
         self.creditsLabel.setMaximumSize(QSize(16777215, 16))
-        font3 = QFont()
-        font3.setFamilies([u"Segoe UI"])
-        font3.setBold(False)
-        font3.setItalic(False)
-        self.creditsLabel.setFont(font3)
+        font4 = QFont()
+        font4.setFamilies([u"Segoe UI"])
+        font4.setBold(False)
+        font4.setItalic(False)
+        self.creditsLabel.setFont(font4)
         self.creditsLabel.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_5.addWidget(self.creditsLabel)
@@ -1851,22 +1868,17 @@ class Ui_MainWindow(object):
 
         self.appLayout.addWidget(self.contentBox)
 
-
-        self.horizontalLayout_6.addWidget(self.bgApp)
-
         self.title_bar = QFrame(self.styleSheet)
         self.title_bar.setObjectName(u"title_bar")
+        self.title_bar.setGeometry(QRect(1628, 2, 16, 996))
         self.title_bar.setMinimumSize(QSize(0, 18))
         self.title_bar.setFrameShape(QFrame.Shape.StyledPanel)
         self.title_bar.setFrameShadow(QFrame.Shadow.Raised)
-
-        self.horizontalLayout_6.addWidget(self.title_bar)
-
         MainWindow.setCentralWidget(self.styleSheet)
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(3)
+        self.stackedWidget.setCurrentIndex(2)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1991,9 +2003,8 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem23.setText(QCoreApplication.translate("MainWindow", u"Line", None));
         self.tableWidget.setSortingEnabled(__sortingEnabled)
 
-        self.chooseBtn.setText(QCoreApplication.translate("MainWindow", u"IMPORT", None))
         self.importStatus.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
-        self.IMPORTPAGE.setText(QCoreApplication.translate("MainWindow", u"IMPORT PAGE", None))
+        self.chooseBtn.setText(QCoreApplication.translate("MainWindow", u"IMPORT", None))
         self.searchTitle.setText(QCoreApplication.translate("MainWindow", u"Search", None))
         self.searchBtn.setText(QCoreApplication.translate("MainWindow", u"Search", None))
         self.searchEdit.setText("")
