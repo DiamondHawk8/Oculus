@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         # Logic Managers
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags)
         self.search_controller = SearchController(self.ui, self.media, self.search)
-        self.import_controller = ImportController(self, self.ui, self.media, self.tags, self._on_import_scan_finished)
+        self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller,self._on_import_scan_finished)
 
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
@@ -72,10 +72,9 @@ class MainWindow(QMainWindow):
 
 
 
+    # TODO remove this method
 
     def _on_import_scan_finished(self, paths: list[str]) -> None:
-
-        self.gallery_controller.populate_gallery(paths)
 
         self.ui.stackedWidget.setCurrentWidget(self.ui.gallery_page)
 

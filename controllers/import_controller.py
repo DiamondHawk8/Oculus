@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QFileDialog
 from widgets.folder_tree_widget import FolderTreeWidget
 
 class ImportController:
-    def __init__(self, parent_window, ui, media_manager, tag_manager, on_scan_complete):
+    def __init__(self, parent_window, ui, media_manager, tag_manager, gallery_controller, on_scan_complete):
 
         # Utilized for generating dialogues
         self.parent_window = parent_window
@@ -16,6 +16,7 @@ class ImportController:
         self.ui = ui
         self.media_manager = media_manager
         self.tag_manager = tag_manager
+        self.gallery_controller = gallery_controller
         self.on_scan_complete = on_scan_complete
 
         # Connect Import page
@@ -52,6 +53,8 @@ class ImportController:
             root_path = str(Path(self._import_root).expanduser().resolve())
             tree_data = self.media_manager.walk_tree(root_path)
             self.ui.debugFolderTree.load_tree(tree_data, root_path)
+
+            self.gallery_controller.open_folder(root_path)
 
         if self.on_scan_complete:
             self.on_scan_complete(paths)

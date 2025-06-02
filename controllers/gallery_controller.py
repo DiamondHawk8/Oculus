@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PySide6.QtCore import QSize
+from PySide6.QtCore import Qt, QSize, QModelIndex
 from PySide6.QtGui import QIcon, QKeySequence, QAction
 from PySide6.QtWidgets import QListView
 
@@ -45,6 +45,14 @@ class GalleryController:
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.clicked.connect(self.go_forward)
 
+        # Connect double-click / Enter activation
+        self.ui.galleryList.doubleClicked.connect(self._on_item_activated)
+        self.ui.galleryList.activated.connect(self._on_item_activated)
+
+        # Register keyboard shortcuts (inside Gallery only)
+        self._add_shortcut("Alt+Left", self.go_back)
+        self._add_shortcut("Alt+Right", self.go_forward)
+
         # Connect thumbnail method to media signals
         self.media_manager.thumb_ready.connect(self._on_thumb_ready)
 
@@ -61,6 +69,28 @@ class GalleryController:
         self.ui.cmb_gallery_size.addItems(SIZE_PRESETS.keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
+
+    # push a folder’s contents into the model
+    def _push_page(self, folder_abspath: str):
+        """
+        Refresh view with contents of *folder_abspath*.
+        Folders first (α-sorted) then image files (α-sorted).
+        """
+        folder = Path(folder_abspath)
+        if not folder.is_dir():
+            return
+
+        subdirs = [
+            str(p) for p in folder.iterdir() if p.is_dir()
+        ]
+        images = [
+            str(p) for p in folder.iterdir()
+            if p.is_file() and p.suffix.lower() in {".jpg", ".png", ".gif", ".bmp"}
+        ]
+
+        #   Folders first, then files – each group sorted case-insensitively
+        paths = sorted(subdirs, key=str.lower) + sorted(images, key=str.lower)
+        self.populate_gallery(paths)
 
     # ---------------------------- Nav methods -------------------
 
@@ -79,6 +109,15 @@ class GalleryController:
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(False)
 
+    def _on_item_activated(self, index: QModelIndex):  # ★ NEW
+        path = self._model.data(index, Qt.UserRole)
+        if not path:
+            return
+        if Path(path).is_dir():
+            self.open_folder(path)
+        else:
+            self._open_viewer(path)  # TODO hook to ImageViewerDialog
+
     def go_back(self):
         if self._cursor <= 0:
             return
@@ -96,7 +135,6 @@ class GalleryController:
         self.ui.btn_back.setEnabled(True)
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(self._cursor + 1 < len(self._history))
-
 
     # ---------------------------- Thumbnail methods -------------------
     def populate_gallery(self, paths: list[str]) -> None:
