@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QKeySequence, QAction
 from PySide6.QtWidgets import QListView
 
 import controllers.view_utils as view_utils
@@ -36,6 +36,15 @@ class GalleryController:
                               grid=self._gallery_grid,
                               preset=self._gallery_preset)
 
+        # Create navigation structs
+        self._history: list[str] = []
+        self._cursor: int = -1
+
+        # Hook Back/Forward buttons
+        self.ui.btn_back.clicked.connect(self.go_back)
+        if hasattr(self.ui, "btn_forward"):
+            self.ui.btn_forward.clicked.connect(self.go_forward)
+
         # Connect thumbnail method to media signals
         self.media_manager.thumb_ready.connect(self._on_thumb_ready)
 
@@ -53,6 +62,43 @@ class GalleryController:
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
 
+    # ---------------------------- Nav methods -------------------
+
+    def open_folder(self, folder_abspath: str):
+        if self._cursor >= 0 and self._history[self._cursor] == folder_abspath:
+            return  # same folder; ignore
+
+        # prune forward history if branched
+        self._history = self._history[: self._cursor + 1]
+        self._history.append(folder_abspath)
+        self._cursor += 1
+        self._push_page(folder_abspath)
+
+        # enable/disable nav buttons
+        self.ui.btn_back.setEnabled(self._cursor > 0)
+        if hasattr(self.ui, "btn_forward"):
+            self.ui.btn_forward.setEnabled(False)
+
+    def go_back(self):
+        if self._cursor <= 0:
+            return
+        self._cursor -= 1
+        self._push_page(self._history[self._cursor])
+        self.ui.btn_back.setEnabled(self._cursor > 0)
+        if hasattr(self.ui, "btn_forward"):
+            self.ui.btn_forward.setEnabled(True)
+
+    def go_forward(self):
+        if self._cursor + 1 >= len(self._history):
+            return
+        self._cursor += 1
+        self._push_page(self._history[self._cursor])
+        self.ui.btn_back.setEnabled(True)
+        if hasattr(self.ui, "btn_forward"):
+            self.ui.btn_forward.setEnabled(self._cursor + 1 < len(self._history))
+
+
+    # ---------------------------- Thumbnail methods -------------------
     def populate_gallery(self, paths: list[str]) -> None:
         self._model.set_paths(paths)
         self._gallery_items = {p: i for i, p in enumerate(paths)}
@@ -62,6 +108,8 @@ class GalleryController:
     def _on_thumb_ready(self, path: str, pix) -> None:
         icon = QIcon(pix)
         self._model.update_icon(path, icon)
+
+    # ---------------------------- Appearance methods -------------------
 
     def _toggle_view(self, checked):
         self._gallery_grid = checked
@@ -75,3 +123,12 @@ class GalleryController:
         view_utils.apply_view(self.ui.galleryList,
                               grid=self._gallery_grid,
                               preset=preset)
+
+    # ---------------------------- other methods -------------------
+
+    # helper for local shortcuts (keeps them limited to gallery page)
+    def _add_shortcut(self, keyseq: str, slot):
+        act = QAction(self.ui.gallery_page)
+        act.setShortcut(QKeySequence(keyseq))
+        act.triggered.connect(slot)
+        self.ui.gallery_page.addAction(act)

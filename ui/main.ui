@@ -2113,7 +2113,7 @@ background-size: cover; </string>
                     <string notr="true">background: transparent;</string>
                    </property>
                    <property name="currentIndex">
-                    <number>2</number>
+                    <number>0</number>
                    </property>
                    <widget class="QWidget" name="gallery_page">
                     <property name="styleSheet">
@@ -2136,6 +2136,28 @@ background-repeat: no-repeat;</string>
                        <property name="bottomMargin">
                         <number>10</number>
                        </property>
+                       <item>
+                        <widget class="QPushButton" name="btn_back">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="../resources/resources.qrc">
+                           <normaloff>:/icons/cil-arrow-left.png</normaloff>:/icons/cil-arrow-left.png</iconset>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="btn_forward">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="icon">
+                          <iconset resource="../resources/resources.qrc">
+                           <normaloff>:/icons/cil-arrow-right.png</normaloff>:/icons/cil-arrow-right.png</iconset>
+                         </property>
+                        </widget>
+                       </item>
                        <item>
                         <spacer name="horizontalSpacer">
                          <property name="orientation">
@@ -2705,7 +2727,7 @@ background-repeat: no-repeat;</string>
                               <rect>
                                <x>0</x>
                                <y>0</y>
-                               <width>536</width>
+                               <width>537</width>
                                <height>218</height>
                               </rect>
                              </property>

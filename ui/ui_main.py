@@ -1127,6 +1127,22 @@ class Ui_MainWindow(object):
         self.horizontalLayout_13 = QHBoxLayout()
         self.horizontalLayout_13.setObjectName(u"horizontalLayout_13")
         self.horizontalLayout_13.setContentsMargins(10, 10, 10, 10)
+        self.btn_back = QPushButton(self.gallery_page)
+        self.btn_back.setObjectName(u"btn_back")
+        icon4 = QIcon()
+        icon4.addFile(u":/icons/cil-arrow-left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.btn_back.setIcon(icon4)
+
+        self.horizontalLayout_13.addWidget(self.btn_back)
+
+        self.btn_forward = QPushButton(self.gallery_page)
+        self.btn_forward.setObjectName(u"btn_forward")
+        icon5 = QIcon()
+        icon5.addFile(u":/icons/cil-arrow-right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.btn_forward.setIcon(icon5)
+
+        self.horizontalLayout_13.addWidget(self.btn_forward)
+
         self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_13.addItem(self.horizontalSpacer)
@@ -1176,10 +1192,10 @@ class Ui_MainWindow(object):
         palette1.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Accent, brush3)
 #endif
         self.btn_gallery_view.setPalette(palette1)
-        icon4 = QIcon()
-        icon4.addFile(u":/icons/cil-size-grip.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        icon4.addFile(u":/icons/cil-featured-playlist.png", QSize(), QIcon.Mode.Normal, QIcon.State.On)
-        self.btn_gallery_view.setIcon(icon4)
+        icon6 = QIcon()
+        icon6.addFile(u":/icons/cil-size-grip.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon6.addFile(u":/icons/cil-featured-playlist.png", QSize(), QIcon.Mode.Normal, QIcon.State.On)
+        self.btn_gallery_view.setIcon(icon6)
         self.btn_gallery_view.setCheckable(True)
         self.btn_gallery_view.setChecked(True)
 
@@ -1263,9 +1279,9 @@ class Ui_MainWindow(object):
         self.pushButton.setFont(font)
         self.pushButton.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton.setStyleSheet(u"background-color: rgb(52, 59, 72);")
-        icon5 = QIcon()
-        icon5.addFile(u":/icons/images/icons/cil-folder-open.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.pushButton.setIcon(icon5)
+        icon7 = QIcon()
+        icon7.addFile(u":/icons/images/icons/cil-folder-open.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.pushButton.setIcon(icon7)
 
         self.gridLayout.addWidget(self.pushButton, 0, 1, 1, 1)
 
@@ -1340,7 +1356,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 536, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 537, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1388,9 +1404,9 @@ class Ui_MainWindow(object):
         self.commandLinkButton.setObjectName(u"commandLinkButton")
         self.commandLinkButton.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.commandLinkButton.setStyleSheet(u"")
-        icon6 = QIcon()
-        icon6.addFile(u":/icons/images/icons/cil-link.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.commandLinkButton.setIcon(icon6)
+        icon8 = QIcon()
+        icon8.addFile(u":/icons/images/icons/cil-link.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.commandLinkButton.setIcon(icon8)
 
         self.gridLayout_2.addWidget(self.commandLinkButton, 1, 6, 1, 1)
 
@@ -1640,7 +1656,7 @@ class Ui_MainWindow(object):
         self.searchBtn.setFont(font)
         self.searchBtn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.searchBtn.setStyleSheet(u"background-color: rgb(52, 59, 72);")
-        self.searchBtn.setIcon(icon5)
+        self.searchBtn.setIcon(icon7)
 
         self.gridLayout_3.addWidget(self.searchBtn, 0, 1, 1, 1)
 
@@ -1697,7 +1713,7 @@ class Ui_MainWindow(object):
 #endif
         self.btn_search_view.setPalette(palette3)
         self.btn_search_view.setAutoFillBackground(False)
-        self.btn_search_view.setIcon(icon4)
+        self.btn_search_view.setIcon(icon6)
         self.btn_search_view.setCheckable(True)
         self.btn_search_view.setChecked(True)
 
@@ -1878,7 +1894,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(2)
+        self.stackedWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1936,6 +1952,8 @@ class Ui_MainWindow(object):
         self.closeAppBtn.setToolTip(QCoreApplication.translate("MainWindow", u"Close", None))
 #endif // QT_CONFIG(tooltip)
         self.closeAppBtn.setText("")
+        self.btn_back.setText("")
+        self.btn_forward.setText("")
         self.btn_gallery_view.setText(QCoreApplication.translate("MainWindow", u"...", None))
         self.labelBoxBlenderInstalation.setText(QCoreApplication.translate("MainWindow", u"FILE BOX", None))
         self.lineEdit.setText("")
