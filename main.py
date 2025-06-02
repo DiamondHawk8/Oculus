@@ -23,16 +23,6 @@ WIDGET_PAGE_INDEX = 1
 IMPORT_PAGE_INDEX = 2
 SEARCH_PAGE_INDEX = 3
 
-import controllers.view_utils as view_utils
-
-SIZE_PRESETS = {
-    "Small": (64, QSize(82, 82)),
-    "Medium": (96, QSize(118, 118)),
-    "Large": (128, QSize(150, 150)),
-    "XL": (192, QSize(216, 216)),
-}
-
-
 class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
