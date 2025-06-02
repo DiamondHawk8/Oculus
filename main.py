@@ -80,6 +80,9 @@ class MainWindow(QMainWindow):
         self.ui.btn_import.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(IMPORT_PAGE_INDEX))
         self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
 
+
+
+
     def _on_import_scan_finished(self, paths: list[str]) -> None:
 
         self.gallery_controller.populate_gallery(paths)

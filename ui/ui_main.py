@@ -29,14 +29,14 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1347, 848)
+        MainWindow.resize(1347, 560)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
         MainWindow.setSizePolicy(sizePolicy)
         MainWindow.setMinimumSize(QSize(940, 560))
-        MainWindow.setStyleSheet(u"")
+        MainWindow.setStyleSheet(u"x")
         self.styleSheet = QWidget(MainWindow)
         self.styleSheet.setObjectName(u"styleSheet")
         font = QFont()
@@ -568,7 +568,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_6 = QHBoxLayout(self.styleSheet)
         self.horizontalLayout_6.setSpacing(0)
         self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
-        self.horizontalLayout_6.setContentsMargins(10, 10, 10, 10)
+        self.horizontalLayout_6.setContentsMargins(2, 2, 2, 2)
         self.bgApp = QFrame(self.styleSheet)
         self.bgApp.setObjectName(u"bgApp")
         self.bgApp.setStyleSheet(u"")
@@ -577,7 +577,7 @@ class Ui_MainWindow(object):
         self.appLayout = QHBoxLayout(self.bgApp)
         self.appLayout.setSpacing(0)
         self.appLayout.setObjectName(u"appLayout")
-        self.appLayout.setContentsMargins(0, 0, 0, 0)
+        self.appLayout.setContentsMargins(0, 22, 0, 0)
         self.leftMenuBg = QFrame(self.bgApp)
         self.leftMenuBg.setObjectName(u"leftMenuBg")
         self.leftMenuBg.setMinimumSize(QSize(60, 0))
@@ -1342,7 +1342,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 382, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 387, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1644,11 +1644,38 @@ class Ui_MainWindow(object):
         sizePolicy7.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
         self.btn_search_view.setSizePolicy(sizePolicy7)
         palette3 = QPalette()
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Text, brush)
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.ButtonText, brush)
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Base, brush1)
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Window, brush1)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+        palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.PlaceholderText, brush2)
+#endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Accent, brush3)
 #endif
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, brush)
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Button, brush1)
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Text, brush)
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.ButtonText, brush)
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Base, brush1)
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Window, brush1)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+        palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.PlaceholderText, brush2)
+#endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
         palette3.setBrush(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Accent, brush3)
+#endif
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, brush)
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Button, brush1)
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, brush)
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, brush)
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Base, brush1)
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Window, brush1)
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+        palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.PlaceholderText, brush2)
 #endif
 #if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
         palette3.setBrush(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Accent, brush3)
@@ -1848,7 +1875,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(0)
+        self.stackedWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
