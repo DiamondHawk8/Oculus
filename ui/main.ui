@@ -7,8 +7,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1347</width>
-    <height>560</height>
+    <width>1640</width>
+    <height>1000</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -2122,7 +2122,7 @@ background-size: cover; </string>
                       <string notr="true">background: transparent;</string>
                      </property>
                      <property name="currentIndex">
-                      <number>1</number>
+                      <number>0</number>
                      </property>
                      <widget class="QWidget" name="gallery_page">
                       <property name="styleSheet">
@@ -2408,21 +2408,12 @@ background-repeat: no-repeat;</string>
                         </layout>
                        </item>
                        <item>
-                        <widget class="QListWidget" name="galleryList">
-                         <property name="iconSize">
-                          <size>
-                           <width>64</width>
-                           <height>64</height>
-                          </size>
-                         </property>
-                         <property name="verticalScrollMode">
-                          <enum>QAbstractItemView::ScrollMode::ScrollPerItem</enum>
-                         </property>
-                         <property name="horizontalScrollMode">
-                          <enum>QAbstractItemView::ScrollMode::ScrollPerItem</enum>
-                         </property>
-                         <property name="viewMode">
-                          <enum>QListView::ViewMode::IconMode</enum>
+                        <widget class="QListView" name="galleryList">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
                          </property>
                         </widget>
                        </item>
@@ -2723,7 +2714,7 @@ background-repeat: no-repeat;</string>
                                 <rect>
                                  <x>0</x>
                                  <y>0</y>
-                                 <width>387</width>
+                                 <width>536</width>
                                  <height>218</height>
                                 </rect>
                                </property>

@@ -29,7 +29,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1347, 560)
+        MainWindow.resize(1640, 1000)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -1191,12 +1191,13 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_25.addLayout(self.horizontalLayout_13)
 
-        self.galleryList = QListWidget(self.gallery_page)
+        self.galleryList = QListView(self.gallery_page)
         self.galleryList.setObjectName(u"galleryList")
-        self.galleryList.setIconSize(QSize(64, 64))
-        self.galleryList.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerItem)
-        self.galleryList.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerItem)
-        self.galleryList.setViewMode(QListView.ViewMode.IconMode)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
+        self.galleryList.setSizePolicy(sizePolicy5)
 
         self.verticalLayout_25.addWidget(self.galleryList)
 
@@ -1342,7 +1343,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 387, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 536, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1475,9 +1476,6 @@ class Ui_MainWindow(object):
         __qtablewidgetitem23 = QTableWidgetItem()
         self.tableWidget.setItem(0, 3, __qtablewidgetitem23)
         self.tableWidget.setObjectName(u"tableWidget")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
         sizePolicy5.setHeightForWidth(self.tableWidget.sizePolicy().hasHeightForWidth())
         self.tableWidget.setSizePolicy(sizePolicy5)
         palette2 = QPalette()
@@ -1875,7 +1873,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(1)
+        self.stackedWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)

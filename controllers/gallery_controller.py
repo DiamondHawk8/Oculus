@@ -2,8 +2,10 @@ from pathlib import Path
 
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QListView
 
 import controllers.view_utils as view_utils
+from models.thumbnail_model import ThumbnailListModel
 
 SIZE_PRESETS = {
     "Small": (64, QSize(82, 82)),
@@ -18,6 +20,12 @@ class GalleryController:
         self.ui = ui
         self.media_manager = media_manager
         self.tag_manager = tag_manager
+
+        # model & view
+        self._model = ThumbnailListModel()
+        self.ui.galleryList.setViewMode(QListView.IconMode)
+        self.ui.galleryList.setResizeMode(QListView.Adjust)
+        self.ui.galleryList.setModel(self._model)
 
         self._gallery_items: dict[str, int] = {}
 
@@ -46,24 +54,14 @@ class GalleryController:
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
 
     def populate_gallery(self, paths: list[str]) -> None:
-        glist = self.ui.galleryList
-        glist.clear()
-        self._gallery_items.clear()
-
+        self._model.set_paths(paths)
+        self._gallery_items = {p: i for i, p in enumerate(paths)}
         for p in paths:
-            row = glist.count()
-            item = glist.addItem(str(Path(p).name))
-            self._gallery_items[p] = row
-            # request thumb : will arrive async
             self.media_manager.thumb(p)
 
     def _on_thumb_ready(self, path: str, pix) -> None:
         icon = QIcon(pix)
-
-        # Gallery update
-        idx = self._gallery_items.get(path)
-        if idx is not None:
-            self.ui.galleryList.item(idx).setIcon(icon)
+        self._model.update_icon(path, icon)
 
     def _toggle_view(self, checked):
         self._gallery_grid = checked
