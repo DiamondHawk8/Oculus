@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from collections import deque
 from typing import Iterable, Callable, List, Sequence
 
 from functools import lru_cache
@@ -10,6 +11,7 @@ from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObj
 from PySide6.QtGui import QPixmap
 
 from collections import OrderedDict
+
 
 class MediaManager(QObject):
     """
@@ -59,6 +61,32 @@ class MediaManager(QObject):
         _thumbnail_cache_set(path, self._thumb_size, pix)
         self.thumb_ready.emit(path, pix)
 
+    def walk_tree(self, root: str | Path) -> dict[str, tuple[list[str], list[str]]]:
+        """
+        Return an adjacency map of the folder hierarchy.
+
+        Dict key: absolute folder path
+        Value tuple: (subfolders[abs], image_files[abs])
+
+        Debug
+        """
+        root = Path(root).expanduser().resolve()
+        tree: dict[str, tuple[list[str], list[str]]] = {}
+
+        q: deque[Path] = deque([root])
+        while q:
+            folder = q.popleft()
+            subdirs, images = [], []
+            for child in folder.iterdir():
+                if child.is_dir():
+                    subdirs.append(str(child))
+                    q.append(child)       # breadth-first
+                elif child.suffix.lower() in {".jpg", ".png", ".gif", ".bmp"}:
+                    images.append(str(child))
+            tree[str(folder)] = (subdirs, images)
+        return tree
+
+
 class _ScanTask(QRunnable):
     """QRunnable that walks folder and reports image paths via callback"""
 
@@ -80,7 +108,7 @@ class _ScanTask(QRunnable):
 class _ThumbTask(QRunnable):
     """deliver a thumbnail, executed off the GUI thread."""
 
-    def __init__(self, path: str, size: int, callback: Callable[[str, QPixmap], None],) -> None:
+    def __init__(self, path: str, size: int, callback: Callable[[str, QPixmap], None], ) -> None:
         super().__init__()
         self._path = path
         self._size = size
@@ -115,9 +143,9 @@ def _thumbnail_cache_set(path: str, size: int, pix: QPixmap) -> None:
     if len(_THUMB_CACHE) > _CACHE_CAPACITY:
         _THUMB_CACHE.popitem(last=False)  # discard oldest
 
+
 def _generate_thumbnail(path: str, size: int) -> QPixmap:
     pix = QPixmap(path)
     if pix.isNull():
         return QPixmap()
     return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-
