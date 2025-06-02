@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         # Logic Managers
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags)
         self.search_controller = SearchController(self.ui, self.media, self.search)
-        self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller,self._on_import_scan_finished)
+        self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
 
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
@@ -70,13 +70,6 @@ class MainWindow(QMainWindow):
         self.ui.btn_import.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(IMPORT_PAGE_INDEX))
         self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
 
-
-
-    # TODO remove this method
-
-    def _on_import_scan_finished(self, paths: list[str]) -> None:
-
-        self.ui.stackedWidget.setCurrentWidget(self.ui.gallery_page)
 
     # Glue edges
     def resizeEvent(self, event):
