@@ -18,11 +18,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QCheckBox,
     QComboBox, QCommandLinkButton, QFrame, QGridLayout,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QListView, QListWidget, QListWidgetItem, QMainWindow,
-    QPlainTextEdit, QPushButton, QRadioButton, QScrollArea,
-    QScrollBar, QSizePolicy, QSlider, QSpacerItem,
-    QStackedWidget, QTableWidget, QTableWidgetItem, QTextEdit,
-    QToolButton, QVBoxLayout, QWidget)
+    QListView, QMainWindow, QPlainTextEdit, QPushButton,
+    QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
+    QSlider, QSpacerItem, QStackedWidget, QTableWidget,
+    QTableWidgetItem, QTextEdit, QToolButton, QVBoxLayout,
+    QWidget)
 from resources import resources_rc
 
 class Ui_MainWindow(object):
@@ -1711,15 +1711,8 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_24.addWidget(self.row_4, 0, Qt.AlignmentFlag.AlignTop)
 
-        self.resultsList = QListWidget(self.search_page)
+        self.resultsList = QListView(self.search_page)
         self.resultsList.setObjectName(u"resultsList")
-        self.resultsList.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.resultsList.setSizeAdjustPolicy(QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
-        self.resultsList.setIconSize(QSize(64, 64))
-        self.resultsList.setResizeMode(QListView.ResizeMode.Adjust)
-        self.resultsList.setSpacing(4)
-        self.resultsList.setGridSize(QSize(100, 100))
-        self.resultsList.setViewMode(QListView.ViewMode.IconMode)
 
         self.verticalLayout_24.addWidget(self.resultsList)
 
@@ -1873,7 +1866,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(0)
+        self.stackedWidget.setCurrentIndex(3)
 
 
         QMetaObject.connectSlotsByName(MainWindow)

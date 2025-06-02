@@ -2122,7 +2122,7 @@ background-size: cover; </string>
                       <string notr="true">background: transparent;</string>
                      </property>
                      <property name="currentIndex">
-                      <number>0</number>
+                      <number>3</number>
                      </property>
                      <widget class="QWidget" name="gallery_page">
                       <property name="styleSheet">
@@ -3766,35 +3766,7 @@ background-repeat: no-repeat;</string>
                         </widget>
                        </item>
                        <item>
-                        <widget class="QListWidget" name="resultsList">
-                         <property name="horizontalScrollBarPolicy">
-                          <enum>Qt::ScrollBarPolicy::ScrollBarAsNeeded</enum>
-                         </property>
-                         <property name="sizeAdjustPolicy">
-                          <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustToContents</enum>
-                         </property>
-                         <property name="iconSize">
-                          <size>
-                           <width>64</width>
-                           <height>64</height>
-                          </size>
-                         </property>
-                         <property name="resizeMode">
-                          <enum>QListView::ResizeMode::Adjust</enum>
-                         </property>
-                         <property name="spacing">
-                          <number>4</number>
-                         </property>
-                         <property name="gridSize">
-                          <size>
-                           <width>100</width>
-                           <height>100</height>
-                          </size>
-                         </property>
-                         <property name="viewMode">
-                          <enum>QListView::ViewMode::IconMode</enum>
-                         </property>
-                        </widget>
+                        <widget class="QListView" name="resultsList"/>
                        </item>
                       </layout>
                      </widget>
