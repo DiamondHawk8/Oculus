@@ -92,7 +92,7 @@ class GalleryController:
         paths = sorted(subdirs, key=str.lower) + sorted(images, key=str.lower)
         self.populate_gallery(paths)
 
-    # ---------------------------- Nav methods -------------------
+    # ---------------------------- Nav methods ----------------------------
 
     def open_folder(self, folder_abspath: str):
         if self._cursor >= 0 and self._history[self._cursor] == folder_abspath:
@@ -109,7 +109,7 @@ class GalleryController:
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(False)
 
-    def _on_item_activated(self, index: QModelIndex):  # ★ NEW
+    def _on_item_activated(self, index: QModelIndex):
         path = self._model.data(index, Qt.UserRole)
         if not path:
             return
@@ -136,7 +136,7 @@ class GalleryController:
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(self._cursor + 1 < len(self._history))
 
-    # ---------------------------- Thumbnail methods -------------------
+    # ---------------------------- Thumbnail methods ----------------------------
     def populate_gallery(self, paths: list[str]) -> None:
         self._model.set_paths(paths)
         self._gallery_items = {p: i for i, p in enumerate(paths)}
@@ -147,7 +147,7 @@ class GalleryController:
         icon = QIcon(pix)
         self._model.update_icon(path, icon)
 
-    # ---------------------------- Appearance methods -------------------
+    # ---------------------------- Appearance methods ----------------------------
 
     def _toggle_view(self, checked):
         self._gallery_grid = checked
@@ -162,7 +162,7 @@ class GalleryController:
                               grid=self._gallery_grid,
                               preset=preset)
 
-    # ---------------------------- other methods -------------------
+    # ---------------------------- Other methods ----------------------------
 
     # helper for local shortcuts (keeps them limited to gallery page)
     def _add_shortcut(self, keyseq: str, slot):
