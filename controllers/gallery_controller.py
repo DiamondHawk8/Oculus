@@ -78,7 +78,7 @@ class GalleryController:
     # push a folder’s contents into the model
     def _push_page(self, folder_abspath: str):
         """
-        Refresh view with contents of *folder_abspath*.
+        Refresh view with contents of folder_abspath
         Folders first (α-sorted) then image files (α-sorted).
         """
         folder = Path(folder_abspath)
@@ -100,6 +100,12 @@ class GalleryController:
     # ---------------------------- Nav methods ----------------------------
 
     def open_folder(self, folder_abspath: str):
+        """
+        Method that is called when a folder is opened to properly display contents and preserve hierarchy
+        :param folder_abspath: The absolute path to the folder
+        :return: None
+        """
+
         if self._cursor >= 0 and self._history[self._cursor] == folder_abspath:
             return  # same folder; ignore
 
@@ -115,15 +121,31 @@ class GalleryController:
             self.ui.btn_forward.setEnabled(False)
 
     def _on_item_activated(self, index: QModelIndex):
+        """
+        Method that determines what should be done when an item is activated (usually via clicking)
+        :param index: The item that is being activated
+        :return: None
+        """
+        # Obtain
         path = self._model.data(index, Qt.UserRole)
+
+        # If item does not contain any usable data
         if not path:
             return
+
+        # If the item is recognized as a folder, call the open folder method on the path
         if Path(path).is_dir():
             self.open_folder(path)
+
+        # Otherwise, its media, and it will be opened accordingly
         else:
             self._open_viewer(path)  # TODO hook to ImageViewerDialog
 
     def go_back(self):
+        """
+        Method to navigate to previously accessed directory in gallery
+        :return: None
+        """
         if self._cursor <= 0:
             return
         self._cursor -= 1
@@ -133,6 +155,10 @@ class GalleryController:
             self.ui.btn_forward.setEnabled(True)
 
     def go_forward(self):
+        """
+        Method to navigate to previously accessed directory in gallery
+        :return: None
+        """
         if self._cursor + 1 >= len(self._history):
             return
         self._cursor += 1
@@ -143,6 +169,11 @@ class GalleryController:
 
     # ---------------------------- Thumbnail methods ----------------------------
     def populate_gallery(self, paths: list[str]) -> None:
+        """
+        Method that takes in a list of paths, and creates the gallery data structures accordingly
+        :param paths:
+        :return:
+        """
         self._model.set_paths(paths)
         self._gallery_items = {p: i for i, p in enumerate(paths)}
 
