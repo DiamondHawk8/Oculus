@@ -49,9 +49,16 @@ class ImportController:
         self.ui.importStatus.setText(f"Found {len(paths)} files")
 
         if self._import_root:
+            # Create path of imported data from selected folder
             root_path = str(Path(self._import_root).expanduser().resolve())
+
+            # Create debug tree from rootpath
             tree_data = self.media_manager.walk_tree(root_path)
             self.ui.debugFolderTree.load_tree(tree_data, root_path)
 
+            # Add root to db
+            self.tag_manager.add_root(root_path)
+
+            # TODO Streamline process
             self.gallery_controller.open_folder(root_path)
 

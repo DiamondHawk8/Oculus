@@ -52,6 +52,13 @@ class MainWindow(QMainWindow):
         self.search_controller = SearchController(self.ui, self.media, self.search)
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
 
+        # Persist if roots exist
+        roots = self.tags.all_roots()
+        if roots:
+            self.gallery_controller.open_folder(roots[-1])  # show most recent import
+        else:
+            self.gallery_controller.populate_gallery([])  # empty state
+
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
         self.ui.minimizeAppBtn.clicked.connect(self.showMinimized)

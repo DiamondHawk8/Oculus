@@ -27,8 +27,15 @@ class TagManager:
     """
 
     _CREATE_FTS = """
-        CREATE VIRTUAL TABLE IF NOT EXISTS fts_media
-        USING fts5(path, content='media', content_rowid='id');
+        CREATE TABLE IF NOT EXISTS roots (
+            path TEXT PRIMARY KEY
+        );
+    """
+
+    _CREATE_ROOTS_TABLE = """
+        CREATE TABLE IF NOT EXISTS roots (
+            path TEXT PRIMARY KEY
+        );
     """
 
     def __init__(self, db_path: str | Path | None = None, *, backend: str = "sqlite") -> None:
@@ -88,6 +95,8 @@ class TagManager:
         """Create core tables; add FTS table only on SQLite. TODO add fts later"""
         self.cur.execute(self._CREATE_MEDIA_TABLE)
         self.cur.execute(self._CREATE_TAG_TABLE)
+        self.cur.execute(self._CREATE_ROOTS_TABLE)
+        self.conn.commit()
 
     def add_media(self, path: str) -> int:
         """
@@ -110,6 +119,14 @@ class TagManager:
     def all_paths(self) -> list[str]:
         self.cur.execute("SELECT path FROM media ORDER BY added;")
         return [row[0] for row in self.cur.fetchall()]
+
+    def add_root(self, path: str) -> None:
+        self.cur.execute("INSERT OR IGNORE INTO roots(path) VALUES (?)", (path,))
+        self.conn.commit()
+
+    def all_roots(self) -> list[str]:
+        rows = self.cur.execute("SELECT path FROM roots").fetchall()
+        return [r[0] for r in rows]
 
 """        if self.backend == "sqlite":
             try:

@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QListView
 import controllers.view_utils as view_utils
 from models.thumbnail_model import ThumbnailListModel
 
+from PySide6.QtWidgets import QApplication, QStyle
+
 SIZE_PRESETS = {
     "Small": (64, QSize(82, 82)),
     "Medium": (96, QSize(118, 118)),
@@ -35,6 +37,9 @@ class GalleryController:
         view_utils.apply_view(self.ui.galleryList,
                               grid=self._gallery_grid,
                               preset=self._gallery_preset)
+
+        # Create folder icon
+        self._folder_icon = QApplication.style().standardIcon(QStyle.SP_DirIcon)
 
         # Create navigation structs
         self._history: list[str] = []
@@ -140,8 +145,13 @@ class GalleryController:
     def populate_gallery(self, paths: list[str]) -> None:
         self._model.set_paths(paths)
         self._gallery_items = {p: i for i, p in enumerate(paths)}
+
         for p in paths:
-            self.media_manager.thumb(p)
+            if Path(p).is_file():
+                self.media_manager.thumb(p)
+            # If is folder
+            else:
+                self._model.update_icon(p, self._folder_icon)
 
     def _on_thumb_ready(self, path: str, pix) -> None:
         icon = QIcon(pix)
