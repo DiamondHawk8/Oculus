@@ -19,10 +19,10 @@ class KeybindManager(QObject):
 
     def register(self, sequence: str | QKeySequence, slot: Callable) -> None:
         """
-        Attach slot to sequence (e.g. 'Ctrl+W').  Idempotent.
+        Attach slot to sequence (e.g. Ctrl+W).  Idempotent.
         :param sequence: key sequence to register
         :param slot: Called when sequence is used
-        :return:
+        :return: None
         """
         key = str(sequence)
         if key not in self._shortcuts:

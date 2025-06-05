@@ -9,9 +9,11 @@ from PySide6.QtCore import QStringListModel, QSize
 
 from ui.custom_grips import CustomGrip
 from ui.ui_main import Ui_MainWindow
+
 from managers.media_manager import MediaManager
 from managers.search_manager import SearchManager
 from managers.tag_manager import TagManager
+from managers.keybind_manager import KeybindManager
 
 from controllers.gallery_controller import GalleryController
 from controllers.import_controller import ImportController
@@ -47,7 +49,10 @@ class MainWindow(QMainWindow):
         self.media = MediaManager(parent=self)
         self.search = SearchManager(Path("oculus.db"), backend=ACTIVE_BACKEND)
 
-        # Logic Managers
+        # Other Managers
+        self.keybinds = KeybindManager(self)
+
+        # Logic Controllers
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags)
         self.search_controller = SearchController(self.ui, self.media, self.search)
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
