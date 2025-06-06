@@ -30,3 +30,39 @@ class TabController(QObject):
         keybinds.register("Ctrl+Tab", lambda: self._cycle(+1))
         keybinds.register("Ctrl+Shift+Tab", lambda: self._cycle(-1))
 
+    def open_in_new_tab(self,
+                        widget: QWidget,
+                        title: str,
+                        switch: bool = True) -> int:
+        """Add widget as a new tab; return its index."""
+        idx = self._tabs.addTab(widget, title)
+        if switch:
+            self._tabs.setCurrentIndex(idx)
+        return idx
+
+    def close_current(self) -> None:
+        idx = self._tabs.currentIndex()
+        if idx != -1:
+            self._close_index(idx)
+
+    def restore_last(self) -> None:
+        if not self._closed:
+            return
+        widget, title, cur_idx = self._closed.pop()
+        new_idx = self._tabs.insertTab(cur_idx, widget, title)
+        self._tabs.setCurrentIndex(new_idx)
+
+    def _close_index(self, idx: int) -> None:
+        widget = self._tabs.widget(idx)
+        title = self._tabs.tabText(idx)
+        self._tabs.removeTab(idx)
+        # keep widget alive so state isn’t lost
+        self._closed.append((widget, title, idx))
+
+    def _cycle(self, step: int) -> None:
+        count = self._tabs.count()
+        if count == 0:
+            return
+        cur = self._tabs.currentIndex()
+        self._tabs.setCurrentIndex((cur + step) % count)
+
