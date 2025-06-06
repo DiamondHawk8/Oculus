@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Callable
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QTimer, Qt, QEvent
 from PySide6.QtWidgets import QTabWidget, QWidget
 
 from managers.keybind_manager import KeybindManager
@@ -30,6 +30,8 @@ class TabController(QObject):
         keybinds.register("Ctrl+Tab", lambda: self._cycle(+1))
         keybinds.register("Ctrl+Shift+Tab", lambda: self._cycle(-1))
 
+        # Allow for tabs to be closed via MMB
+        self._tabs.tabBar().installEventFilter(self)
     def open_in_new_tab(self,
                         widget: QWidget,
                         title: str,
@@ -53,10 +55,16 @@ class TabController(QObject):
         self._tabs.setCurrentIndex(new_idx)
 
     def _close_index(self, idx: int) -> None:
+        """
+        Helper method to preserve tab indexes and contents
+        :param idx: tab to be closed
+        :return: None
+        """
         widget = self._tabs.widget(idx)
         title = self._tabs.tabText(idx)
         self._tabs.removeTab(idx)
-        # keep widget alive so state isn’t lost
+
+        # Keep widget alive so state isn't lost
         self._closed.append((widget, title, idx))
 
     def _cycle(self, step: int) -> None:
@@ -64,5 +72,20 @@ class TabController(QObject):
         if count == 0:
             return
         cur = self._tabs.currentIndex()
-        self._tabs.setCurrentIndex((cur + step) % count)
+        new = (cur + step) % count
+        self._tabs.setCurrentIndex(new)
+
+        # Highlight tab that was switched to
+        tabbar = self._tabs.tabBar()
+        tabbar.setTabTextColor(new, Qt.red)
+        QTimer.singleShot(150, lambda: tabbar.setTabTextColor(new, Qt.black))
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.MouseButtonRelease:
+            if event.button() == Qt.MiddleButton:
+                pos = event.position().toPoint()
+                idx = self._tabs.tabBar().tabAt(pos)
+                if idx != -1:
+                    self._close_index(idx)
+        return super().eventFilter(obj, event)
 
