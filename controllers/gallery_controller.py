@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize, QModelIndex
+from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent
 from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView
+from PySide6.QtWidgets import QListView, QMenu
 
 import controllers.view_utils as view_utils
+from controllers import tab_controller
 from models.thumbnail_model import ThumbnailListModel
 
 from PySide6.QtWidgets import QApplication, QStyle
@@ -18,10 +19,11 @@ SIZE_PRESETS = {
 
 
 class GalleryController:
-    def __init__(self, ui, media_manager, tag_manager):
+    def __init__(self, ui, media_manager, tag_manager, tab_controller):
         self.ui = ui
         self.media_manager = media_manager
         self.tag_manager = tag_manager
+        self.tab_controller = tab_controller
 
         # model & view
         self._model = ThumbnailListModel()
@@ -45,6 +47,17 @@ class GalleryController:
         self._history: list[str] = []
         self._cursor: int = -1
 
+        idx = self.tab_controller.open_in_new_tab(self.ui.tabRoot, "Root", switch=True)
+        # self.open_folder(root_path) is still called from ImportController once scanning finishes
+
+        # Signals
+
+        self.ui.galleryList.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
+
+        # Connect event driven functionality
+        self.ui.galleryList.viewport().installEventFilter(self)
+
         # Hook Back/Forward buttons
         self.ui.btn_back.clicked.connect(self.go_back)
         if hasattr(self.ui, "btn_forward"):
@@ -54,20 +67,20 @@ class GalleryController:
         self.ui.galleryList.doubleClicked.connect(self._on_item_activated)
         self.ui.galleryList.activated.connect(self._on_item_activated)
 
+        # Connect thumbnail method to media signals
+        self.media_manager.thumb_ready.connect(self._on_thumb_ready)
+
+        # Connect button to toggle between list and grid view
+        self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
+
         # Register keyboard shortcuts (inside Gallery only)
         self._add_shortcut("Alt+Left", self.go_back)
         self._add_shortcut("Alt+Right", self.go_forward)
-
-        # Connect thumbnail method to media signals
-        self.media_manager.thumb_ready.connect(self._on_thumb_ready)
 
         # Obtain any existing media paths
         cached_paths = self.tag_manager.all_paths()
         if cached_paths:
             self.populate_gallery(cached_paths)
-
-        # Connect button to toggle between list and grid view
-        self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
 
         # TODO derive size preset dynamically
         # Connect dropdown to select icon sizes

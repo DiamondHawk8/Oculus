@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QSize, QModelIndex
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QListView
 
@@ -92,3 +92,13 @@ class SearchController:
         view_utils.apply_view(self.ui.resultsList,
                               grid=self._search_grid,
                               preset=preset)
+
+    def _on_item_activated(self, index: QModelIndex):
+        # TODO allow searched files' folder to be added to gallery tab
+        """
+        self.tab_controller.open_in_new_tab(
+            new_gallery_page_for(folder_path), Path(folder_path).name
+        )
+        """
+        pass
+

@@ -32,11 +32,15 @@ class TabController(QObject):
 
         # Allow for tabs to be closed via MMB
         self._tabs.tabBar().installEventFilter(self)
-    def open_in_new_tab(self,
-                        widget: QWidget,
-                        title: str,
-                        switch: bool = True) -> int:
-        """Add widget as a new tab; return its index."""
+
+    def open_in_new_tab(self, widget: QWidget, title: str, switch: bool = False) -> int:
+        """
+        Adds given widget to nav structs
+        :param widget: Widget to add
+        :param title: Title of the tab
+        :param switch: If True, when tab is added, it will open automatically
+        :return: Index of tab
+        """
         idx = self._tabs.addTab(widget, title)
         if switch:
             self._tabs.setCurrentIndex(idx)
@@ -88,4 +92,3 @@ class TabController(QObject):
                 if idx != -1:
                     self._close_index(idx)
         return super().eventFilter(obj, event)
-

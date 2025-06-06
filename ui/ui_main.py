@@ -1213,9 +1213,6 @@ class Ui_MainWindow(object):
         self.verticalLayout_20.addWidget(self.galleryList)
 
         self.galleryTabs.addTab(self.tabRoot, "")
-        self.tab_10 = QWidget()
-        self.tab_10.setObjectName(u"tab_10")
-        self.galleryTabs.addTab(self.tab_10, "")
 
         self.verticalLayout_25.addWidget(self.galleryTabs)
 
@@ -1958,7 +1955,6 @@ class Ui_MainWindow(object):
         self.btn_forward.setText("")
         self.btn_gallery_view.setText(QCoreApplication.translate("MainWindow", u"...", None))
         self.galleryTabs.setTabText(self.galleryTabs.indexOf(self.tabRoot), QCoreApplication.translate("MainWindow", u"Home", None))
-        self.galleryTabs.setTabText(self.galleryTabs.indexOf(self.tab_10), QCoreApplication.translate("MainWindow", u"Tab 2", None))
         self.labelBoxBlenderInstalation.setText(QCoreApplication.translate("MainWindow", u"FILE BOX", None))
         self.lineEdit.setText("")
         self.lineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type here", None))
