@@ -18,6 +18,7 @@ from managers.keybind_manager import KeybindManager
 from controllers.gallery_controller import GalleryController
 from controllers.import_controller import ImportController
 from controllers.search_controller import SearchController
+from controllers.tab_controller import TabController
 
 ACTIVE_BACKEND = "sqlite"
 GALLERY_PAGE_INDEX = 0
@@ -56,6 +57,11 @@ class MainWindow(QMainWindow):
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags)
         self.search_controller = SearchController(self.ui, self.media, self.search)
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
+
+        self.tab_controller = TabController(
+            tab_widget=self.ui.centralTabs,
+            keybinds=self.keybinds,
+        )
 
         # Persist if roots exist
         roots = self.tags.all_roots()

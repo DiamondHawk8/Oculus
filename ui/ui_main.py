@@ -20,9 +20,9 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplicat
     QHBoxLayout, QHeaderView, QLabel, QLineEdit,
     QListView, QMainWindow, QPlainTextEdit, QPushButton,
     QRadioButton, QScrollArea, QScrollBar, QSizePolicy,
-    QSlider, QSpacerItem, QStackedWidget, QTableWidget,
-    QTableWidgetItem, QTextEdit, QToolButton, QTreeWidget,
-    QTreeWidgetItem, QVBoxLayout, QWidget)
+    QSlider, QSpacerItem, QStackedWidget, QTabWidget,
+    QTableWidget, QTableWidgetItem, QTextEdit, QToolButton,
+    QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget)
 from resources import resources_rc
 
 class Ui_MainWindow(object):
@@ -927,18 +927,18 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.setSpacing(0)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
         self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.titleRightInfo = QLabel(self.leftBox)
-        self.titleRightInfo.setObjectName(u"titleRightInfo")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.titleRightInfo.sizePolicy().hasHeightForWidth())
-        self.titleRightInfo.setSizePolicy(sizePolicy3)
-        self.titleRightInfo.setMaximumSize(QSize(16777215, 45))
-        self.titleRightInfo.setFont(font)
-        self.titleRightInfo.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
+        self.centralTabs = QTabWidget(self.leftBox)
+        self.centralTabs.setObjectName(u"centralTabs")
+        self.centralTabs.setTabsClosable(True)
+        self.centralTabs.setMovable(True)
+        self.Home = QWidget()
+        self.Home.setObjectName(u"Home")
+        self.centralTabs.addTab(self.Home, "")
+        self.tab_10 = QWidget()
+        self.tab_10.setObjectName(u"tab_10")
+        self.centralTabs.addTab(self.tab_10, "")
 
-        self.horizontalLayout_3.addWidget(self.titleRightInfo)
+        self.horizontalLayout_3.addWidget(self.centralTabs)
 
 
         self.horizontalLayout.addWidget(self.leftBox)
@@ -1056,11 +1056,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.pagesContainer = QFrame(self.content)
         self.pagesContainer.setObjectName(u"pagesContainer")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.pagesContainer.sizePolicy().hasHeightForWidth())
-        self.pagesContainer.setSizePolicy(sizePolicy4)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.pagesContainer.sizePolicy().hasHeightForWidth())
+        self.pagesContainer.setSizePolicy(sizePolicy3)
         self.pagesContainer.setStyleSheet(u"")
         self.pagesContainer.setFrameShape(QFrame.Shape.NoFrame)
         self.pagesContainer.setFrameShadow(QFrame.Shadow.Raised)
@@ -1206,11 +1206,11 @@ class Ui_MainWindow(object):
 
         self.galleryList = QListView(self.gallery_page)
         self.galleryList.setObjectName(u"galleryList")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
-        self.galleryList.setSizePolicy(sizePolicy5)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
+        self.galleryList.setSizePolicy(sizePolicy4)
 
         self.verticalLayout_25.addWidget(self.galleryList)
 
@@ -1356,7 +1356,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 537, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 218, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1489,8 +1489,8 @@ class Ui_MainWindow(object):
         __qtablewidgetitem23 = QTableWidgetItem()
         self.tableWidget.setItem(0, 3, __qtablewidgetitem23)
         self.tableWidget.setObjectName(u"tableWidget")
-        sizePolicy5.setHeightForWidth(self.tableWidget.sizePolicy().hasHeightForWidth())
-        self.tableWidget.setSizePolicy(sizePolicy5)
+        sizePolicy4.setHeightForWidth(self.tableWidget.sizePolicy().hasHeightForWidth())
+        self.tableWidget.setSizePolicy(sizePolicy4)
         palette2 = QPalette()
         palette2.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
         palette2.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
@@ -1606,8 +1606,8 @@ class Ui_MainWindow(object):
         self.verticalLayout_24.setContentsMargins(10, 10, 10, 10)
         self.row_4 = QFrame(self.search_page)
         self.row_4.setObjectName(u"row_4")
-        sizePolicy4.setHeightForWidth(self.row_4.sizePolicy().hasHeightForWidth())
-        self.row_4.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.row_4.sizePolicy().hasHeightForWidth())
+        self.row_4.setSizePolicy(sizePolicy3)
         self.row_4.setFrameShape(QFrame.Shape.StyledPanel)
         self.row_4.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout_21 = QVBoxLayout(self.row_4)
@@ -1669,11 +1669,11 @@ class Ui_MainWindow(object):
 
         self.btn_search_view = QToolButton(self.frame_content_wid_2)
         self.btn_search_view.setObjectName(u"btn_search_view")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        sizePolicy6.setHorizontalStretch(0)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
-        self.btn_search_view.setSizePolicy(sizePolicy6)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
+        self.btn_search_view.setSizePolicy(sizePolicy5)
         palette3 = QPalette()
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
@@ -1894,6 +1894,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
+        self.centralTabs.setCurrentIndex(0)
         self.stackedWidget.setCurrentIndex(0)
 
 
@@ -1935,7 +1936,8 @@ class Ui_MainWindow(object):
 "<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-in"
                         "dent:0; text-indent:0px;\"><span style=\" font-size:12pt; font-weight:600; color:#ff79c6;\">Convert QRC</span></p>\n"
 "<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9pt; color:#ffffff;\">pyside6-rcc resources.qrc -o resources_rc.py</span></p></body></html>", None))
-        self.titleRightInfo.setText(QCoreApplication.translate("MainWindow", u"Oculus APP", None))
+        self.centralTabs.setTabText(self.centralTabs.indexOf(self.Home), QCoreApplication.translate("MainWindow", u"Home", None))
+        self.centralTabs.setTabText(self.centralTabs.indexOf(self.tab_10), QCoreApplication.translate("MainWindow", u"Tab 2", None))
 #if QT_CONFIG(tooltip)
         self.settingsTopBtn.setToolTip(QCoreApplication.translate("MainWindow", u"Settings", None))
 #endif // QT_CONFIG(tooltip)
