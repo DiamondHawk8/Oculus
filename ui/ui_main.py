@@ -29,8 +29,8 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(1640, 1000)
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        MainWindow.resize(1464, 740)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
@@ -565,16 +565,17 @@ class Ui_MainWindow(object):
 "}\n"
 "\n"
 "")
+        self.gridLayout_5 = QGridLayout(self.styleSheet)
+        self.gridLayout_5.setObjectName(u"gridLayout_5")
         self.bgApp = QFrame(self.styleSheet)
         self.bgApp.setObjectName(u"bgApp")
-        self.bgApp.setGeometry(QRect(2, 2, 1628, 997))
         self.bgApp.setStyleSheet(u"")
         self.bgApp.setFrameShape(QFrame.Shape.NoFrame)
         self.bgApp.setFrameShadow(QFrame.Shadow.Raised)
         self.appLayout = QHBoxLayout(self.bgApp)
         self.appLayout.setSpacing(0)
         self.appLayout.setObjectName(u"appLayout")
-        self.appLayout.setContentsMargins(0, 22, 0, 0)
+        self.appLayout.setContentsMargins(0, 4, 0, 0)
         self.leftMenuBg = QFrame(self.bgApp)
         self.leftMenuBg.setObjectName(u"leftMenuBg")
         self.leftMenuBg.setMinimumSize(QSize(60, 0))
@@ -927,19 +928,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.setSpacing(0)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
         self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.centralTabs = QTabWidget(self.leftBox)
-        self.centralTabs.setObjectName(u"centralTabs")
-        self.centralTabs.setTabsClosable(True)
-        self.centralTabs.setMovable(True)
-        self.Home = QWidget()
-        self.Home.setObjectName(u"Home")
-        self.centralTabs.addTab(self.Home, "")
-        self.tab_10 = QWidget()
-        self.tab_10.setObjectName(u"tab_10")
-        self.centralTabs.addTab(self.tab_10, "")
-
-        self.horizontalLayout_3.addWidget(self.centralTabs)
-
 
         self.horizontalLayout.addWidget(self.leftBox)
 
@@ -1117,6 +1105,7 @@ class Ui_MainWindow(object):
 #endif
         self.stackedWidget.setPalette(palette)
         self.stackedWidget.setStyleSheet(u"background: transparent;")
+        self.stackedWidget.setLineWidth(1)
         self.gallery_page = QWidget()
         self.gallery_page.setObjectName(u"gallery_page")
         self.gallery_page.setStyleSheet(u"background-image: url(:/images/images/images/PyDracula_vertical.png);\n"
@@ -1124,10 +1113,21 @@ class Ui_MainWindow(object):
 "background-repeat: no-repeat;")
         self.verticalLayout_25 = QVBoxLayout(self.gallery_page)
         self.verticalLayout_25.setObjectName(u"verticalLayout_25")
+        self.verticalLayout_25.setContentsMargins(0, 0, 0, 0)
+        self.galleryTabs = QTabWidget(self.gallery_page)
+        self.galleryTabs.setObjectName(u"galleryTabs")
+        sizePolicy.setHeightForWidth(self.galleryTabs.sizePolicy().hasHeightForWidth())
+        self.galleryTabs.setSizePolicy(sizePolicy)
+        self.galleryTabs.setTabsClosable(True)
+        self.galleryTabs.setMovable(True)
+        self.tabRoot = QWidget()
+        self.tabRoot.setObjectName(u"tabRoot")
+        self.verticalLayout_20 = QVBoxLayout(self.tabRoot)
+        self.verticalLayout_20.setObjectName(u"verticalLayout_20")
         self.horizontalLayout_13 = QHBoxLayout()
         self.horizontalLayout_13.setObjectName(u"horizontalLayout_13")
         self.horizontalLayout_13.setContentsMargins(10, 10, 10, 10)
-        self.btn_back = QPushButton(self.gallery_page)
+        self.btn_back = QPushButton(self.tabRoot)
         self.btn_back.setObjectName(u"btn_back")
         icon4 = QIcon()
         icon4.addFile(u":/icons/cil-arrow-left.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
@@ -1135,7 +1135,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_13.addWidget(self.btn_back)
 
-        self.btn_forward = QPushButton(self.gallery_page)
+        self.btn_forward = QPushButton(self.tabRoot)
         self.btn_forward.setObjectName(u"btn_forward")
         icon5 = QIcon()
         icon5.addFile(u":/icons/cil-arrow-right.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
@@ -1147,12 +1147,12 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_13.addItem(self.horizontalSpacer)
 
-        self.cmb_gallery_size = QComboBox(self.gallery_page)
+        self.cmb_gallery_size = QComboBox(self.tabRoot)
         self.cmb_gallery_size.setObjectName(u"cmb_gallery_size")
 
         self.horizontalLayout_13.addWidget(self.cmb_gallery_size)
 
-        self.btn_gallery_view = QToolButton(self.gallery_page)
+        self.btn_gallery_view = QToolButton(self.tabRoot)
         self.btn_gallery_view.setObjectName(u"btn_gallery_view")
         palette1 = QPalette()
         palette1.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
@@ -1202,17 +1202,22 @@ class Ui_MainWindow(object):
         self.horizontalLayout_13.addWidget(self.btn_gallery_view)
 
 
-        self.verticalLayout_25.addLayout(self.horizontalLayout_13)
+        self.verticalLayout_20.addLayout(self.horizontalLayout_13)
 
-        self.galleryList = QListView(self.gallery_page)
+        self.galleryList = QListView(self.tabRoot)
         self.galleryList.setObjectName(u"galleryList")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
-        self.galleryList.setSizePolicy(sizePolicy4)
+        sizePolicy.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
+        self.galleryList.setSizePolicy(sizePolicy)
+        self.galleryList.setLineWidth(0)
 
-        self.verticalLayout_25.addWidget(self.galleryList)
+        self.verticalLayout_20.addWidget(self.galleryList)
+
+        self.galleryTabs.addTab(self.tabRoot, "")
+        self.tab_10 = QWidget()
+        self.tab_10.setObjectName(u"tab_10")
+        self.galleryTabs.addTab(self.tab_10, "")
+
+        self.verticalLayout_25.addWidget(self.galleryTabs)
 
         self.stackedWidget.addWidget(self.gallery_page)
         self.widgets = QWidget()
@@ -1489,8 +1494,8 @@ class Ui_MainWindow(object):
         __qtablewidgetitem23 = QTableWidgetItem()
         self.tableWidget.setItem(0, 3, __qtablewidgetitem23)
         self.tableWidget.setObjectName(u"tableWidget")
-        sizePolicy4.setHeightForWidth(self.tableWidget.sizePolicy().hasHeightForWidth())
-        self.tableWidget.setSizePolicy(sizePolicy4)
+        sizePolicy.setHeightForWidth(self.tableWidget.sizePolicy().hasHeightForWidth())
+        self.tableWidget.setSizePolicy(sizePolicy)
         palette2 = QPalette()
         palette2.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
         palette2.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
@@ -1669,11 +1674,11 @@ class Ui_MainWindow(object):
 
         self.btn_search_view = QToolButton(self.frame_content_wid_2)
         self.btn_search_view.setObjectName(u"btn_search_view")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
-        self.btn_search_view.setSizePolicy(sizePolicy5)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
+        self.btn_search_view.setSizePolicy(sizePolicy4)
         palette3 = QPalette()
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
         palette3.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
@@ -1884,18 +1889,23 @@ class Ui_MainWindow(object):
 
         self.appLayout.addWidget(self.contentBox)
 
+
+        self.gridLayout_5.addWidget(self.bgApp, 1, 0, 1, 1)
+
         self.title_bar = QFrame(self.styleSheet)
         self.title_bar.setObjectName(u"title_bar")
-        self.title_bar.setGeometry(QRect(1628, 2, 16, 996))
         self.title_bar.setMinimumSize(QSize(0, 18))
         self.title_bar.setFrameShape(QFrame.Shape.StyledPanel)
         self.title_bar.setFrameShadow(QFrame.Shadow.Raised)
+
+        self.gridLayout_5.addWidget(self.title_bar, 0, 0, 1, 1)
+
         MainWindow.setCentralWidget(self.styleSheet)
 
         self.retranslateUi(MainWindow)
 
-        self.centralTabs.setCurrentIndex(0)
         self.stackedWidget.setCurrentIndex(0)
+        self.galleryTabs.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -1936,8 +1946,6 @@ class Ui_MainWindow(object):
 "<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-in"
                         "dent:0; text-indent:0px;\"><span style=\" font-size:12pt; font-weight:600; color:#ff79c6;\">Convert QRC</span></p>\n"
 "<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9pt; color:#ffffff;\">pyside6-rcc resources.qrc -o resources_rc.py</span></p></body></html>", None))
-        self.centralTabs.setTabText(self.centralTabs.indexOf(self.Home), QCoreApplication.translate("MainWindow", u"Home", None))
-        self.centralTabs.setTabText(self.centralTabs.indexOf(self.tab_10), QCoreApplication.translate("MainWindow", u"Tab 2", None))
 #if QT_CONFIG(tooltip)
         self.settingsTopBtn.setToolTip(QCoreApplication.translate("MainWindow", u"Settings", None))
 #endif // QT_CONFIG(tooltip)
@@ -1957,6 +1965,8 @@ class Ui_MainWindow(object):
         self.btn_back.setText("")
         self.btn_forward.setText("")
         self.btn_gallery_view.setText(QCoreApplication.translate("MainWindow", u"...", None))
+        self.galleryTabs.setTabText(self.galleryTabs.indexOf(self.tabRoot), QCoreApplication.translate("MainWindow", u"Home", None))
+        self.galleryTabs.setTabText(self.galleryTabs.indexOf(self.tab_10), QCoreApplication.translate("MainWindow", u"Tab 2", None))
         self.labelBoxBlenderInstalation.setText(QCoreApplication.translate("MainWindow", u"FILE BOX", None))
         self.lineEdit.setText("")
         self.lineEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type here", None))

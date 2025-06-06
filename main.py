@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
 
         self.tab_controller = TabController(
-            tab_widget=self.ui.centralTabs,
+            tab_widget=self.ui.galleryTabs,
             keybinds=self.keybinds,
         )
 
