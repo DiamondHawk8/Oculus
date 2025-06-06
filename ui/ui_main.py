@@ -1890,15 +1890,7 @@ class Ui_MainWindow(object):
         self.appLayout.addWidget(self.contentBox)
 
 
-        self.gridLayout_5.addWidget(self.bgApp, 1, 0, 1, 1)
-
-        self.title_bar = QFrame(self.styleSheet)
-        self.title_bar.setObjectName(u"title_bar")
-        self.title_bar.setMinimumSize(QSize(0, 18))
-        self.title_bar.setFrameShape(QFrame.Shape.StyledPanel)
-        self.title_bar.setFrameShadow(QFrame.Shadow.Raised)
-
-        self.gridLayout_5.addWidget(self.title_bar, 0, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.bgApp, 0, 0, 1, 1)
 
         MainWindow.setCentralWidget(self.styleSheet)
 
