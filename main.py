@@ -4,7 +4,7 @@ import logging
 
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 from PySide6.QtCore import QStringListModel, QSize
 
 from ui.custom_grips import CustomGrip
@@ -26,6 +26,7 @@ WIDGET_PAGE_INDEX = 1
 IMPORT_PAGE_INDEX = 2
 SEARCH_PAGE_INDEX = 3
 
+
 class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
@@ -44,6 +45,11 @@ class MainWindow(QMainWindow):
             CustomGrip(self, Qt.TopEdge, disable_color=True),
             CustomGrip(self, Qt.BottomEdge, disable_color=True),
         ]
+
+        # Enable mouse tracking + install event filter
+        self._drag_pos = None
+        self.ui.contentTopBg.setMouseTracking(True)
+        self.ui.contentTopBg.installEventFilter(self)
 
         # backend managers
         self.tags = TagManager("oculus.db", backend=ACTIVE_BACKEND)
@@ -88,7 +94,6 @@ class MainWindow(QMainWindow):
         self.ui.btn_import.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(IMPORT_PAGE_INDEX))
         self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
 
-
     # Glue edges
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -99,6 +104,25 @@ class MainWindow(QMainWindow):
         self._grips[1].setGeometry(w - g, g, g, h - 2 * g)
         self._grips[2].setGeometry(0, 0, w, g)
         self._grips[3].setGeometry(0, h - g, w, g)
+
+    # Temp dragging behavior method
+    def eventFilter(self, obj, event):
+        if obj == self.ui.contentTopBg:
+            if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.LeftButton:
+                self._drag_pos = event.globalPosition().toPoint()
+                return True
+
+            elif event.type() == QEvent.Type.MouseMove and self._drag_pos:
+                delta = event.globalPosition().toPoint() - self._drag_pos
+                self.move(self.pos() + delta)
+                self._drag_pos = event.globalPosition().toPoint()
+                return True
+
+            elif event.type() == QEvent.Type.MouseButtonRelease:
+                self._drag_pos = None
+                return True
+
+        return super().eventFilter(obj, event)
 
 
 if __name__ == "__main__":
