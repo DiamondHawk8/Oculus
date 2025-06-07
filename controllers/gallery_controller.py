@@ -21,12 +21,14 @@ SIZE_PRESETS = {
 
 
 class GalleryController:
-    def __init__(self, ui, media_manager, tag_manager, tab_controller):
+    def __init__(self, ui, media_manager, tag_manager, tab_controller, host_widget):
         super().__init__()
         self.ui = ui
         self.media_manager = media_manager
         self.tag_manager = tag_manager
         self.tab_controller = tab_controller
+        # Attribute used to differentiate between the root gallery page and other opened tabs
+        self._host_widget = host_widget
 
         # model & view
         self._model = ThumbnailListModel()
@@ -49,9 +51,6 @@ class GalleryController:
         # Create navigation structs
         self._history: list[str] = []
         self._cursor: int = -1
-
-        idx = self.tab_controller.open_in_new_tab(self.ui.tabRoot, "Root", switch=True)
-        # self.open_folder(root_path) is still called from ImportController once scanning finishes
 
         # Signals
         self._mid_filter = _MiddleClickFilter(self.ui.galleryList, self._open_in_new_tab)
@@ -247,12 +246,13 @@ class GalleryController:
             return
 
         # Clone a fresh tab page containing a QListView & toolbar
-        page_widget, page_ui = self._build_gallery_tab()  # see helper below
+        page_widget, page_ui = self._build_gallery_tab()
         clone_controller = GalleryController(
             ui=page_ui,
             media_manager=self.media_manager,
             tag_manager=self.tag_manager,
             tab_controller=self.tab_controller,
+            host_widget=page_widget
         )
 
         # Point it at the folder (or file's parent) that was clicked
@@ -265,10 +265,12 @@ class GalleryController:
 
     # helper for local shortcuts (keeps them limited to gallery page)
     def _add_shortcut(self, keyseq: str, slot):
-        act = QAction(self.ui.gallery_page)
+        # ensure that shortcuts are attached to gallery page itself rather than any of the tabs
+        act = QAction(self._host_widget)
         act.setShortcut(QKeySequence(keyseq))
         act.triggered.connect(slot)
-        self.ui.gallery_page.addAction(act)
+        act.setShortcutContext(Qt.ApplicationShortcut)
+        self._host_widget.addAction(act)
 
     def _build_gallery_tab(self) -> tuple[QWidget, Ui_Form]:
         """
