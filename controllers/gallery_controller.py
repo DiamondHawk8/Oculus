@@ -60,9 +60,12 @@ class GalleryController:
         self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
 
         # Hook Back/Forward buttons
-        self.ui.btn_back.clicked.connect(self.go_back)
-        if hasattr(self.ui, "btn_forward"):
-            self.ui.btn_forward.clicked.connect(self.go_forward)
+        ui.btn_back.clicked.connect(lambda: self._navigate(-1))
+        if hasattr(ui, "btn_forward"):
+            ui.btn_forward.clicked.connect(lambda: self._navigate(+1))
+        # Hook keyboard
+        self._add_shortcut("Alt+Left", lambda: self._navigate(-1))
+        self._add_shortcut("Alt+Right", lambda: self._navigate(+1))
 
         # Connect double-click / Enter activation
         self.ui.galleryList.doubleClicked.connect(self._on_item_activated)
@@ -74,10 +77,6 @@ class GalleryController:
         # Connect button to toggle between list and grid view
         self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
 
-        # Register keyboard shortcuts (inside Gallery only)
-        self._add_shortcut("Alt+Left", self.go_back)
-        self._add_shortcut("Alt+Right", self.go_forward)
-
         # Obtain any existing media paths
         cached_paths = self.tag_manager.all_paths()
         if cached_paths:
@@ -88,6 +87,7 @@ class GalleryController:
         self.ui.cmb_gallery_size.addItems(SIZE_PRESETS.keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
+
 
     # push a folder’s contents into the model
     def _push_page(self, folder_abspath: str):
@@ -155,29 +155,15 @@ class GalleryController:
         else:
             self._open_viewer(path)  # TODO hook to ImageViewerDialog
 
-    def go_back(self):
-        """
-        Method to navigate to previously accessed directory in gallery
-        :return: None
-        """
-        if self._cursor <= 0:
-            return
-        self._cursor -= 1
-        self._push_page(self._history[self._cursor])
-        self.ui.btn_back.setEnabled(self._cursor > 0)
-        if hasattr(self.ui, "btn_forward"):
-            self.ui.btn_forward.setEnabled(True)
+    def _navigate(self, delta: int) -> None:
+        nxt = self._cursor + delta
+        if 0 <= nxt < len(self._history):
+            self._cursor = nxt
+            self._push_page(self._history[self._cursor])
+            self._update_nav_buttons()
 
-    def go_forward(self):
-        """
-        Method to navigate to previously accessed directory in gallery
-        :return: None
-        """
-        if self._cursor + 1 >= len(self._history):
-            return
-        self._cursor += 1
-        self._push_page(self._history[self._cursor])
-        self.ui.btn_back.setEnabled(True)
+    def _update_nav_buttons(self) -> None:
+        self.ui.btn_back.setEnabled(self._cursor > 0)
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(self._cursor + 1 < len(self._history))
 
@@ -282,6 +268,7 @@ class GalleryController:
         ui_local = Ui_Form()
         ui_local.setupUi(widget)
         return widget, ui_local
+
 
 
 class _MiddleClickFilter(QObject):
