@@ -1,14 +1,16 @@
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent
+from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView, QMenu
+from PySide6.QtWidgets import QListView, QMenu, QWidget
 
 import controllers.view_utils as view_utils
-from controllers import tab_controller
+
 from models.thumbnail_model import ThumbnailListModel
 
 from PySide6.QtWidgets import QApplication, QStyle
+
+from ui.ui_gallery_tab import Ui_Form
 
 SIZE_PRESETS = {
     "Small": (64, QSize(82, 82)),
@@ -20,6 +22,7 @@ SIZE_PRESETS = {
 
 class GalleryController:
     def __init__(self, ui, media_manager, tag_manager, tab_controller):
+        super().__init__()
         self.ui = ui
         self.media_manager = media_manager
         self.tag_manager = tag_manager
@@ -51,12 +54,11 @@ class GalleryController:
         # self.open_folder(root_path) is still called from ImportController once scanning finishes
 
         # Signals
+        self._mid_filter = _MiddleClickFilter(self.ui.galleryList, self._open_in_new_tab)
+        self.ui.galleryList.viewport().installEventFilter(self._mid_filter)
 
         self.ui.galleryList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
-
-        # Connect event driven functionality
-        self.ui.galleryList.viewport().installEventFilter(self)
 
         # Hook Back/Forward buttons
         self.ui.btn_back.clicked.connect(self.go_back)
@@ -218,9 +220,81 @@ class GalleryController:
 
     # ---------------------------- Other methods ----------------------------
 
+    def _show_ctx_menu(self, pos):
+        idx = self.ui.galleryList.indexAt(pos)
+        if not idx.isValid():
+            return
+        menu = QMenu(self.ui.galleryList)
+        act_new = menu.addAction("Open in New Tab")
+        if menu.exec(self.ui.galleryList.mapToGlobal(pos)) == act_new:
+            self._open_in_new_tab(idx)
+
+    def eventFilter(self, obj, event):
+        # If MMB on the gallery list
+        if obj is self.ui.galleryList.viewport() and event.type() == QEvent.MouseButtonRelease:
+            if event.button() == Qt.MiddleButton:
+
+                # If the index is valid, open a new tab for it
+                idx = self.ui.galleryList.indexAt(event.pos())
+                if idx.isValid():
+                    self._open_in_new_tab(idx)
+                    return True
+        return super().eventFilter(obj, event)
+
+    def _open_in_new_tab(self, index: QModelIndex) -> None:
+        path = self._model.data(index, Qt.UserRole)
+        if not path:
+            return
+
+        # Clone a fresh tab page containing a QListView & toolbar
+        page_widget, page_ui = self._build_gallery_tab()  # see helper below
+        clone_controller = GalleryController(
+            ui=page_ui,
+            media_manager=self.media_manager,
+            tag_manager=self.tag_manager,
+            tab_controller=self.tab_controller,
+        )
+
+        # Point it at the folder (or file's parent) that was clicked
+        target = path if Path(path).is_dir() else str(Path(path).parent)
+        clone_controller.open_folder(target)
+
+        # Hand it to TabController
+        tab_title = Path(target).name or "Root"
+        self.tab_controller.open_in_new_tab(page_widget, tab_title)
+
     # helper for local shortcuts (keeps them limited to gallery page)
     def _add_shortcut(self, keyseq: str, slot):
         act = QAction(self.ui.gallery_page)
         act.setShortcut(QKeySequence(keyseq))
         act.triggered.connect(slot)
         self.ui.gallery_page.addAction(act)
+
+    def _build_gallery_tab(self) -> tuple[QWidget, Ui_Form]:
+        """
+        Creates a blank Gallery tab page (ListView + buttons already laid out
+        in Designer as Ui_GalleryTab) and return (widget, ui_object)
+        :return: None
+        """
+        widget = QWidget()
+        ui_local = Ui_Form()
+        ui_local.setupUi(widget)
+        return widget, ui_local
+
+
+class _MiddleClickFilter(QObject):
+    """Intercepts middle-button releases on a view's viewport"""
+
+    def __init__(self, view, callback):
+        super().__init__(view)
+        self._view = view
+        self._callback = callback
+
+    def eventFilter(self, obj, event):
+        if obj is self._view.viewport() and event.type() == QEvent.MouseButtonRelease:
+            if event.button() == Qt.MiddleButton:
+                idx = self._view.indexAt(event.pos())
+                if idx.isValid():
+                    self._callback(idx)
+                    return True
+        return False

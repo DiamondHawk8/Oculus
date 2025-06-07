@@ -2,10 +2,9 @@ from pathlib import Path
 import sys
 import logging
 
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Qt, QEvent
-from PySide6.QtCore import QStringListModel, QSize
+
 
 from ui.custom_grips import CustomGrip
 from ui.ui_main import Ui_MainWindow
