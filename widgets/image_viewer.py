@@ -2,43 +2,42 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QApplication
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QApplication, QWidget
 
 
 class ImageViewerDialog(QDialog):
-    """
-    Modal, borderless fullscreen viewer.
-    """
+    """Fullscreen viewer with translucent backdrop and Esc to close."""
 
-    BACKDROP = "background-color: rgba(255, 0, 0, 0.5);"   # translucent blur
+    BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"   # 70 % black
 
     def __init__(self, img_path: str, parent=None):
         super().__init__(parent)
 
-        # Ensure widget stays on top
+        # Window setup
         self.setWindowFlag(Qt.FramelessWindowHint, True)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setModal(True)
 
-        # Create translucent blur for background
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setStyleSheet(self.BACKDROP)
+        # ---- backdrop ---------------------------------------------------
+        # fills entire dialog
+        self._backdrop = QWidget(self)
+        self._backdrop.setStyleSheet(self.BACKDROP_CSS)
+        # push it behind everything
+        self._backdrop.lower()
 
-        # Layout
+        # ---- image label -----------------------------------------------
         self._label = QLabel(self)
         self._label.setAlignment(Qt.AlignCenter)
         self._label.setStyleSheet("background: transparent;")
+
+        # ---- layout -----------------------------------------------------
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addWidget(self._label)
 
-        # Generate the scaled image with the appropriate args
-        self._pix = QPixmap(img_path)
-        if self._pix.isNull():
-            self._label.setText(f"Could not load\n{Path(img_path).name}")
-            self._label.setStyleSheet("color:white;")
-        else:
-            self._update_scaled()
+        # ---- load & show -----------------------------------------------
+        self.load_image(img_path)
 
         self.showFullScreen()
 
@@ -56,18 +55,15 @@ class ImageViewerDialog(QDialog):
             self._label.setPixmap(pix)
 
     def _update_scaled(self):
-        """Keeps aspect ratio; no cropping."""
         if self._pix.isNull():
             return
         scaled = self._pix.scaled(
-            self.size(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation,
+            self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
         self._label.setPixmap(scaled)
 
-    # re-scale on every window size change
     def resizeEvent(self, ev):
+        self._backdrop.setGeometry(self.rect())   # keep backdrop full-size
         self._update_scaled()
         super().resizeEvent(ev)
 
