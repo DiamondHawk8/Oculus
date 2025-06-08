@@ -45,6 +45,7 @@ class ThumbnailListModel(QAbstractListModel):
     def data(self, index: QModelIndex, role: int):
         if not index.isValid():
             return None
+
         path = self._paths[index.row()]
 
         if role == Qt.DisplayRole:
@@ -62,3 +63,6 @@ class ThumbnailListModel(QAbstractListModel):
         if not index.isValid():
             return Qt.NoItemFlags
         return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+    def get_paths(self) -> List[str]:
+        return self._paths

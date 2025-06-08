@@ -10,8 +10,11 @@ class ImageViewerDialog(QDialog):
 
     BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"   # 70 % black
 
-    def __init__(self, img_path: str, parent=None):
+    def __init__(self, paths: list[str], cur_idx: int, parent=None):
         super().__init__(parent)
+
+        self._paths = list(paths)
+        self._idx = cur_idx
 
         # Window setup
         self.setWindowFlag(Qt.FramelessWindowHint, True)
@@ -37,11 +40,11 @@ class ImageViewerDialog(QDialog):
         lay.addWidget(self._label)
 
         # ---- load & show -----------------------------------------------
-        self.load_image(img_path)
+        self._load_image(self._paths[self._idx])
 
         self.showFullScreen()
 
-    def load_image(self, path: str):
+    def _load_image(self, path: str):
         """
         Load image from given path. Displays white, if not found
         :param path: path to image
@@ -75,5 +78,18 @@ class ImageViewerDialog(QDialog):
         """
         if event.key() == Qt.Key_Escape:
             self.close()
+
+        elif event.key() == Qt.Key_Right:
+            # Next
+            self._step(+1)
+        elif event.key() == Qt.Key_Left:
+            # Previous
+            self._step(-1)
         else:
             super().keyPressEvent(event)
+
+    def _step(self, delta: int):
+        new_idx = self._idx + delta
+        if 0 <= new_idx < len(self._paths):
+            self._idx = new_idx
+            self._load_image(self._paths[new_idx])

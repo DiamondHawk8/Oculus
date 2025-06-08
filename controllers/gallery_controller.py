@@ -32,6 +32,7 @@ class GalleryController:
 
         # View dialog opened for any given gallery
         self._viewer = None
+        self._viewer_open = False
 
         # model & view
         self._model = ThumbnailListModel()
@@ -154,7 +155,7 @@ class GalleryController:
 
         # Otherwise, its media, and it will be opened accordingly
         else:
-            self._open_viewer(path)
+            self._open_viewer(index)
 
     def _navigate(self, delta: int) -> None:
         nxt = self._cursor + delta
@@ -270,21 +271,24 @@ class GalleryController:
         ui_local.setupUi(widget)
         return widget, ui_local
 
-    def _open_viewer(self, index_or_path):
+    def _open_viewer(self, index: QModelIndex):
+        if self._viewer_open:
+            return
 
-        path = (self._model.data(index_or_path, Qt.UserRole)
-                if isinstance(index_or_path, QModelIndex)
-                else index_or_path)
+        path = self._model.data(index, Qt.UserRole)
         if not path or not Path(path).is_file():
             return
 
-        # Prevent stacking two viewers from the same double-click
-        if self._viewer and self._viewer.isVisible():
-            return
+        # assemble the current list of file paths in display order
+        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
+        cur_idx = paths.index(path)
 
-        self._viewer = ImageViewerDialog(path, parent=self._host_widget)
-        self._viewer.finished.connect(lambda: setattr(self, "_viewer", None))
-        self._viewer.exec()
+        self._viewer_open = True
+        dlg = ImageViewerDialog(paths, cur_idx, parent=self._host_widget)
+
+        # set viewer open state to false upon operation complete
+        dlg.finished.connect(lambda *_: setattr(self, "_viewer_open", False))
+        dlg.exec()
 
 class _MiddleClickFilter(QObject):
     """Intercepts middle-button releases on a view's viewport"""
