@@ -30,6 +30,9 @@ class GalleryController:
         # Attribute used to differentiate between the root gallery page and other opened tabs
         self._host_widget = host_widget
 
+        # View dialog opened for any given gallery
+        self._viewer = None
+
         # model & view
         self._model = ThumbnailListModel()
         self.ui.galleryList.setViewMode(QListView.IconMode)
@@ -59,9 +62,6 @@ class GalleryController:
         self.ui.galleryList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
 
-        # Allow for viewing media by double-clicking
-        self.ui.galleryList.doubleClicked.connect(self._open_viewer)
-
         # Hook Back/Forward buttons
         ui.btn_back.clicked.connect(lambda: self._navigate(-1))
         if hasattr(ui, "btn_forward"):
@@ -71,7 +71,6 @@ class GalleryController:
         self._add_shortcut("Alt+Right", lambda: self._navigate(+1))
 
         # Connect double-click / Enter activation
-        self.ui.galleryList.doubleClicked.connect(self._on_item_activated)
         self.ui.galleryList.activated.connect(self._on_item_activated)
 
         # Connect thumbnail method to media signals
@@ -155,7 +154,7 @@ class GalleryController:
 
         # Otherwise, its media, and it will be opened accordingly
         else:
-            self._open_viewer(path)  # TODO hook to ImageViewerDialog
+            self._open_viewer(path)
 
     def _navigate(self, delta: int) -> None:
         nxt = self._cursor + delta
@@ -271,14 +270,21 @@ class GalleryController:
         ui_local.setupUi(widget)
         return widget, ui_local
 
-    def _open_viewer(self, index: QModelIndex | str):
-        if isinstance(index, QModelIndex):
-            path = self._model.data(index, Qt.UserRole)
-        else:  # Caller might pass str
-            path = index
-        if path and Path(path).is_file():
-            dlg = ImageViewerDialog(path, parent=self._host_widget)
-            dlg.exec()  # modal; blocks until Esc
+    def _open_viewer(self, index_or_path):
+
+        path = (self._model.data(index_or_path, Qt.UserRole)
+                if isinstance(index_or_path, QModelIndex)
+                else index_or_path)
+        if not path or not Path(path).is_file():
+            return
+
+        # Prevent stacking two viewers from the same double-click
+        if self._viewer and self._viewer.isVisible():
+            return
+
+        self._viewer = ImageViewerDialog(path, parent=self._host_widget)
+        self._viewer.finished.connect(lambda: setattr(self, "_viewer", None))
+        self._viewer.exec()
 
 class _MiddleClickFilter(QObject):
     """Intercepts middle-button releases on a view's viewport"""
