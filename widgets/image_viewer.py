@@ -29,3 +29,49 @@ class ImageViewerDialog(QDialog):
 
         # Load and show image
         self.load_image(img_path)
+
+    def load_image(self, path: str):
+        """
+        Load image from given path. Displays white, if not found
+        :param path: path to image
+        :return:
+        """
+        pix = QPixmap(path)
+        if pix.isNull():
+            self._label.setText(f"Could not load {Path(path).name}")
+            self._label.setStyleSheet("color: white;")
+        else:
+            self._pix = pix
+            self._show_scaled()
+
+    # ------------------------------------------------------------------ #
+    def _show_scaled(self):
+        """
+        Scale current image
+        :return: None
+        """
+        if hasattr(self, "_pix"):
+            scaled = self._pix.scaled(
+                self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            self._label.setPixmap(scaled)
+
+    def resizeEvent(self, event):
+        """
+        Scale image properly during resizing
+        :param event:
+        :return: None
+        """
+        self._show_scaled()
+        super().resizeEvent(event)
+
+    def keyPressEvent(self, event):
+        """
+        Method that will close the viewer on esc being pressed
+        :param event:
+        :return: None
+        """
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
