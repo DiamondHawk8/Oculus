@@ -2,15 +2,15 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView, QMenu, QWidget
+from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle
 
 import controllers.view_utils as view_utils
 
 from models.thumbnail_model import ThumbnailListModel
 
-from PySide6.QtWidgets import QApplication, QStyle
-
 from ui.ui_gallery_tab import Ui_Form
+
+from widgets.image_viewer import ImageViewerDialog
 
 SIZE_PRESETS = {
     "Small": (64, QSize(82, 82)),
@@ -59,6 +59,9 @@ class GalleryController:
         self.ui.galleryList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
 
+        # Allow for viewing media by double-clicking
+        self.ui.galleryList.doubleClicked.connect(self._open_viewer)
+
         # Hook Back/Forward buttons
         ui.btn_back.clicked.connect(lambda: self._navigate(-1))
         if hasattr(ui, "btn_forward"):
@@ -87,7 +90,6 @@ class GalleryController:
         self.ui.cmb_gallery_size.addItems(SIZE_PRESETS.keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
-
 
     # push a folder’s contents into the model
     def _push_page(self, folder_abspath: str):
@@ -269,7 +271,14 @@ class GalleryController:
         ui_local.setupUi(widget)
         return widget, ui_local
 
-
+    def _open_viewer(self, index: QModelIndex | str):
+        if isinstance(index, QModelIndex):
+            path = self._model.data(index, Qt.UserRole)
+        else:  # Caller might pass str
+            path = index
+        if path and Path(path).is_file():
+            dlg = ImageViewerDialog(path, parent=self._host_widget)
+            dlg.exec()  # modal; blocks until Esc
 
 class _MiddleClickFilter(QObject):
     """Intercepts middle-button releases on a view's viewport"""
