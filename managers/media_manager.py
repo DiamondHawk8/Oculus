@@ -3,11 +3,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from collections import deque
-from typing import Iterable, Callable, List, Sequence
+from typing import Callable, List, Sequence
 
-from functools import lru_cache
-
-from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObject
+from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt
 from PySide6.QtGui import QPixmap
 
 from collections import OrderedDict
