@@ -94,7 +94,6 @@ class SearchController:
                               preset=preset)
 
     def _on_item_activated(self, index: QModelIndex):
-        # TODO allow searched files' folder to be added to gallery tab
         """
         self.tab_controller.open_in_new_tab(
             new_gallery_page_for(folder_path), Path(folder_path).name

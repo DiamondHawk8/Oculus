@@ -44,7 +44,7 @@ class ImportController:
 
         # persist paths into DB so SearchManager can find them
         for p in paths:
-            self.tag_manager.add_media(p)
+            media_id = self.media_manager.add_media(p, is_dir=False)
 
         self.ui.importStatus.setText(f"Found {len(paths)} files")
 
@@ -55,9 +55,6 @@ class ImportController:
             # Create debug tree from rootpath
             tree_data = self.media_manager.walk_tree(root_path)
             self.ui.debugFolderTree.load_tree(tree_data, root_path)
-
-            # Add root to db
-            self.tag_manager.add_root(root_path)
 
             # TODO Streamline process
             self.gallery_controller.open_folder(root_path)

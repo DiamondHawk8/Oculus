@@ -81,7 +81,7 @@ class GalleryController:
         self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
 
         # Obtain any existing media paths
-        cached_paths = self.tag_manager.all_paths()
+        cached_paths = self.media_manager.all_paths()
         if cached_paths:
             self.populate_gallery(cached_paths)
 

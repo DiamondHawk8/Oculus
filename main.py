@@ -13,11 +13,14 @@ from managers.media_manager import MediaManager
 from managers.search_manager import SearchManager
 from managers.tag_manager import TagManager
 from managers.keybind_manager import KeybindManager
+from managers.db_utils import get_db_connection
 
 from controllers.gallery_controller import GalleryController
 from controllers.import_controller import ImportController
 from controllers.search_controller import SearchController
 from controllers.tab_controller import TabController
+
+
 
 ACTIVE_BACKEND = "sqlite"
 GALLERY_PAGE_INDEX = 0
@@ -50,10 +53,12 @@ class MainWindow(QMainWindow):
         self.ui.contentTopBg.setMouseTracking(True)
         self.ui.contentTopBg.installEventFilter(self)
 
+        self.conn = get_db_connection(db_path="oculus.db", backend=ACTIVE_BACKEND)
+
         # backend managers
-        self.tags = TagManager("oculus.db", backend=ACTIVE_BACKEND)
-        self.media = MediaManager(parent=self)
-        self.search = SearchManager(Path("oculus.db"), backend=ACTIVE_BACKEND)
+        self.media = MediaManager(self.conn, parent=self)
+        self.tags = TagManager(self.conn)
+        self.search = SearchManager(self.conn, self.tags)
 
         # Other Managers
         self.keybinds = KeybindManager(self)
@@ -65,13 +70,6 @@ class MainWindow(QMainWindow):
 
         self.search_controller = SearchController(self.ui, self.media, self.search)
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
-
-        # Persist if roots exist
-        roots = self.tags.all_roots()
-        if roots:
-            self.gallery_controller.open_folder(roots[-1])  # show most recent import
-        else:
-            self.gallery_controller.populate_gallery([])  # empty state
 
         # Connect window buttons
         self.ui.closeAppBtn.clicked.connect(self.close)
