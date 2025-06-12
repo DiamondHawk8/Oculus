@@ -2,9 +2,9 @@ from __future__ import annotations
 from pathlib import Path
 import os
 from collections import deque, OrderedDict
-from typing import Callable, List, Sequence
+from typing import Callable
 
-from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObject
+from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObject, Slot, QTimer, Q_ARG
 from PySide6.QtGui import QPixmap
 
 from .base import BaseManager
@@ -21,6 +21,7 @@ class MediaManager(BaseManager, QObject):
 
     scan_finished = Signal(list)
     thumb_ready = Signal(str, object)
+    _scan_done = Signal(list)
 
     def __init__(self, conn, thumb_size: int = 256, parent=None):
         BaseManager.__init__(self, conn)
@@ -28,6 +29,9 @@ class MediaManager(BaseManager, QObject):
 
         self.thumb_size = thumb_size
         self.pool = QThreadPool.globalInstance()
+
+        self._scan_done.connect(self._process_scan_result)
+
 
     def scan_folder(self, folder: str | Path) -> None:
         """
@@ -96,6 +100,12 @@ class MediaManager(BaseManager, QObject):
             self.cur.execute("SELECT path FROM media")
         return [row["path"] for row in self.cur.fetchall()]
 
+    @Slot(list)
+    def _process_scan_result(self, paths: list[str]) -> None:
+        for p in paths:
+            self.add_media(p, is_dir=False)
+        self.scan_finished.emit(paths)
+
 
 # Thread tasks
 class _ScanTask(QRunnable):
@@ -111,13 +121,7 @@ class _ScanTask(QRunnable):
             for r, _, files in os.walk(self.folder)
             for f in files if Path(f).suffix.lower() in IMAGE_EXT
         ]
-        # Bounce to GUI thread
-        QMetaObject.invokeMethod(
-            self.mgr,
-            lambda lst=out: self.mgr._on_scan_complete(lst),
-            Qt.QueuedConnection,
-        )
-
+        self.mgr._scan_done.emit(out)      # queued to GUI thread
 
 class _ThumbTask(QRunnable):
     def __init__(self, path: str, size: int, cb: Callable[[str, QPixmap], None]):

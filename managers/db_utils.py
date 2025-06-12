@@ -99,6 +99,7 @@ def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: O
     logger.info("Connecting to SQLite…")
     sqlite_path = str(db_path or "oculus.db")
     conn = sqlite3.connect(sqlite_path)
+    conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     _ensure_schema(conn)
     return conn
