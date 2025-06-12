@@ -35,7 +35,7 @@ class MediaManager(BaseManager, QObject):
 
     scan_finished = Signal(list)
     thumb_ready = Signal(str, object)
-    _scan_done = Signal(list)
+    _scan_done = Signal(object)
 
     def __init__(self, conn, thumb_size: int = 256, parent=None):
         BaseManager.__init__(self, conn)
@@ -67,10 +67,10 @@ class MediaManager(BaseManager, QObject):
         self.pool.start(task)
 
     # DB helpers (sync)
-    def add_media(self, path: str, *, is_dir: bool) -> int:
+    def add_media(self, path: str, *, is_dir: bool, size: int = 0) -> int:
         self.execute(
             "INSERT OR IGNORE INTO media(path, is_dir) VALUES (?,?)",
-            (path, int(is_dir)),
+            (path, int(is_dir), size),
         )
         row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
         return row["id"]
@@ -113,19 +113,19 @@ class MediaManager(BaseManager, QObject):
             self.cur.execute("SELECT path FROM media")
         return [row["path"] for row in self.cur.fetchall()]
 
-    @Slot(list)
-    def _process_scan_result(self, paths: list[str]) -> None:
+    @Slot(object)
+    def _process_scan_result(self, items):
         seen_dirs = set()
+        for p, sz in items:
 
-        for p in paths:
-            self.add_media(p, is_dir=False)
-
+            self.add_media(p, is_dir=False, size=sz)
             parent = str(Path(p).parent)
+
             if parent not in seen_dirs:
                 self.add_media(parent, is_dir=True)
                 seen_dirs.add(parent)
 
-        self.scan_finished.emit(paths)
+        self.scan_finished.emit([p for p, _ in items])
 
     def folder_paths(self) -> list[str]:
         self.cur.execute("SELECT path FROM media WHERE is_dir = 1")
@@ -143,7 +143,19 @@ class MediaManager(BaseManager, QObject):
         return sorted(roots)
 
     def get_sorted_paths(self, sort_key: str, ascending: bool = True) -> list[str]:
-        pass
+        """
+        :param sort_key: Key to sort by
+        :param ascending: Return sort in ascending order
+        :return:
+        """
+
+        clause = _SORT_SQL.get((sort_key, ascending))
+        if clause is None:
+            clause = _SORT_SQL[("name", True)]
+
+        sql = f"SELECT path FROM media WHERE is_dir=0 {clause};"
+        self.cur.execute(sql)
+        return [r["path"] for r in self.cur.fetchall()]
 
 
 # Thread tasks
@@ -155,11 +167,12 @@ class _ScanTask(QRunnable):
         self.setAutoDelete(True)
 
     def run(self):
-        out = [
-            str(Path(r) / f)
-            for r, _, files in os.walk(self.folder)
-            for f in files if Path(f).suffix.lower() in IMAGE_EXT
-        ]
+        out = []
+        for root, _, files in os.walk(self.folder):
+            for fn in files:
+                if Path(fn).suffix.lower() in IMAGE_EXT:
+                    p = Path(root) / fn
+                    out.append((str(p), p.stat().st_size))
         self.mgr._scan_done.emit(out)  # queued to GUI thread
 
 
