@@ -1,22 +1,16 @@
-"""
-search_manager.py – filename + advanced tag search
-"""
-
 from __future__ import annotations
 import logging
-from pathlib import Path
 from typing import List, Set, Union
 
-import managers.db_utils as db_utils
-
-from managers.tag_manager import TagManager
+from .base import BaseManager
+from .tag_manager import TagManager
 
 _LOG = logging.getLogger(__name__)
-
 
 Token = str
 Operator = str
 AST = Union[str, tuple]
+
 
 def _tokenize(expr: str) -> List[str]:
     tokens: List[str] = []
@@ -38,6 +32,7 @@ def _tokenize(expr: str) -> List[str]:
 
 def _parse(tokens: List[str]) -> AST:
     pos = 0
+
     def parse_expr() -> AST:
         node = parse_term()
         while peek() == ",":
@@ -80,36 +75,21 @@ def _parse(tokens: List[str]) -> AST:
     return ast
 
 
-
-class SearchManager:
-
-
-    def __init__(self, db_path: str | Path, backend: str = "sqlite") -> None:
-
-        # handles creation of relevant tables as well
-        self.tags = TagManager(db_path, backend=backend)
-
-        self.backend = backend.lower()
-        self.db_path = db_path
-        self.conn = db_utils.get_db_connection(db_path=db_path, backend=self.backend)
-        self.cur = self.conn.cursor()
+class SearchManager(BaseManager):
+    def __init__(self, conn, tag_manager: TagManager):
+        super().__init__(conn)
+        self.tags = tag_manager
 
     def simple_search(self, term: str) -> List[str]:
         if not term:
             return []
         like = f"%{term.lower()}%"
-        ph = "%s" if self.backend == "postgres" else "?"
-        sql = f"SELECT path FROM media WHERE LOWER(path) LIKE {ph};"
-        self.cur.execute(sql, (like,))
-        return [row[0] for row in self.cur.fetchall()]
-
+        self.cur.execute(
+            "SELECT path FROM media WHERE LOWER(path) LIKE ?", (like,)
+        )
+        return [row["path"] for row in self.cur.fetchall()]
 
     def tag_search(self, expr: str) -> List[str]:
-        """
-        Boolean tag search using ',', '|', and parentheses.
-
-        e.g. sm.tag_search("red,(blue|green)")
-        """
         if not expr.strip():
             return []
 
@@ -122,29 +102,25 @@ class SearchManager:
         cache: dict[str, Set[str]] = {}
 
         def eval_ast(node: AST) -> Set[str]:
-            if isinstance(node, str):                      # literal tag
+            if isinstance(node, str):
                 if node not in cache:
                     cache[node] = self._paths_for_tag(node)
                 return cache[node]
             op, left, right = node
-            if op == "AND":
-                return eval_ast(left) & eval_ast(right)
-            if op == "OR":
-                return eval_ast(left) | eval_ast(right)
-            raise RuntimeError(f"Unknown operator {op}")
+            return (eval_ast(left) & eval_ast(right)) if op == "AND" else (eval_ast(left) | eval_ast(right))
 
-        result = eval_ast(ast)
-        return sorted(result)
+        return sorted(eval_ast(ast))
 
     def _paths_for_tag(self, tag: str) -> Set[str]:
-        ph = "%s" if self.backend == "postgres" else "?"
-        sql = (
-            f"SELECT DISTINCT m.path "
-            f"FROM media m JOIN tags t ON t.media_id = m.id "
-            f"WHERE LOWER(t.tag) = {ph};"
+        self.cur.execute(
+            """
+            SELECT DISTINCT m.path
+            FROM media m JOIN tags t ON t.media_id = m.id
+            WHERE LOWER(t.tag) = ?
+            """,
+            (tag.lower(),),
         )
-        self.cur.execute(sql, (tag,))
-        return {row[0] for row in self.cur.fetchall()}
+        return {row["path"] for row in self.cur.fetchall()}
 
     def _fts_query_postgres(self, term: str) -> List[str]:  # pragma: no cover
         raise NotImplementedError("FTS not implemented until Phase 4")
