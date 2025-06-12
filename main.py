@@ -75,6 +75,12 @@ class MainWindow(QMainWindow):
         self.ui.closeAppBtn.clicked.connect(self.close)
         self.ui.minimizeAppBtn.clicked.connect(self.showMinimized)
 
+        roots = self.media.root_folders()
+        if roots:
+            self.gallery_controller.open_folder(roots[-1])  # newest root
+        else:
+            self.gallery_controller.populate_gallery([])  # empty state
+
         def _toggle_max_restore():
             if self.isMaximized():
                 self.showNormal()

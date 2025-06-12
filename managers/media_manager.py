@@ -102,10 +102,32 @@ class MediaManager(BaseManager, QObject):
 
     @Slot(list)
     def _process_scan_result(self, paths: list[str]) -> None:
+        seen_dirs = set()
+
         for p in paths:
             self.add_media(p, is_dir=False)
+
+            parent = str(Path(p).parent)
+            if parent not in seen_dirs:
+                self.add_media(parent, is_dir=True)
+                seen_dirs.add(parent)
+
         self.scan_finished.emit(paths)
 
+    def folder_paths(self) -> list[str]:
+        self.cur.execute("SELECT path FROM media WHERE is_dir = 1")
+        return [r["path"] for r in self.cur.fetchall()]
+
+    def root_folders(self) -> list[str]:
+        """Folders whose parent directory is NOT itself recorded"""
+        self.cur.execute("SELECT path FROM media WHERE is_dir=1")
+        all_folders = [row["path"] for row in self.cur.fetchall()]
+        folder_set = set(all_folders)
+        roots = [
+            p for p in all_folders
+            if str(Path(p).parent) not in folder_set
+        ]
+        return sorted(roots)
 
 # Thread tasks
 class _ScanTask(QRunnable):
