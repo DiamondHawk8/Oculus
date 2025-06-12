@@ -1,0 +1,30 @@
+media:  # table of every file known about
+  id:          INTEGER PRIMARY KEY
+  path:        TEXT UNIQUE  # abs path on disk
+  added:       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  is_dir:      BOOLEAN DEFAULT 0
+
+variants:  # 'stacks' of related images
+  base_id:     INTEGER  # ref media.id  (rank == 0)
+  variant_id:  INTEGER  # ref media.id
+  rank:        INTEGER DEFAULT 0  # 0 = base; 1,2,... = alternates
+  UNIQUE:      [variant_id]
+
+presets: # saved zoom / pan rectangles
+  id:          INTEGER PRIMARY KEY
+  media_id:    INTEGER  # NULL folder-level default
+  name:        TEXT  # "Profile-crop", etc.
+  zoom:        REAL # e.g. 1.75
+  pan_x:       INTEGER
+  pan_y:       INTEGER
+
+attributes: # fixed K/V booleans & numbers
+  media_id:    INTEGER PRIMARY KEY  # ref media.id
+  favorite:    BOOLEAN DEFAULT 0
+  weight:      REAL    DEFAULT 1.0
+
+tags:  # free-form keywords
+  media_id:   INTEGER  # media.id
+  tag:        TEXT
+  UNIQUE:     [media_id, tag]
+  INDEX:      tag

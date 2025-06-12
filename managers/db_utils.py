@@ -1,13 +1,3 @@
-"""
-
-Supports:
-    SQLite (default – zero-config, file-based)
-    PostgreSQL (when `backend="postgres"` or env var DB_BACKEND = "postgres")
-
-env vars are postgres only:
-----------------------
-DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-"""
 from __future__ import annotations
 
 import os
@@ -23,6 +13,63 @@ except ModuleNotFoundError:
 logger = logging.getLogger(__name__)
 
 
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    cur = conn.cursor()
+    # check does media exist
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media';")
+    if cur.fetchone():
+        return
+
+    # Otherwise, create the schema
+    cur.executescript(
+        """
+        PRAGMA foreign_keys = ON;
+
+        CREATE TABLE media (
+            id     INTEGER PRIMARY KEY,
+            path   TEXT UNIQUE,
+            added  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_dir BOOLEAN DEFAULT 0
+        );
+
+        CREATE TABLE variants (
+            base_id    INTEGER,
+            variant_id INTEGER UNIQUE,
+            rank       INTEGER DEFAULT 0,
+            FOREIGN KEY(base_id)    REFERENCES media(id) ON DELETE CASCADE,
+            FOREIGN KEY(variant_id) REFERENCES media(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE presets (
+            id        INTEGER PRIMARY KEY,
+            media_id  INTEGER,
+            name      TEXT,
+            zoom      REAL,
+            pan_x     INTEGER,
+            pan_y     INTEGER,
+            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE attributes (
+            media_id  INTEGER PRIMARY KEY,
+            favorite  BOOLEAN DEFAULT 0,
+            weight    REAL    DEFAULT 1.0,
+            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE tags (
+            media_id  INTEGER,
+            tag       TEXT,
+            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE,
+            UNIQUE(media_id, tag)
+        );
+
+        CREATE INDEX idx_tags_tag ON tags(tag);
+        """
+    )
+    conn.commit()
+
+
 def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: Optional[str] = None, ) \
         -> "sqlite3.Connection | psycopg2.extensions.connection":
     """
@@ -34,7 +81,7 @@ def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: O
         if psycopg2 is None:
             raise RuntimeError("psycopg2 not installed; cannot use PostgreSQL")
 
-        logger.info("Connecting to PostgreSQL…")
+        logger.info("Connecting to PostgreSQL...")
         conn = psycopg2.connect(
             host=os.getenv("DB_HOST", "localhost"),
             port=os.getenv("DB_PORT", "5432"),
@@ -43,6 +90,9 @@ def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: O
             password=os.getenv("DB_PASSWORD", "secret"),
         )
         conn.autocommit = False
+
+        # TODO, make schema creation postgres compatible
+        # _ensure_schema(conn)
         return conn
 
     # ---- SQLite (default) ----
@@ -50,6 +100,7 @@ def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: O
     sqlite_path = str(db_path or "oculus.db")
     conn = sqlite3.connect(sqlite_path)
     conn.execute("PRAGMA foreign_keys = ON;")
+    _ensure_schema(conn)
     return conn
 
 
