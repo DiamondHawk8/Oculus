@@ -3,6 +3,7 @@ media:  # table of every file known about
   path:        TEXT UNIQUE  # abs path on disk
   added:       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   is_dir:      BOOLEAN DEFAULT 0
+  byte_size:   INTEGER DEFAULT 0
 
 variants:  # 'stacks' of related images
   base_id:     INTEGER  # ref media.id  (rank == 0)

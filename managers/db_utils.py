@@ -29,7 +29,8 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             id     INTEGER PRIMARY KEY,
             path   TEXT UNIQUE,
             added  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_dir BOOLEAN DEFAULT 0
+            is_dir BOOLEAN DEFAULT 0,
+            byte_size INTEGER DEFAULT 0
         );
 
         CREATE TABLE variants (

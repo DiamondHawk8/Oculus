@@ -1,4 +1,7 @@
 from __future__ import annotations
+
+import sqlite3
+from datetime import datetime
 from pathlib import Path
 import os
 from collections import deque, OrderedDict
@@ -12,6 +15,17 @@ from .base import BaseManager
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 _CACHE_CAPACITY = 512
 _THUMB_CACHE: "OrderedDict[tuple[str, int], QPixmap]" = OrderedDict()
+
+_SORT_SQL = {
+    ("name", True): "ORDER BY LOWER(path)         ASC",
+    ("name", False): "ORDER BY LOWER(path)         DESC",
+    ("date", True): "ORDER BY added               ASC",
+    ("date", False): "ORDER BY added               DESC",
+    ("size", True): "ORDER BY byte_size           ASC",
+    ("size", False): "ORDER BY byte_size           DESC",
+    ("weight", True): "ORDER BY COALESCE(weight,1) ASC",
+    ("weight", False): "ORDER BY COALESCE(weight,1) DESC",
+}
 
 
 class MediaManager(BaseManager, QObject):
@@ -31,7 +45,6 @@ class MediaManager(BaseManager, QObject):
         self.pool = QThreadPool.globalInstance()
 
         self._scan_done.connect(self._process_scan_result)
-
 
     def scan_folder(self, folder: str | Path) -> None:
         """
@@ -81,7 +94,7 @@ class MediaManager(BaseManager, QObject):
             sub, imgs = [], []
             for child in folder.iterdir():
                 if child.is_dir():
-                    sub.append(str(child));
+                    sub.append(str(child))
                     q.append(child)
                 elif child.suffix.lower() in IMAGE_EXT:
                     imgs.append(str(child))
@@ -129,6 +142,10 @@ class MediaManager(BaseManager, QObject):
         ]
         return sorted(roots)
 
+    def get_sorted_paths(self, sort_key: str, ascending: bool = True) -> list[str]:
+        pass
+
+
 # Thread tasks
 class _ScanTask(QRunnable):
     def __init__(self, folder: Path, mgr: "MediaManager"):
@@ -143,7 +160,8 @@ class _ScanTask(QRunnable):
             for r, _, files in os.walk(self.folder)
             for f in files if Path(f).suffix.lower() in IMAGE_EXT
         ]
-        self.mgr._scan_done.emit(out)      # queued to GUI thread
+        self.mgr._scan_done.emit(out)  # queued to GUI thread
+
 
 class _ThumbTask(QRunnable):
     def __init__(self, path: str, size: int, cb: Callable[[str, QPixmap], None]):

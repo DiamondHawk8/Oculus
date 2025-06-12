@@ -80,6 +80,7 @@ class SearchManager(BaseManager):
         super().__init__(conn)
         self.tags = tag_manager
 
+    # TODO, Allow for toggling of including folders in search result
     def simple_search(self, term: str) -> List[str]:
         if not term:
             return []
