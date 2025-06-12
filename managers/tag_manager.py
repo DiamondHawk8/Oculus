@@ -1,138 +1,40 @@
-import logging
-from pathlib import Path
-from typing import List, Iterable, Tuple, Sequence
-
-from managers.db_utils import get_db_connection, generate_insert_sql
-
-logger = logging.getLogger(__name__)
+from typing import Iterable, List, Dict, Any
+from .base import BaseManager
 
 
-class TagManager:
-    """Lightweight DB wrapper for media + tag storage."""
-    _CREATE_MEDIA_TABLE = """
-        CREATE TABLE IF NOT EXISTS media (
-            id     INTEGER PRIMARY KEY AUTOINCREMENT,
-            path   TEXT UNIQUE,
-            sha256 TEXT,
-            added  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """
+class TagManager(BaseManager):
+    def set_tags(self, media_id: int, tags: Iterable[str], *, overwrite=False):
+        if overwrite:
+            self.execute("DELETE FROM tags WHERE media_id=?", (media_id,))
+        rows = [(media_id, t.strip().lower()) for t in tags if t.strip()]
+        if rows:
+            self.cur.executemany("INSERT OR IGNORE INTO tags(media_id, tag) VALUES (?,?)", rows)
+            self.conn.commit()
 
-    _CREATE_TAG_TABLE = """
-        CREATE TABLE IF NOT EXISTS tags (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_id INTEGER REFERENCES media(id) ON DELETE CASCADE,
-            tag      TEXT NOT NULL
-        );
-    """
+    def get_tags(self, media_id: int) -> List[str]:
+        rows = self.fetchall("SELECT tag FROM tags WHERE media_id=?", (media_id,))
+        return [r["tag"] for r in rows]
 
-    _CREATE_FTS = """
-        CREATE TABLE IF NOT EXISTS roots (
-            path TEXT PRIMARY KEY
-        );
-    """
+    def get_attr(self, media_id: int) -> Dict[str, Any]:
+        row = self.fetchone("SELECT * FROM attributes WHERE media_id=?", (media_id,))
+        return dict(row) if row else {}
 
-    _CREATE_ROOTS_TABLE = """
-        CREATE TABLE IF NOT EXISTS roots (
-            path TEXT PRIMARY KEY
-        );
-    """
+    def set_attr(self, media_id: int, **kwargs):
+        cols = ", ".join(kwargs)
+        marks = ", ".join("?" * len(kwargs))
+        sql = (
+                f"INSERT INTO attributes(media_id, {cols}) VALUES ({','.join(['?'] * (len(kwargs) + 1))}) "
+                f"ON CONFLICT(media_id) DO UPDATE SET " +
+                ", ".join(f"{k}=excluded.{k}" for k in kwargs)
+        )
+        self.execute(sql, (media_id, *kwargs.values()))
 
-    def __init__(self, db_path: str | Path | None = None, *, backend: str = "sqlite") -> None:
-        self.backend = backend.lower()
-        self.conn = get_db_connection(db_path=db_path, backend=self.backend)
-        self.cur = self.conn.cursor()
+    def save_preset(self, media_id: int, name: str, zoom: float, pan_x: int, pan_y: int):
+        self.execute(
+            "INSERT OR REPLACE INTO presets(media_id,name,zoom,pan_x,pan_y) VALUES (?,?,?,?,?)",
+            (media_id, name, zoom, pan_x, pan_y)
+        )
 
-        self._init_schema()
-
-    def add_tag(self, media_id: int, tags: Iterable[str]) -> None:
-        """
-        Insert one or many tag strings for media_id*
-        Ignores duplicates at the DB level (TODO UNIQUE not enforced yet)
-        """
-        for tag in tags:
-            sql, params = generate_insert_sql(
-                "tags", ("media_id", "tag"), (media_id, tag), backend=self.backend
-            )
-            self.cur.execute(sql, params)
-        self.conn.commit()
-
-    def delete_tag(self, *,ids: Sequence[int] | None = None, media_id: int | None = None,
-                   tags: Sequence[str] | None = None) -> None:
-        """
-        Delete tags by row ids OR  by *(media_id, tags)* combination.
-        Passing both ids and (media_id, tags) will not work
-        """
-        if ids:
-            self.cur.executemany(
-                "DELETE FROM tags WHERE id = ?;" if self.backend == "sqlite"
-                else "DELETE FROM tags WHERE id = %s;",
-                [(i,) for i in ids],
-            )
-        elif media_id is not None and tags:
-            placeholder = "?" if self.backend == "sqlite" else "%s"
-            sql = (
-                f"DELETE FROM tags WHERE media_id = {placeholder} AND tag = {placeholder};"
-            )
-            params = [(media_id, tag) for tag in tags]
-            self.cur.executemany(sql, params)
-        else:
-            raise ValueError("Specify either ids or (media_id + tags)")
-
-        self.conn.commit()
-
-    def get_tags(self, media_id: int) -> List[Tuple[int, str]]:
-        """
-        Return list of (tag_id, tag_string) for the given media_id
-        """
-        placeholder = "?" if self.backend == "sqlite" else "%s"
-        sql = f"SELECT id, tag FROM tags WHERE media_id = {placeholder};"
-        self.cur.execute(sql, (media_id,))
-        return self.cur.fetchall()
-
-
-    def _init_schema(self) -> None:
-        """Create core tables; add FTS table only on SQLite. TODO add fts later"""
-        self.cur.execute(self._CREATE_MEDIA_TABLE)
-        self.cur.execute(self._CREATE_TAG_TABLE)
-        self.cur.execute(self._CREATE_ROOTS_TABLE)
-        self.conn.commit()
-
-    def add_media(self, path: str) -> int:
-        """
-        Insert path into the media table if it is not already present.
-        Returns the media.id
-        """
-        ph = "%s" if self.backend == "postgres" else "?"
-        sql = f"""INSERT INTO media (path)
-                  VALUES ({ph})
-                  ON CONFLICT(path) DO NOTHING;"""
-
-        self.cur.execute(sql, (path,))
-        self.conn.commit()
-
-        # fetch id
-        self.cur.execute(f"SELECT id FROM media WHERE path = {ph};", (path,))
-        return self.cur.fetchone()[0]
-
-    # Returns a list of all paths current present within the media table
-    def all_paths(self) -> list[str]:
-        self.cur.execute("SELECT path FROM media ORDER BY added;")
-        return [row[0] for row in self.cur.fetchall()]
-
-    def add_root(self, path: str) -> None:
-        self.cur.execute("INSERT OR IGNORE INTO roots(path) VALUES (?)", (path,))
-        self.conn.commit()
-
-    def all_roots(self) -> list[str]:
-        rows = self.cur.execute("SELECT path FROM roots").fetchall()
-        return [r[0] for r in rows]
-
-"""        if self.backend == "sqlite":
-            try:
-                self.cur.execute(self._CREATE_FTS)
-            except Exception as exc:  # pragma: no cover
-                logger.warning("FTS5 unavailable – continuing without it (%s)", exc)
-
-        self.conn.commit()
-"""
+    def list_presets(self, media_id: int):
+        rows = self.fetchall("SELECT * FROM presets WHERE media_id=?", (media_id,))
+        return [dict(r) for r in rows]
