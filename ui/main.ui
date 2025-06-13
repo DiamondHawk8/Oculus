@@ -2080,7 +2080,7 @@ background-size: cover; </string>
                       <number>1</number>
                      </property>
                      <property name="currentIndex">
-                      <number>3</number>
+                      <number>0</number>
                      </property>
                      <widget class="QWidget" name="gallery_page">
                       <property name="styleSheet">
@@ -2431,11 +2431,6 @@ background-repeat: no-repeat;</string>
                                <item>
                                 <property name="text">
                                  <string>Size</string>
-                                </property>
-                               </item>
-                               <item>
-                                <property name="text">
-                                 <string>Weight</string>
                                 </property>
                                </item>
                               </widget>
@@ -3003,7 +2998,7 @@ background-repeat: no-repeat;</string>
                                 <rect>
                                  <x>0</x>
                                  <y>0</y>
-                                 <width>446</width>
+                                 <width>218</width>
                                  <height>218</height>
                                 </rect>
                                </property>
@@ -4352,11 +4347,6 @@ background-repeat: no-repeat;</string>
                                     <item>
                                      <property name="text">
                                       <string>Size</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>Weight</string>
                                      </property>
                                     </item>
                                    </widget>

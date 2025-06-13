@@ -1200,7 +1200,6 @@ class Ui_MainWindow(object):
         self.cmb_gallery_sortKey.addItem("")
         self.cmb_gallery_sortKey.addItem("")
         self.cmb_gallery_sortKey.addItem("")
-        self.cmb_gallery_sortKey.addItem("")
         self.cmb_gallery_sortKey.setObjectName(u"cmb_gallery_sortKey")
 
         self.horizontalLayout_13.addWidget(self.cmb_gallery_sortKey)
@@ -1418,7 +1417,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 446, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 218, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1845,7 +1844,6 @@ class Ui_MainWindow(object):
         self.cmb_search_sortKey.addItem("")
         self.cmb_search_sortKey.addItem("")
         self.cmb_search_sortKey.addItem("")
-        self.cmb_search_sortKey.addItem("")
         self.cmb_search_sortKey.setObjectName(u"cmb_search_sortKey")
 
         self.gridLayout_3.addWidget(self.cmb_search_sortKey, 0, 3, 1, 1)
@@ -2009,7 +2007,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(3)
+        self.stackedWidget.setCurrentIndex(0)
         self.galleryTabs.setCurrentIndex(0)
 
 
@@ -2073,7 +2071,6 @@ class Ui_MainWindow(object):
         self.cmb_gallery_sortKey.setItemText(0, QCoreApplication.translate("MainWindow", u"Name", None))
         self.cmb_gallery_sortKey.setItemText(1, QCoreApplication.translate("MainWindow", u"Date", None))
         self.cmb_gallery_sortKey.setItemText(2, QCoreApplication.translate("MainWindow", u"Size", None))
-        self.cmb_gallery_sortKey.setItemText(3, QCoreApplication.translate("MainWindow", u"Weight", None))
 
         self.btn_gallery_view.setText(QCoreApplication.translate("MainWindow", u"...", None))
         self.galleryTabs.setTabText(self.galleryTabs.indexOf(self.tabRoot), QCoreApplication.translate("MainWindow", u"Home", None))
@@ -2155,7 +2152,6 @@ class Ui_MainWindow(object):
         self.cmb_search_sortKey.setItemText(0, QCoreApplication.translate("MainWindow", u"Name", None))
         self.cmb_search_sortKey.setItemText(1, QCoreApplication.translate("MainWindow", u"Date", None))
         self.cmb_search_sortKey.setItemText(2, QCoreApplication.translate("MainWindow", u"Size", None))
-        self.cmb_search_sortKey.setItemText(3, QCoreApplication.translate("MainWindow", u"Weight", None))
 
         self.btn_message.setText(QCoreApplication.translate("MainWindow", u"Message", None))
         self.btn_print.setText(QCoreApplication.translate("MainWindow", u"Print", None))
