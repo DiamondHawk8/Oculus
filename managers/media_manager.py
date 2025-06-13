@@ -157,6 +157,31 @@ class MediaManager(BaseManager, QObject):
         self.cur.execute(sql)
         return [r["path"] for r in self.cur.fetchall()]
 
+    def order_subset(self, subset: list[str], sort_key: str, asc: bool) -> list[str]:
+        """
+        Return subset of paths ordered by the same criteria
+        used in get_sorted_paths(). Items not found in the DB are appended unchanged
+        """
+        if not subset:
+            return []
+
+        clause = _SORT_SQL.get((sort_key, asc), _SORT_SQL[("name", True)])
+
+        # Build parameter list for SQL IN
+        ph = ", ".join("?" for _ in subset)
+
+        sql = f"""
+            SELECT path FROM media
+            WHERE path IN ({ph})
+            {clause};
+        """
+        self.cur.execute(sql, subset)
+        ordered = [row["path"] for row in self.cur.fetchall()]
+
+        # Any paths missing from DB or filtered out are appended in original order
+        missing = [p for p in subset if p not in ordered]
+        return ordered + missing
+
 
 # Thread tasks
 class _ScanTask(QRunnable):

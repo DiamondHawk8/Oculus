@@ -19,6 +19,13 @@ SIZE_PRESETS = {
     "XL": (192, QSize(216, 216)),
 }
 
+_SORT_KEYS = {
+    0: "name",
+    1: "date",
+    2: "size",
+    3: "weight",
+}
+
 
 class GalleryController:
     def __init__(self, ui, media_manager, tag_manager, tab_controller, host_widget):
@@ -79,6 +86,11 @@ class GalleryController:
 
         # Connect button to toggle between list and grid view
         self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
+
+        # Connect sorting functionality
+        self.ui.cmb_gallery_sortKey.currentIndexChanged.connect(self._apply_sort)
+        self.ui.btn_gallery_sortDir.toggled.connect(self._apply_sort)
+        self._apply_sort()  # initial sort
 
         # Obtain any existing media paths
         cached_paths = self.media_manager.folder_paths()
@@ -204,6 +216,22 @@ class GalleryController:
         view_utils.apply_view(self.ui.galleryList,
                               grid=self._gallery_grid,
                               preset=preset)
+
+    def _apply_sort(self):
+        # Determine key + direction
+        key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
+        asc = not self.ui.btn_gallery_sortDir.isChecked()
+
+        # Split current view into dirs vs. files
+        current_paths = self._model.get_paths()  # whatever is shown now
+        dirs = [p for p in current_paths if Path(p).is_dir()]
+        files = [p for p in current_paths if Path(p).is_file()]
+
+        # Sort only the file slice
+        ordered_files = self.media_manager.order_subset(files, key, asc)
+
+        # Combine folders first (unsorted), then ordered files
+        self.populate_gallery(dirs + ordered_files)
 
     # ---------------------------- Other methods ----------------------------
 
