@@ -23,7 +23,6 @@ _SORT_KEYS = {
     0: "name",
     1: "date",
     2: "size",
-    3: "weight",
 }
 
 
