@@ -19,6 +19,12 @@ WIDGET_PAGE_INDEX = 1
 IMPORT_PAGE_INDEX = 2
 SEARCH_PAGE_INDEX = 3
 
+_SORT_KEYS = {
+    0: "name",
+    1: "date",
+    2: "size",
+    3: "weight",
+}
 
 class SearchController:
     def __init__(self, ui, media_manager, search_manager):
@@ -27,6 +33,7 @@ class SearchController:
         self.search_manager = search_manager
 
         self._search_items: dict[str, int] = {}
+        self._result_paths: list[str] = []
 
         self._model = ThumbnailListModel()
         self.ui.resultsList.setModel(self._model)
@@ -53,6 +60,10 @@ class SearchController:
         self.ui.cmb_search_size.setCurrentText(self._search_preset)
         self.ui.cmb_search_size.currentTextChanged.connect(self.change_size)
 
+        # Sort hooks
+        self.ui.cmb_search_sortKey.currentIndexChanged.connect(self._apply_sort)
+        self.ui.btn_search_sortDir.toggled.connect(self._apply_sort)
+
     def _exec_search(self) -> None:
         term = self.ui.searchEdit.text().strip()
         if not term:
@@ -64,13 +75,24 @@ class SearchController:
             else self.search_manager.simple_search(term)
         )
 
-        self._model.set_paths(paths)
-        self._search_items = {p: i for i, p in enumerate(paths)}
-
-        for p in paths:
-            self.media_manager.thumb(p)
+        self._result_paths = paths
+        self._apply_sort()
 
         self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX)
+
+    def _apply_sort(self):
+        if not self._result_paths:
+            return
+
+        key = _SORT_KEYS.get(self.ui.cmb_search_sortKey.currentIndex(), "name")
+        asc = not self.ui.btn_search_sortDir.isChecked()
+        ordered = self.media_manager.order_subset(self._result_paths, key, asc)
+
+        # repopulate model
+        self._model.set_paths(ordered)
+        self._search_items = {p: i for i, p in enumerate(ordered)}
+        for p in ordered:
+            self.media_manager.thumb(p)
 
     def _on_thumb_ready(self, path: str, pix: QPixmap) -> None:
         icon = QIcon(pix)
