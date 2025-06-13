@@ -69,7 +69,7 @@ class MediaManager(BaseManager, QObject):
     # DB helpers (sync)
     def add_media(self, path: str, *, is_dir: bool, size: int = 0) -> int:
         self.execute(
-            "INSERT OR IGNORE INTO media(path, is_dir) VALUES (?,?)",
+            "INSERT OR IGNORE INTO media(path, is_dir, byte_size) VALUES (?,?,?)",
             (path, int(is_dir), size),
         )
         row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
