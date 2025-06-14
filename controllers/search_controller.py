@@ -30,6 +30,8 @@ _SORT_KEYS = {
 # TODO allow folders showing in search to be toggled
 SHOW_FOLDERS = True
 
+logger = logging.getLogger(__name__)
+
 class SearchController:
     def __init__(self, ui, media_manager, search_manager):
         self.ui = ui
@@ -70,8 +72,13 @@ class SearchController:
         self.ui.cmb_search_sortKey.currentIndexChanged.connect(self._apply_sort)
         self.ui.btn_search_sortDir.toggled.connect(self._apply_sort)
 
+        logger.info("Search setup complete")
+
+
     def _exec_search(self) -> None:
+        logger.info("Search started")
         term = self.ui.searchEdit.text().strip()
+        logger.debug(f"Search query: {term}")
 
         if not term:
             # if blank query, return all media
@@ -90,6 +97,7 @@ class SearchController:
         self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX)
 
     def _apply_sort(self):
+        logger.info("Sort started")
         if not self._result_paths:
             return
 
@@ -108,13 +116,15 @@ class SearchController:
                 self.media_manager.thumb(p)
 
     def _on_thumb_ready(self, path: str, pix: QPixmap) -> None:
+        logger.debug(f"Thumbnail read at path: {path}")
         icon = QIcon(pix)
 
         # Search update
         if path in self._search_items:
             self._model.update_icon(path, icon)
 
-    def toggle_view(self, checked):
+    def _toggle_view(self, checked):
+        logger.info("_toggle_view called")
         self._search_grid = checked
         view_utils.apply_view(self.ui.resultsList,
                               grid=checked,
@@ -123,6 +133,7 @@ class SearchController:
         self.ui.resultsList.verticalScrollBar().setSingleStep(300)
 
     def change_size(self, preset):
+        logger.info("_change_size called")
         self._search_preset = preset
         view_utils.apply_view(self.ui.resultsList,
                               grid=self._search_grid,
