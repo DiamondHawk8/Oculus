@@ -268,6 +268,16 @@ class GalleryController:
         if not idx.isValid():
             return
         menu = QMenu(self.ui.galleryList)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #2b2b2b;
+                color: white;
+                border: 1px solid #444;
+            }
+            QMenu::item:selected {
+                background-color: #3c3f41;
+            }
+        """)
         act_new = menu.addAction("Open in New Tab")
         if menu.exec(self.ui.galleryList.mapToGlobal(pos)) == act_new:
             self._open_in_new_tab(idx)
