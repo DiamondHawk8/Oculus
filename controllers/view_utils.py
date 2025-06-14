@@ -1,6 +1,10 @@
 from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QListWidget
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 SIZE_PRESETS = {
     "Small": (64, QSize(82, 82)),
     "Medium": (96, QSize(118, 118)),
@@ -10,10 +14,10 @@ SIZE_PRESETS = {
 
 
 def apply_view(widget: QListWidget, *, grid: bool, preset: str):
-    print("applying view")
+    logger.info("applying view")
     icon, cell = SIZE_PRESETS[preset]
     if grid:
-        print("applying grid")
+        logger.debug(f"Applying grid view to {widget}")
         widget.setViewMode(QListWidget.IconMode)
         widget.setFlow(QListWidget.LeftToRight)
         widget.setWrapping(True)
@@ -21,7 +25,7 @@ def apply_view(widget: QListWidget, *, grid: bool, preset: str):
         widget.setIconSize(QSize(icon, icon))
         widget.setGridSize(cell)
     else:
-        print("applying list")
+        logger.debug(f"Applying list view to {widget}")
         widget.setViewMode(QListWidget.ListMode)
         widget.setFlow(QListWidget.TopToBottom)
         widget.setWrapping(False)

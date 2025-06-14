@@ -29,6 +29,7 @@ _SORT_KEYS = {
 
 logger = logging.getLogger(__name__)
 
+
 class GalleryController:
     def __init__(self, ui, media_manager, tag_manager, tab_controller, host_widget):
         super().__init__()
@@ -109,11 +110,10 @@ class GalleryController:
 
         logger.info("Gallery setup complete")
 
-    # push a folder’s contents into the model
     def _push_page(self, folder_abspath: str):
         """
         Refresh view with contents of folder_abspath
-        Folders first (α-sorted) then image files (α-sorted).
+        Folders first then image files.
         """
 
         logger.debug(f"_push_page called with folder abspath: {folder_abspath}")
@@ -130,7 +130,6 @@ class GalleryController:
             if p.is_file() and p.suffix.lower() in {".jpg", ".png", ".gif", ".bmp"}
         ]
 
-        #   Folders first, then files – each group sorted case-insensitively
         paths = sorted(subdirs, key=str.lower) + sorted(images, key=str.lower)
         logger.debug(f"Populating gallery with paths:\n{paths}")
         self.populate_gallery(paths)
@@ -359,6 +358,7 @@ class GalleryController:
         # set viewer open state to false upon operation complete
         dlg.finished.connect(lambda *_: setattr(self, "_viewer_open", False))
         dlg.exec()
+
 
 class _MiddleClickFilter(QObject):
     """Intercepts middle-button releases on a view's viewport"""
