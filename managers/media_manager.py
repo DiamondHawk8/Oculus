@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-import os
+import os, json, time
 from collections import deque, OrderedDict
 from typing import Callable
 import logging
@@ -26,7 +26,26 @@ _SORT_SQL = {
     ("weight", False): "ORDER BY COALESCE(weight,1) DESC",
 }
 
+_BACKUP_DIR = Path.home() / "OculusBackups"
+_BACKUP_DIR.mkdir(exist_ok=True)
+
 logger = logging.getLogger(__name__)
+
+
+def _log_rename(old_path: str, new_path: str):
+    log_file = _BACKUP_DIR / "rename_log.json"
+    entry = {
+        "timestamp": time.time(),
+        "old": old_path,
+        "new": new_path,
+    }
+    try:
+        data = json.loads(log_file.read_text()) if log_file.exists() else []
+    except json.JSONDecodeError:
+        logger.error("Error decoding file name log file")
+        data = []
+    data.append(entry)
+    log_file.write_text(json.dumps(data, indent=2))
 
 
 class MediaManager(BaseManager, QObject):
@@ -48,6 +67,46 @@ class MediaManager(BaseManager, QObject):
         self._scan_done.connect(self._process_scan_result)
 
         logger.info("Media manager initialized")
+
+    # DB helpers (sync)
+    def add_media(self, path: str, *, is_dir: bool, size: int = 0) -> int:
+        self.execute(
+            "INSERT OR IGNORE INTO media(path, is_dir, byte_size) VALUES (?,?,?)",
+            (path, int(is_dir), size),
+        )
+        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        return row["id"]
+
+    def rename_media(self, old_abs: str, new_abs: str) -> bool:
+        """
+        Return True on success, False if name/path already exists.
+        Updates variants table automatically (via FK ON UPDATE cascade).
+        """
+
+        logger.info(f"Attempting to rename {old_abs} to {new_abs}")
+
+        old_path = Path(old_abs).expanduser().resolve()
+        new_path = Path(new_abs).expanduser().resolve()
+
+        # collision check
+        if new_path.exists():
+            return False
+        row = self.fetchone("SELECT 1 FROM media WHERE path=?", (str(new_path),))
+        if row:
+            return False
+
+        # perform rename on disk
+        try:
+            old_path.rename(new_path)
+        except OSError as exc:
+            logger.error(f"Rename failed on disk: {exc}")
+            return False
+
+        # update DB row
+        self.execute("UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path)))
+
+        _log_rename(str(old_path), str(new_path))
+        return True
 
     def scan_folder(self, folder: str | Path) -> None:
         """
@@ -72,16 +131,7 @@ class MediaManager(BaseManager, QObject):
         task = _ThumbTask(path, self.thumb_size, self._on_thumb_complete)
         self.pool.start(task)
 
-    # DB helpers (sync)
-    def add_media(self, path: str, *, is_dir: bool, size: int = 0) -> int:
-        self.execute(
-            "INSERT OR IGNORE INTO media(path, is_dir, byte_size) VALUES (?,?,?)",
-            (path, int(is_dir), size),
-        )
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        return row["id"]
-
-    # task callbacks (GUI thread)
+    # ----------------------------- task callbacks (GUI thread)
     def _on_scan_complete(self, paths: list[str]) -> None:
         logger.info("Scan complete")
         for p in paths:
@@ -92,28 +142,13 @@ class MediaManager(BaseManager, QObject):
         _thumbnail_cache_set(path, self.thumb_size, pix)
         self.thumb_ready.emit(path, pix)
 
-    def walk_tree(self, root: str | Path) -> dict[str, tuple[list[str], list[str]]]:
-        logger.info("Walking tree")
-        root = Path(root).expanduser().resolve()
-        tree: dict[str, tuple[list[str], list[str]]] = {}
-        q: deque[Path] = deque([root])
-        while q:
-            folder = q.popleft()
-            sub, imgs = [], []
-            for child in folder.iterdir():
-                if child.is_dir():
-                    sub.append(str(child))
-                    q.append(child)
-                elif child.suffix.lower() in IMAGE_EXT:
-                    imgs.append(str(child))
-            tree[str(folder)] = (sub, imgs)
-        return tree
+    # ----------------------------- Path Getters
 
     def all_paths(self, *, files_only: bool = True) -> list[str]:
         """
         Return every path currently in the DB (files by default).
         :param files_only: If false, function will also return directory paths
-        :return: 
+        :return:
         """
         logger.debug(f"Obtaining all paths, files_only: {files_only}")
         if files_only:
@@ -121,21 +156,6 @@ class MediaManager(BaseManager, QObject):
         else:
             self.cur.execute("SELECT path FROM media")
         return [row["path"] for row in self.cur.fetchall()]
-
-    @Slot(object)
-    def _process_scan_result(self, items):
-        logger.info("Processing scan result")
-        seen_dirs = set()
-        for p, sz in items:
-
-            self.add_media(p, is_dir=False, size=sz)
-            parent = str(Path(p).parent)
-
-            if parent not in seen_dirs:
-                self.add_media(parent, is_dir=True)
-                seen_dirs.add(parent)
-
-        self.scan_finished.emit([p for p, _ in items])
 
     def folder_paths(self) -> list[str]:
         logger.info("Obtaining folder paths")
@@ -152,6 +172,8 @@ class MediaManager(BaseManager, QObject):
             if str(Path(p).parent) not in folder_set
         ]
         return sorted(roots)
+
+    # ----------------------------- Sorting
 
     def get_sorted_paths(self, sort_key: str, ascending: bool = True) -> list[str]:
         """
@@ -192,6 +214,39 @@ class MediaManager(BaseManager, QObject):
         # Any paths missing from DB or filtered out are appended in original order
         missing = [p for p in subset if p not in ordered]
         return ordered + missing
+
+    # ----------------------------- Misc
+    @Slot(object)
+    def _process_scan_result(self, items):
+        logger.info("Processing scan result")
+        seen_dirs = set()
+        for p, sz in items:
+
+            self.add_media(p, is_dir=False, size=sz)
+            parent = str(Path(p).parent)
+
+            if parent not in seen_dirs:
+                self.add_media(parent, is_dir=True)
+                seen_dirs.add(parent)
+
+        self.scan_finished.emit([p for p, _ in items])
+
+    def walk_tree(self, root: str | Path) -> dict[str, tuple[list[str], list[str]]]:
+        logger.info("Walking tree")
+        root = Path(root).expanduser().resolve()
+        tree: dict[str, tuple[list[str], list[str]]] = {}
+        q: deque[Path] = deque([root])
+        while q:
+            folder = q.popleft()
+            sub, imgs = [], []
+            for child in folder.iterdir():
+                if child.is_dir():
+                    sub.append(str(child))
+                    q.append(child)
+                elif child.suffix.lower() in IMAGE_EXT:
+                    imgs.append(str(child))
+            tree[str(folder)] = (sub, imgs)
+        return tree
 
 
 # Thread tasks
