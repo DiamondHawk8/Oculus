@@ -7,6 +7,11 @@ UI_OUTPUT = "ui/ui_main.py"
 QRC_PATH = "resources/resources.qrc"
 QRC_OUTPUT = "resources/resources_rc.py"
 
+WIDGETS_PATHS = {
+    "ui/gallery_tab.ui": "ui/ui_gallery_tab.py",
+}
+
+
 def compile_ui():
     print(f"[UI] Compiling {UI_PATH} → {UI_OUTPUT}")
     result = subprocess.run(["pyside6-uic", UI_PATH, "-o", UI_OUTPUT])
@@ -14,6 +19,17 @@ def compile_ui():
         print("[UI] ui_main.py compiled successfully.")
     else:
         print("[UI] Failed to compile main.ui")
+
+
+def compile_widgets():
+    for ui, output_file in WIDGETS_PATHS.items():
+        print(f"[WIDGET] COMPILING {ui} → {output_file}")
+        result = subprocess.run(["pyside6-uic", ui, "-o", output_file])
+        if result.returncode == 0:
+            print(f"[WIDGET] {ui} compiled successfully.")
+        else:
+            print(f"[WIDGET] Failed to compile {ui}")
+
 
 def compile_qrc():
     print(f"[QRC] Compiling {QRC_PATH} → {QRC_OUTPUT}")
@@ -23,19 +39,20 @@ def compile_qrc():
     else:
         print("[QRC] Failed to compile resources.qrc")
 
-# Patch ui_main.py to fix import (theres probably a better way to do this)
-def patch_ui_import():
-    file_path = "ui/ui_main.py"
-    with open(file_path, "r+", encoding="utf-8") as f:
-        lines = f.readlines()
-        f.seek(0)
-        for line in lines:
-            if line.strip() == "import resources_rc":
-                f.write("from resources import resources_rc\n")
-            else:
-                f.write(line)
-        f.truncate()
-    print("[Patch] Patched ui_main.py import")
+
+def patch_import():
+    file_paths = ["ui/ui_main.py", "ui/ui_gallery_tab.py"]
+    for file_path in file_paths:
+        with open(file_path, "r+", encoding="utf-8") as f:
+            lines = f.readlines()
+            f.seek(0)
+            for line in lines:
+                if line.strip() == "import resources_rc":
+                    f.write("from resources import resources_rc\n")
+                else:
+                    f.write(line)
+            f.truncate()
+        print(f"[Patch] Patched {file_path} import")
 
 
 if __name__ == "__main__":
@@ -49,4 +66,6 @@ if __name__ == "__main__":
     else:
         compile_qrc()
 
-    patch_ui_import()
+    compile_widgets()
+
+    patch_import()
