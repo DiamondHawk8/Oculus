@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Callable
+import logging
 
 from PySide6.QtCore import QObject, QTimer, Qt, QEvent
 from PySide6.QtWidgets import QTabWidget, QWidget
@@ -9,6 +9,7 @@ from managers.keybind_manager import KeybindManager
 # how many tabs Ctrl+Shift+T can restore, higher values may lead to decreased performance
 MAX_CLOSED_STACK = 15
 
+logger = logging.getLogger(__name__)
 
 class TabController(QObject):
     def __init__(self,
@@ -33,6 +34,8 @@ class TabController(QObject):
         # Allow for tabs to be closed via MMB
         self._tabs.tabBar().installEventFilter(self)
 
+        logger.info("Tab setup complete")
+
     def open_in_new_tab(self, widget: QWidget, title: str, switch: bool = False) -> int:
         """
         Adds given widget to nav structs
@@ -41,17 +44,21 @@ class TabController(QObject):
         :param switch: If True, when tab is added, it will open automatically
         :return: Index of tab
         """
+        logger.info("Opening in new tab")
+        logger.debug(f"Args: widget: {widget} title: {title} switch: {switch}")
         idx = self._tabs.addTab(widget, title)
         if switch:
             self._tabs.setCurrentIndex(idx)
         return idx
 
     def close_current(self) -> None:
+        logger.debug("Closing current tab")
         idx = self._tabs.currentIndex()
         if idx != -1:
             self._close_index(idx)
 
     def restore_last(self) -> None:
+        logger.debug("Restoring last tab")
         if not self._closed:
             return
         widget, title, cur_idx = self._closed.pop()
@@ -64,6 +71,7 @@ class TabController(QObject):
         :param idx: tab to be closed
         :return: None
         """
+        logger.debug(f"New closed index: {idx}")
         widget = self._tabs.widget(idx)
         title = self._tabs.tabText(idx)
         self._tabs.removeTab(idx)
@@ -72,6 +80,7 @@ class TabController(QObject):
         self._closed.append((widget, title, idx))
 
     def _cycle(self, step: int) -> None:
+        logger.debug(f"Cycling tabs with step: {step}")
         count = self._tabs.count()
         if count == 0:
             return
