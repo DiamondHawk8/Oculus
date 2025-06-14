@@ -1,7 +1,11 @@
 from typing import Callable
+import logging
+
 from PySide6.QtCore import QObject, Qt
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import QWidget
+
+logger = logging.getLogger(__name__)
 
 
 class KeybindManager(QObject):
@@ -16,6 +20,7 @@ class KeybindManager(QObject):
         # QMainWindow
         self._root = root_widget
         self._shortcuts: dict[str, QShortcut] = {}
+        logger.info("Keybind manager initialized")
 
     def register(self, sequence: str | QKeySequence, slot: Callable) -> None:
         """
@@ -24,6 +29,7 @@ class KeybindManager(QObject):
         :param slot: Called when sequence is used
         :return: None
         """
+        logger.debug(f"Registering key-sequence {sequence} with slot: {slot}")
         key = str(sequence)
         if key not in self._shortcuts:
             sc = QShortcut(QKeySequence(sequence), self._root)

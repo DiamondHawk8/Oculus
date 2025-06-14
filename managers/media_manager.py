@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import sqlite3
-from datetime import datetime
 from pathlib import Path
 import os
 from collections import deque, OrderedDict
 from typing import Callable
+import logging
 
 from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObject, Slot, QTimer, Q_ARG
 from PySide6.QtGui import QPixmap
@@ -27,6 +26,8 @@ _SORT_SQL = {
     ("weight", False): "ORDER BY COALESCE(weight,1) DESC",
 }
 
+logger = logging.getLogger(__name__)
+
 
 class MediaManager(BaseManager, QObject):
     """
@@ -46,10 +47,15 @@ class MediaManager(BaseManager, QObject):
 
         self._scan_done.connect(self._process_scan_result)
 
+        logger.info("Media manager initialized")
+
     def scan_folder(self, folder: str | Path) -> None:
         """
         This method returns immediately; results are delivered via scan_finished
         """
+
+        logger.info(f"Attempting to scan folder {folder}")
+
         folder = Path(folder).expanduser().resolve()
         task = _ScanTask(folder, self)
         self.pool.start(task)
@@ -77,6 +83,7 @@ class MediaManager(BaseManager, QObject):
 
     # task callbacks (GUI thread)
     def _on_scan_complete(self, paths: list[str]) -> None:
+        logger.info("Scan complete")
         for p in paths:
             self.add_media(p, is_dir=False)
         self.scan_finished.emit(paths)
@@ -86,6 +93,7 @@ class MediaManager(BaseManager, QObject):
         self.thumb_ready.emit(path, pix)
 
     def walk_tree(self, root: str | Path) -> dict[str, tuple[list[str], list[str]]]:
+        logger.info("Walking tree")
         root = Path(root).expanduser().resolve()
         tree: dict[str, tuple[list[str], list[str]]] = {}
         q: deque[Path] = deque([root])
@@ -107,6 +115,7 @@ class MediaManager(BaseManager, QObject):
         :param files_only: If false, function will also return directory paths
         :return: 
         """
+        logger.debug(f"Obtaining all paths, files_only: {files_only}")
         if files_only:
             self.cur.execute("SELECT path FROM media WHERE is_dir = 0")
         else:
@@ -115,6 +124,7 @@ class MediaManager(BaseManager, QObject):
 
     @Slot(object)
     def _process_scan_result(self, items):
+        logger.info("Processing scan result")
         seen_dirs = set()
         for p, sz in items:
 
@@ -128,6 +138,7 @@ class MediaManager(BaseManager, QObject):
         self.scan_finished.emit([p for p, _ in items])
 
     def folder_paths(self) -> list[str]:
+        logger.info("Obtaining folder paths")
         self.cur.execute("SELECT path FROM media WHERE is_dir = 1")
         return [r["path"] for r in self.cur.fetchall()]
 
@@ -148,7 +159,7 @@ class MediaManager(BaseManager, QObject):
         :param ascending: Return sort in ascending order
         :return:
         """
-
+        logger.debug(f"Obtaining sorted paths with args: sort_key: {sort_key}, ascending: {ascending}")
         clause = _SORT_SQL.get((sort_key, ascending))
         if clause is None:
             clause = _SORT_SQL[("name", True)]

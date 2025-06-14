@@ -18,9 +18,11 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     # check does media exist
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media';")
     if cur.fetchone():
+        logger.debug("Schema exists")
         return
 
     # Otherwise, create the schema
+    logger.debug("No media entries found, creating schema")
     cur.executescript(
         """
         PRAGMA foreign_keys = ON;
@@ -80,6 +82,7 @@ def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: O
 
     if backend == "postgres":
         if psycopg2 is None:
+            logger.error("psycopg2 not installed; cannot use PostgreSQL")
             raise RuntimeError("psycopg2 not installed; cannot use PostgreSQL")
 
         logger.info("Connecting to PostgreSQL...")
@@ -97,7 +100,7 @@ def get_db_connection(*, db_path: Optional[str | os.PathLike] = None, backend: O
         return conn
 
     # ---- SQLite (default) ----
-    logger.info("Connecting to SQLite…")
+    logger.info("Connecting to SQLite")
     sqlite_path = str(db_path or "oculus.db")
     conn = sqlite3.connect(sqlite_path)
     conn.row_factory = sqlite3.Row
@@ -116,7 +119,10 @@ def generate_insert_sql(
     """
     Produce an INSERT … VALUES statement + param tuple for either backend.
     """
+    logger.debug(f"Generating insert sql for {table}")
+    logger.debug(f"Args:\n Columns: {columns}\nValues: {values}\nBackend: {backend}")
     if not table or not columns or len(columns) != len(values):
+        logger.error("Columns and values must have the same length")
         raise ValueError("table, columns, and values must be non-empty & aligned")
 
     cols = f"({', '.join(columns)})"

@@ -1,11 +1,11 @@
 from __future__ import annotations
-import logging
 from typing import List, Set, Union
+import logging
 
 from .base import BaseManager
 from .tag_manager import TagManager
 
-_LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 Token = str
 Operator = str
@@ -13,6 +13,7 @@ AST = Union[str, tuple]
 
 
 def _tokenize(expr: str) -> List[str]:
+    logger.debug(f"Tokenizing {expr}")
     tokens: List[str] = []
     buf = []
     for ch in expr:
@@ -97,7 +98,7 @@ class SearchManager(BaseManager):
         try:
             ast = _parse(_tokenize(expr))
         except ValueError as exc:
-            _LOG.error("Parse error in tag expression '%s': %s", expr, exc)
+            logger.error("Parse error in tag expression '%s': %s", expr, exc)
             return []
 
         cache: dict[str, Set[str]] = {}
@@ -124,4 +125,4 @@ class SearchManager(BaseManager):
         return {row["path"] for row in self.cur.fetchall()}
 
     def _fts_query_postgres(self, term: str) -> List[str]:  # pragma: no cover
-        raise NotImplementedError("FTS not implemented until Phase 4")
+        raise NotImplementedError("FTS not implemented until Phase 6")
