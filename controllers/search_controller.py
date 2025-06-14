@@ -61,7 +61,7 @@ class SearchController:
         self.media_manager.thumb_ready.connect(self._on_thumb_ready)
 
         # toggle button
-        self.ui.btn_search_view.toggled.connect(self.toggle_view)
+        self.ui.btn_search_view.toggled.connect(self._toggle_view)
 
         # size combo
         self.ui.cmb_search_size.addItems(SIZE_PRESETS.keys())
