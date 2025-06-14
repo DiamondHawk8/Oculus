@@ -1,17 +1,18 @@
 from pathlib import Path
+import logging
 
 from PySide6.QtCore import QSize, QModelIndex
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import QListView
+from PySide6.QtWidgets import QApplication, QStyle
 
 import controllers.view_utils as view_utils
 from models.thumbnail_model import ThumbnailListModel
 
 SIZE_PRESETS = {
-    "Small":  (64,  QSize(82,  82)),
-    "Medium": (96,  QSize(118, 118)),
-    "Large":  (128, QSize(150, 150)),
-    "XL":     (192, QSize(216, 216)),
+    "Small": (64, QSize(82, 82)),
+    "Medium": (96, QSize(118, 118)),
+    "Large": (128, QSize(150, 150)),
+    "XL": (192, QSize(216, 216)),
 }
 
 GALLERY_PAGE_INDEX = 0
@@ -26,6 +27,9 @@ _SORT_KEYS = {
     3: "weight",
 }
 
+# TODO allow folders showing in search to be toggled
+SHOW_FOLDERS = True
+
 class SearchController:
     def __init__(self, ui, media_manager, search_manager):
         self.ui = ui
@@ -37,6 +41,8 @@ class SearchController:
 
         self._model = ThumbnailListModel()
         self.ui.resultsList.setModel(self._model)
+
+        self._folder_icon = QApplication.style().standardIcon(QStyle.SP_DirIcon)
 
         # Apply search defaults
         self._search_grid = True
@@ -66,8 +72,11 @@ class SearchController:
 
     def _exec_search(self) -> None:
         term = self.ui.searchEdit.text().strip()
+
         if not term:
-            return
+            # if blank query, return all media
+            self._result_paths = self.media_manager.all_paths(files_only=False)
+            self._apply_sort()
 
         paths = (
             self.search_manager.tag_search(term)
@@ -91,8 +100,12 @@ class SearchController:
         # repopulate model
         self._model.set_paths(ordered)
         self._search_items = {p: i for i, p in enumerate(ordered)}
+
         for p in ordered:
-            self.media_manager.thumb(p)
+            if Path(p).is_dir():
+                self._model.update_icon(p, self._folder_icon)
+            else:
+                self.media_manager.thumb(p)
 
     def _on_thumb_ready(self, path: str, pix: QPixmap) -> None:
         icon = QIcon(pix)
@@ -122,4 +135,3 @@ class SearchController:
         )
         """
         pass
-
