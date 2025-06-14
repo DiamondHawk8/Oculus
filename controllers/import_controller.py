@@ -1,8 +1,12 @@
 from pathlib import Path
+import logging
 
 from PySide6.QtWidgets import QFileDialog
 
 from widgets.folder_tree_widget import FolderTreeWidget
+
+logger = logging.getLogger(__name__)
+
 
 class ImportController:
     def __init__(self, parent_window, ui, media_manager, tag_manager, gallery_controller):
@@ -28,6 +32,8 @@ class ImportController:
         ui.debugFolderTree.deleteLater()
         ui.debugFolderTree = tree
 
+        logger.info("Import setup complete")
+
     def _choose_folder(self) -> None:
         folder = QFileDialog.getExistingDirectory(self.parent_window, "Choose image folder")
         if folder:
@@ -41,6 +47,7 @@ class ImportController:
         Receives scanned paths from MediaManager. Updates DB.
         Then calls _on_scan_complete() to allow the caller to handle UI updates.
         """
+        logger.info("Attempting to add paths to database")
 
         # persist paths into DB so SearchManager can find them
         for p in paths:
