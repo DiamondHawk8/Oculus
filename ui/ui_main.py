@@ -665,18 +665,6 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_8.addWidget(self.btn_home)
 
-        self.btn_adv = QPushButton(self.topMenu)
-        self.btn_adv.setObjectName(u"btn_adv")
-        sizePolicy2.setHeightForWidth(self.btn_adv.sizePolicy().hasHeightForWidth())
-        self.btn_adv.setSizePolicy(sizePolicy2)
-        self.btn_adv.setMinimumSize(QSize(0, 45))
-        self.btn_adv.setFont(font)
-        self.btn_adv.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.btn_adv.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        self.btn_adv.setStyleSheet(u"background-image: url(:/icons/cil-library.png)")
-
-        self.verticalLayout_8.addWidget(self.btn_adv)
-
         self.btn_import = QPushButton(self.topMenu)
         self.btn_import.setObjectName(u"btn_import")
         sizePolicy2.setHeightForWidth(self.btn_import.sizePolicy().hasHeightForWidth())
@@ -723,6 +711,18 @@ class Ui_MainWindow(object):
 "url(:/icons/cil-save.png)")
 
         self.verticalLayout_8.addWidget(self.btn_save)
+
+        self.btn_adv = QPushButton(self.topMenu)
+        self.btn_adv.setObjectName(u"btn_adv")
+        sizePolicy2.setHeightForWidth(self.btn_adv.sizePolicy().hasHeightForWidth())
+        self.btn_adv.setSizePolicy(sizePolicy2)
+        self.btn_adv.setMinimumSize(QSize(0, 45))
+        self.btn_adv.setFont(font)
+        self.btn_adv.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.btn_adv.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.btn_adv.setStyleSheet(u"background-image: url(:/icons/cil-library.png)")
+
+        self.verticalLayout_8.addWidget(self.btn_adv)
 
 
         self.verticalMenuLayout.addWidget(self.topMenu, 0, Qt.AlignmentFlag.AlignTop)
@@ -1417,7 +1417,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 218, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 446, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
@@ -1615,8 +1615,41 @@ class Ui_MainWindow(object):
         self.import_page.setObjectName(u"import_page")
         self.gridLayout_4 = QGridLayout(self.import_page)
         self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_4.addItem(self.horizontalSpacer_3, 1, 2, 1, 1)
+
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_4.addItem(self.horizontalSpacer_2, 1, 0, 1, 1)
+
+        self.chooseBtn = QPushButton(self.import_page)
+        self.chooseBtn.setObjectName(u"chooseBtn")
+        sizePolicy3.setHeightForWidth(self.chooseBtn.sizePolicy().hasHeightForWidth())
+        self.chooseBtn.setSizePolicy(sizePolicy3)
+        icon10 = QIcon()
+        icon10.addFile(u":/icons/cil-folder-open.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.chooseBtn.setIcon(icon10)
+
+        self.gridLayout_4.addWidget(self.chooseBtn, 1, 1, 1, 1)
+
+        self.debugFolderTree = QTreeWidget(self.import_page)
+        __qtreewidgetitem = QTreeWidgetItem()
+        __qtreewidgetitem.setText(0, u"1");
+        self.debugFolderTree.setHeaderItem(__qtreewidgetitem)
+        self.debugFolderTree.setObjectName(u"debugFolderTree")
+        sizePolicy1.setHeightForWidth(self.debugFolderTree.sizePolicy().hasHeightForWidth())
+        self.debugFolderTree.setSizePolicy(sizePolicy1)
+
+        self.gridLayout_4.addWidget(self.debugFolderTree, 3, 1, 1, 1)
+
         self.importStatus = QLabel(self.import_page)
         self.importStatus.setObjectName(u"importStatus")
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.importStatus.sizePolicy().hasHeightForWidth())
+        self.importStatus.setSizePolicy(sizePolicy4)
         font3 = QFont()
         font3.setFamilies([u"Segoe UI"])
         font3.setBold(True)
@@ -1630,32 +1663,12 @@ class Ui_MainWindow(object):
 "")
         self.importStatus.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.gridLayout_4.addWidget(self.importStatus, 1, 2, 1, 1)
+        self.gridLayout_4.addWidget(self.importStatus, 2, 1, 1, 1)
 
-        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.importiInstructions = QLabel(self.import_page)
+        self.importiInstructions.setObjectName(u"importiInstructions")
 
-        self.gridLayout_4.addItem(self.horizontalSpacer_2, 0, 0, 1, 1)
-
-        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gridLayout_4.addItem(self.horizontalSpacer_3, 0, 2, 1, 1)
-
-        self.chooseBtn = QPushButton(self.import_page)
-        self.chooseBtn.setObjectName(u"chooseBtn")
-        sizePolicy1.setHeightForWidth(self.chooseBtn.sizePolicy().hasHeightForWidth())
-        self.chooseBtn.setSizePolicy(sizePolicy1)
-
-        self.gridLayout_4.addWidget(self.chooseBtn, 0, 1, 1, 1)
-
-        self.debugFolderTree = QTreeWidget(self.import_page)
-        __qtreewidgetitem = QTreeWidgetItem()
-        __qtreewidgetitem.setText(0, u"1");
-        self.debugFolderTree.setHeaderItem(__qtreewidgetitem)
-        self.debugFolderTree.setObjectName(u"debugFolderTree")
-        sizePolicy1.setHeightForWidth(self.debugFolderTree.sizePolicy().hasHeightForWidth())
-        self.debugFolderTree.setSizePolicy(sizePolicy1)
-
-        self.gridLayout_4.addWidget(self.debugFolderTree, 1, 1, 1, 1)
+        self.gridLayout_4.addWidget(self.importiInstructions, 0, 1, 1, 1)
 
         self.stackedWidget.addWidget(self.import_page)
         self.search_page = QWidget()
@@ -1720,11 +1733,11 @@ class Ui_MainWindow(object):
 
         self.btn_search_view = QToolButton(self.frame_content_wid_2)
         self.btn_search_view.setObjectName(u"btn_search_view")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
-        self.btn_search_view.setSizePolicy(sizePolicy4)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.btn_search_view.sizePolicy().hasHeightForWidth())
+        self.btn_search_view.setSizePolicy(sizePolicy5)
         palette4 = QPalette()
         palette4.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, brush)
         palette4.setBrush(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, brush1)
@@ -2007,7 +2020,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.stackedWidget.setCurrentIndex(0)
+        self.stackedWidget.setCurrentIndex(2)
         self.galleryTabs.setCurrentIndex(0)
 
 
@@ -2018,11 +2031,11 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.toggleButton.setText(QCoreApplication.translate("MainWindow", u"Hide", None))
         self.btn_home.setText(QCoreApplication.translate("MainWindow", u"Home", None))
-        self.btn_adv.setText(QCoreApplication.translate("MainWindow", u"Widgets", None))
         self.btn_import.setText(QCoreApplication.translate("MainWindow", u"New", None))
         self.btn_search.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.btn_session.setText(QCoreApplication.translate("MainWindow", u"Save", None))
         self.btn_save.setText(QCoreApplication.translate("MainWindow", u"Exit", None))
+        self.btn_adv.setText(QCoreApplication.translate("MainWindow", u"Widgets", None))
         self.toggleLeftBox.setText(QCoreApplication.translate("MainWindow", u"Left Box", None))
         self.extraLabel.setText(QCoreApplication.translate("MainWindow", u"Left Box", None))
 #if QT_CONFIG(tooltip)
@@ -2140,8 +2153,10 @@ class Ui_MainWindow(object):
         ___qtablewidgetitem23.setText(QCoreApplication.translate("MainWindow", u"Line", None));
         self.tableWidget.setSortingEnabled(__sortingEnabled)
 
-        self.importStatus.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.chooseBtn.setText(QCoreApplication.translate("MainWindow", u"IMPORT", None))
+        self.importStatus.setText(QCoreApplication.translate("MainWindow", u"Import Status: Not Started", None))
+        self.importiInstructions.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p align=\"center\">Press Import Button below to import media<br/>Allowed extensions: <span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#98c379;\">&quot;.png&quot;</span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#abb2bf;\">, </span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#98c379;\">&quot;.jpg&quot;</span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#abb2bf;\">, </span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#98c379;\">&quot;.jpeg&quot;</span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#abb2bf;\">, </span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#98c379;\">&quot;.bmp&quot;</span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#abb2bf;\">, </span><span style=\" font-family:'JetBrains Mono','monospace'; font-s"
+                        "ize:9.8pt; color:#98c379;\">&quot;.gif&quot;</span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#abb2bf;\">, </span><span style=\" font-family:'JetBrains Mono','monospace'; font-size:9.8pt; color:#98c379;\">&quot;.webp&quot;</span></p></body></html>", None))
         self.searchTitle.setText(QCoreApplication.translate("MainWindow", u"Search", None))
         self.searchEdit.setText("")
         self.searchEdit.setPlaceholderText(QCoreApplication.translate("MainWindow", u"Type here", None))
