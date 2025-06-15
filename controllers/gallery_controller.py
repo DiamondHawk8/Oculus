@@ -294,6 +294,7 @@ class GalleryController:
             self._on_rename_triggered()
 
     def _on_rename_triggered(self):
+        logger.info("Renaming media")
         idx = self.ui.galleryList.currentIndex()
         if not idx.isValid():
             return
@@ -320,6 +321,8 @@ class GalleryController:
 
         # Sort gallery
         self._apply_sort()
+
+        logger.debug(f"{old_path} -> {new_path}")
 
 
 
@@ -386,29 +389,13 @@ class GalleryController:
         return widget, ui_local
 
     def _open_viewer(self, index: QModelIndex):
-        logger.info("Opening media viewer")
-        logger.debug(f"_open_viewer called with index: {index}")
-        if self._viewer_open:
-            logger.warning("Viewer instance is already open")
-            return
-
-        path = self._model.data(index, Qt.UserRole)
-        if not path or not Path(path).is_file():
-            logger.warning(f"Item at {path} does not exist")
-            return
-
-        # assemble the current list of file paths in display order
-        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
-        cur_idx = paths.index(path)
-
-        self._viewer_open = True
-        logger.debug(f"Attempting to create ImageViewerDialog with args: \n"
-                     f"path: {paths}, cur_idx: {cur_idx}, parent: {self._host_widget}")
-        dlg = ImageViewerDialog(paths, cur_idx, parent=self._host_widget)
-
-        # set viewer open state to false upon operation complete
-        dlg.finished.connect(lambda *_: setattr(self, "_viewer_open", False))
-        dlg.exec()
+        view_utils.open_image_viewer(
+            self._model,
+            index,
+            host_widget=self._host_widget,
+            flag_container=self,
+            flag_attr="_viewer_open",
+        )
 
 
 class _MiddleClickFilter(QObject):
