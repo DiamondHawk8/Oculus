@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle
+from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QMessageBox
 
 import controllers.view_utils as view_utils
 
@@ -11,6 +11,7 @@ from models.thumbnail_model import ThumbnailListModel
 from ui.ui_gallery_tab import Ui_Form
 
 from widgets.image_viewer import ImageViewerDialog
+from widgets.rename_dialog import RenameDialog
 
 import logging
 
@@ -52,6 +53,8 @@ class GalleryController:
         self.ui.galleryList.setModel(self._model)
 
         self._gallery_items: dict[str, int] = {}
+
+        self._current_folder: str | None = None
 
         # Apply gallery defaults
         self._gallery_grid = True  # default mode
@@ -144,6 +147,8 @@ class GalleryController:
         """
 
         logger.debug(f"open_folder called with folder abspath: {folder_abspath}")
+
+        self._current_folder = folder_abspath
 
         if self._cursor >= 0 and self._history[self._cursor] == folder_abspath:
             return  # same folder; ignore
@@ -279,8 +284,44 @@ class GalleryController:
             }
         """)
         act_new = menu.addAction("Open in New Tab")
-        if menu.exec(self.ui.galleryList.mapToGlobal(pos)) == act_new:
+        rename_act = menu.addAction("Rename")
+
+        chosen = menu.exec(self.ui.galleryList.mapToGlobal(pos))
+
+        if chosen == act_new:
             self._open_in_new_tab(idx)
+        elif chosen == rename_act:
+            self._on_rename_triggered()
+
+    def _on_rename_triggered(self):
+        idx = self.ui.galleryList.currentIndex()
+        if not idx.isValid():
+            return
+
+        old_path = self._model.data(idx, Qt.UserRole)
+
+        dlg = RenameDialog(old_path, parent=self.ui.gallery_page)
+        if not (dlg.exec() and dlg.result_path):
+            return
+
+        new_path = dlg.result_path
+        if not self.media_manager.rename_media(old_path, new_path):
+            QMessageBox.warning(self.ui.gallery_page, "Rename failed",
+                                "A file or folder with that name already exists.")
+            return
+
+        # Update the path map
+        row = self._gallery_items.pop(old_path)
+        self._gallery_items[new_path] = row
+
+        # Update the models text and icon
+        self._model.update_display(old_path, Path(new_path).name, new_user_role=new_path)
+        self.media_manager.thumb(new_path)
+
+        # Sort gallery
+        self._apply_sort()
+
+
 
     def eventFilter(self, obj, event):
         # If MMB on the gallery list

@@ -33,6 +33,22 @@ class ThumbnailListModel(QAbstractListModel):
             idx = self.index(row)
             self.dataChanged.emit(idx, idx, [Qt.DecorationRole])
 
+    def update_display(self, old_path: str, new_name: str, *, new_user_role: str):
+        """
+        Change the display label (and role data) for one row.
+        :param old_path:
+        :param new_name:
+        :param new_user_role:
+        :return:
+        """
+        try:
+            idx = self._paths.index(old_path)
+        except ValueError:
+            return
+        self._paths[idx] = new_user_role  # replace stored path
+        model_idx = self.index(idx)
+        self.dataChanged.emit(model_idx, model_idx, [Qt.DisplayRole, Qt.UserRole])
+
     def path_at(self, row: int) -> str:
         #  accessor for controllers
         return self._paths[row]
