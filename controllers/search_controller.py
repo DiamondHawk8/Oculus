@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 
-from PySide6.QtCore import QSize, QModelIndex
+from PySide6.QtCore import QSize, QModelIndex, Qt, QEvent, QObject
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QStyle
 
@@ -32,14 +32,22 @@ SHOW_FOLDERS = True
 
 logger = logging.getLogger(__name__)
 
-class SearchController:
-    def __init__(self, ui, media_manager, search_manager):
+
+class SearchController(QObject):
+    def __init__(self, ui, media_manager, search_manager, tab_controller, host_widget, gallery_controller):
+        super().__init__()
+
         self.ui = ui
         self.media_manager = media_manager
         self.search_manager = search_manager
+        self.tab_controller = tab_controller
+        self.gallery_controller = gallery_controller
 
         self._search_items: dict[str, int] = {}
         self._result_paths: list[str] = []
+
+        self._viewer_open = False
+        self._host_widget = host_widget
 
         self._model = ThumbnailListModel()
         self.ui.resultsList.setModel(self._model)
@@ -68,12 +76,15 @@ class SearchController:
         self.ui.cmb_search_size.setCurrentText(self._search_preset)
         self.ui.cmb_search_size.currentTextChanged.connect(self.change_size)
 
+        # Media activation hook
+        self.ui.resultsList.activated.connect(self._on_item_activated)
+        self.ui.resultsList.viewport().installEventFilter(self)
+
         # Sort hooks
         self.ui.cmb_search_sortKey.currentIndexChanged.connect(self._apply_sort)
         self.ui.btn_search_sortDir.toggled.connect(self._apply_sort)
 
         logger.info("Search setup complete")
-
 
     def _exec_search(self) -> None:
         logger.info("Search started")
@@ -139,10 +150,48 @@ class SearchController:
                               grid=self._search_grid,
                               preset=preset)
 
-    def _on_item_activated(self, index: QModelIndex):
-        """
-        self.tab_controller.open_in_new_tab(
-            new_gallery_page_for(folder_path), Path(folder_path).name
+    def _open_viewer(self, index: QModelIndex):
+        view_utils.open_image_viewer(
+            self._model,
+            index,
+            host_widget=self._host_widget,
+            flag_container=self,
+            flag_attr="_viewer_open",
         )
-        """
-        pass
+
+    def _on_item_activated(self, index: QModelIndex):
+        if not index.isValid():
+            return
+        abs_path = self._model.data(index, Qt.UserRole)
+
+        if Path(abs_path).is_dir():
+            # tell the existing GalleryController to switch folders
+            self.gallery_controller.open_folder(abs_path)
+            # bring Gallery page to front
+            # TODO Allow for auto switching to gallery to be optional
+            self.ui.stackedWidget.setCurrentIndex(GALLERY_PAGE_INDEX)
+        else:
+            self._open_viewer(index)
+
+    def eventFilter(self, obj, event):
+        if (obj is self.ui.resultsList.viewport()
+                and event.type() == QEvent.MouseButtonRelease
+                and event.button() == Qt.MiddleButton):
+
+            idx = self.ui.resultsList.indexAt(event.pos())
+            if not idx.isValid():
+                return True  # swallow event
+
+            abs_path = self._model.data(idx, Qt.UserRole)
+            target_folder = abs_path if Path(abs_path).is_dir() else str(Path(abs_path).parent)
+
+            self.tab_controller.open_folder_tab(
+                root_path=target_folder,
+                title=Path(target_folder).name,
+                switch=True
+            )
+            # TODO Allow for auto switching to gallery to be optional
+            self.ui.stackedWidget.setCurrentIndex(GALLERY_PAGE_INDEX)
+            return True
+
+        return super().eventFilter(obj, event)

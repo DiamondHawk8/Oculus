@@ -51,11 +51,12 @@ class MainWindow(QMainWindow):
 
         # Logic Controllers
 
-        self.tab_controller = TabController(tab_widget=self.ui.galleryTabs, keybinds=self.keybinds)
+        self.tab_controller = TabController(self.ui.galleryTabs, self.media, self.tags, self.keybinds)
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags, self.tab_controller,
                                                     self.ui.gallery_page)
 
-        self.search_controller = SearchController(self.ui, self.media, self.search)
+        self.search_controller = SearchController(self.ui, self.media, self.search, self.tab_controller,
+                                                  self.ui.search_page, self.gallery_controller)
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
         logger.debug("Controllers instantiated")
 
