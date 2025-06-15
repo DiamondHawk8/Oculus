@@ -339,32 +339,22 @@ class GalleryController:
         return super().eventFilter(obj, event)
 
     def _open_in_new_tab(self, index: QModelIndex) -> None:
-        logger.info("_open_in_new_tab called")
-        logger.debug(f"_open_in_new_tab index: {index}")
-        path = self._model.data(index, Qt.UserRole)
-        if not path:
-            logger.warning(f"Item at {path} does not exist")
+        """
+        Called on middle-click from inside Gallery. Code path is identical to Search’s middle-click.
+        :param index:
+        :return:
+        """
+        if not index.isValid():
             return
 
-        # Clone a fresh tab page containing a QListView & toolbar
-        page_widget, page_ui = self._build_gallery_tab()
-        clone_controller = GalleryController(
-            ui=page_ui,
-            media_manager=self.media_manager,
-            tag_manager=self.tag_manager,
-            tab_controller=self.tab_controller,
-            host_widget=page_widget
+        abs_path = self._model.data(index, Qt.UserRole)
+        target = abs_path if Path(abs_path).is_dir() else str(Path(abs_path).parent)
+
+        self.tab_controller.open_folder_tab(
+            root_path=target,
+            title=Path(target).name or "Root",
+            switch=True
         )
-        logger.debug(f"New gallery instance created: {clone_controller}")
-
-        # Point it at the folder (or file's parent) that was clicked
-        target = path if Path(path).is_dir() else str(Path(path).parent)
-        logger.debug(f"New gallery target path: {target}")
-        clone_controller.open_folder(target)
-
-        # Hand it to TabController
-        tab_title = Path(target).name or "Root"
-        self.tab_controller.open_in_new_tab(page_widget, tab_title)
 
     # helper for local shortcuts (keeps them limited to gallery page)
     def _add_shortcut(self, keyseq: str, slot):

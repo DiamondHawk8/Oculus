@@ -1,22 +1,32 @@
 from collections import deque
 import logging
+from pathlib import Path
 
 from PySide6.QtCore import QObject, QTimer, Qt, QEvent
 from PySide6.QtWidgets import QTabWidget, QWidget
 
 from managers.keybind_manager import KeybindManager
+from managers.media_manager import MediaManager
+from managers.tag_manager import TagManager
+from ui.ui_gallery_tab import Ui_Form
+from controllers.gallery_controller import GalleryController
 
 # how many tabs Ctrl+Shift+T can restore, higher values may lead to decreased performance
 MAX_CLOSED_STACK = 15
 
 logger = logging.getLogger(__name__)
 
+
 class TabController(QObject):
-    def __init__(self,
-                 tab_widget: QTabWidget,
+    def __init__(self, tab_widget: QTabWidget,
+                 media_manager: MediaManager,
+                 tag_manager: TagManager,
                  keybinds: KeybindManager,
                  parent: QObject | None = None):
         super().__init__(parent)
+
+        self.media_manager = media_manager
+        self.tag_manager = tag_manager
 
         self._tabs = tab_widget
         self._closed: deque = deque(maxlen=MAX_CLOSED_STACK)
@@ -50,6 +60,40 @@ class TabController(QObject):
         if switch:
             self._tabs.setCurrentIndex(idx)
         return idx
+
+    def open_folder_tab(self, root_path: str, title: str | None = None,
+                        *, switch: bool = True) -> int:
+        """
+        Build a new Gallery page rooted at root_path and add it as a tab.
+        Returns the tab index.
+        :param root_path:
+        :param title:
+        :param switch:
+        :return:
+        """
+        logger.info(f"Opening in new tab from {root_path}")
+        logger.debug(f"Args: title: {title} switch: {switch}")
+        tab_page = QWidget()
+        ui = Ui_Form()
+        ui.setupUi(tab_page)
+
+        clone_controller = GalleryController(
+            ui,
+            media_manager=self.media_manager,
+            tag_manager=self.tag_manager,
+            tab_controller=self,
+            host_widget=tab_page
+        )
+        logger.debug(f"New gallery instance created: {clone_controller}")
+
+        clone_controller.open_folder(root_path)
+
+        # Drop it in the QTabWidget
+        return self.open_in_new_tab(
+            tab_page,
+            title or Path(root_path).name,
+            switch=switch
+        )
 
     def close_current(self) -> None:
         logger.debug("Closing current tab")
