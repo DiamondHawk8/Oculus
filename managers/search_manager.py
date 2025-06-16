@@ -82,6 +82,7 @@ class SearchManager(BaseManager):
         self.tags = tag_manager
 
     # TODO, Allow for toggling of including folders in search result
+    # TODO, Make paths not skew search results
     def simple_search(self, term: str) -> List[str]:
         if not term:
             return []
