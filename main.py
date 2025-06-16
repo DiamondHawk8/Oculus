@@ -13,6 +13,7 @@ from managers.search_manager import SearchManager
 from managers.tag_manager import TagManager
 from managers.keybind_manager import KeybindManager
 from managers.db_utils import get_db_connection
+from managers.undo_manager import UndoManager
 
 from controllers.gallery_controller import GalleryController
 from controllers.import_controller import ImportController
@@ -41,7 +42,8 @@ class MainWindow(QMainWindow):
         logger.info("Connected to database")
 
         # backend managers
-        self.media = MediaManager(self.conn, parent=self)
+        self.undo = UndoManager()
+        self.media = MediaManager(self.conn, self.undo, parent=self)
         self.tags = TagManager(self.conn)
         self.search = SearchManager(self.conn, self.tags)
         logger.debug("Main managers instantiated")
@@ -50,7 +52,6 @@ class MainWindow(QMainWindow):
         self.keybinds = KeybindManager(self)
 
         # Logic Controllers
-
         self.tab_controller = TabController(self.ui.galleryTabs, self.media, self.tags, self.keybinds)
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags, self.tab_controller,
                                                     self.ui.gallery_page)
@@ -75,8 +76,10 @@ class MainWindow(QMainWindow):
                 self.showNormal()
             else:
                 self.showMaximized()
-
         self.ui.maximizeRestoreAppBtn.clicked.connect(_toggle_max_restore)
+
+        # Register global keybinds
+        self.keybinds.register("Ctrl+Z", lambda: self.undo.undo_last(self.media.rename_media))
 
         # Connect page buttons
         self.ui.btn_home.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(GALLERY_PAGE_INDEX))

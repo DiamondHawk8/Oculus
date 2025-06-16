@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from pathlib import Path
-import os, json, time
-from collections import deque, OrderedDict
-from typing import Callable
+import json
 import logging
+import os
+import time
+from collections import deque, OrderedDict
+from pathlib import Path
+from typing import Callable
 
-from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, QMetaObject, Slot, QTimer, Q_ARG
+from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, Slot
 from PySide6.QtGui import QPixmap
 
 from .base import BaseManager
@@ -56,10 +58,13 @@ class MediaManager(BaseManager, QObject):
     scan_finished = Signal(list)
     thumb_ready = Signal(str, object)
     _scan_done = Signal(object)
+    renamed = Signal(str, str)
 
-    def __init__(self, conn, thumb_size: int = 256, parent=None):
+    def __init__(self, conn, undo_manager, thumb_size: int = 256, parent=None):
         BaseManager.__init__(self, conn)
         QObject.__init__(self, parent)
+
+        self.undo_manager = undo_manager
 
         self.thumb_size = thumb_size
         self.pool = QThreadPool.globalInstance()
@@ -79,10 +84,11 @@ class MediaManager(BaseManager, QObject):
 
     def rename_media(self, old_abs: str, new_abs: str) -> bool:
         """
-        Return True on success, False if name/path already exists.
-        Updates variants table automatically (via FK ON UPDATE cascade).
+        Rename on disk and update DB. Returns False if the destination already exists or any error occurs.
+        :param old_abs: Old absolute path of media
+        :param new_abs: New absolute path of media
+        :return: True if operation was successful, False otherwise
         """
-
         logger.info(f"Attempting to rename {old_abs} to {new_abs}")
 
         old_path = Path(old_abs).expanduser().resolve()
@@ -106,6 +112,12 @@ class MediaManager(BaseManager, QObject):
         self.execute("UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path)))
 
         _log_rename(str(old_path), str(new_path))
+
+        if self.undo_manager:
+            self.undo_manager.push(str(old_path), str(new_path))
+
+        self.renamed.emit(str(old_path), str(new_path))
+
         return True
 
     def scan_folder(self, folder: str | Path) -> None:

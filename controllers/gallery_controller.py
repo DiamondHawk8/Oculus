@@ -10,7 +10,6 @@ from models.thumbnail_model import ThumbnailListModel
 
 from ui.ui_gallery_tab import Ui_Form
 
-from widgets.image_viewer import ImageViewerDialog
 from widgets.rename_dialog import RenameDialog
 
 import logging
@@ -37,6 +36,8 @@ class GalleryController:
 
         self.ui = ui
         self.media_manager = media_manager
+        self.media_manager.renamed.connect(self._on_renamed)
+
         self.tag_manager = tag_manager
         self.tab_controller = tab_controller
         # Attribute used to differentiate between the root gallery page and other opened tabs
@@ -311,15 +312,25 @@ class GalleryController:
                                 "A file or folder with that name already exists.")
             return
 
-        # Update the path map
+        self._on_renamed(old_path, new_path)
+
+    def _on_renamed(self, old_path: str, new_path: str) -> None:
+        """
+        Update UI/data when any rename (including Undo) occurs.
+        :param old_path:
+        :param new_path:
+        :return:
+        """
+
+        if old_path not in self._gallery_items:
+            return  # this tab doesn't show that item
+
         row = self._gallery_items.pop(old_path)
         self._gallery_items[new_path] = row
 
-        # Update the models text and icon
         self._model.update_display(old_path, Path(new_path).name, new_user_role=new_path)
-        self.media_manager.thumb(new_path)
 
-        # Sort gallery
+        self.media_manager.thumb(new_path)  # enqueue new thumb
         self._apply_sort()
 
         logger.debug(f"{old_path} -> {new_path}")
