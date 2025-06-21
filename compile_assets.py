@@ -9,6 +9,7 @@ QRC_OUTPUT = "resources/resources_rc.py"
 
 WIDGETS_PATHS = {
     "ui/gallery_tab.ui": "ui/ui_gallery_tab.py",
+    "ui/collision_dialog.ui": "ui/ui_collision_dialog.py",
 }
 
 
