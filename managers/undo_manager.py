@@ -62,3 +62,11 @@ class UndoManager:
             for o, n in self._history
         ]
         self._LOG_PATH.write_text(json.dumps(data, indent=2))
+
+    def can_undo(self) -> bool:
+        """
+        Checks to see if there is an operation that can be reversed
+        :return: True if self._history is not empty else False
+        """
+        return bool(self._history)
+
