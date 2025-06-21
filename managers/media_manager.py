@@ -156,10 +156,18 @@ class MediaManager(BaseManager, QObject):
         self.pool.start(task)
 
     def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
+        """
+        Remove DB row for new_path, then replace the on-disk target.
+        :param old_path:
+        :param new_path:
+        :return:
+        """
         try:
-            with self.conn:  # atomic
+            with self.conn:
+                # delete any DB row that already owns new_path
                 self.execute("DELETE FROM media WHERE path=?", (str(new_path),))
-                old_path.rename(new_path)
+                old_path.replace(new_path)
+                # update this item's path in DB
                 self.execute("UPDATE media SET path=? WHERE path=?",
                              (str(new_path), str(old_path)))
             _log_rename(str(old_path), str(new_path))
@@ -167,10 +175,14 @@ class MediaManager(BaseManager, QObject):
                 self.undo_manager.push(str(old_path), str(new_path))
             self.renamed.emit(str(old_path), str(new_path))
             return True
+
+        except PermissionError as exc:
+            logger.error("Overwrite failed (permission): %s", exc)
         except OSError as exc:
-            logger.error("Disk overwrite failed: %s", exc)
+            logger.error("Overwrite failed on disk: %s", exc)
         except sqlite3.IntegrityError as exc:
-            logger.error("DB overwrite failed: %s", exc)
+            logger.error("Overwrite failed in DB: %s", exc)
+
         return False
 
     # ----------------------------- task callbacks (GUI thread)
