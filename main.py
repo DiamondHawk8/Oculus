@@ -14,6 +14,7 @@ from managers.tag_manager import TagManager
 from managers.keybind_manager import KeybindManager
 from managers.db_utils import get_db_connection
 from managers.undo_manager import UndoManager
+from managers.bulk_op_manager import BulkOpManager
 
 from controllers.gallery_controller import GalleryController
 from controllers.import_controller import ImportController
@@ -50,6 +51,7 @@ class MainWindow(QMainWindow):
 
         # Other Managers
         self.keybinds = KeybindManager(self)
+        self.bulk_queue = BulkOpManager(self.media, self.undo, parent=self)
 
         # Logic Controllers
         self.tab_controller = TabController(self.ui.galleryTabs, self.media, self.tags, self.keybinds)
