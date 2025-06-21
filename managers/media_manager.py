@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sqlite3
 import time
 from collections import deque, OrderedDict
 from pathlib import Path
@@ -105,6 +106,8 @@ class MediaManager(BaseManager, QObject):
                 return False
             if choice == "auto":
                 new_path = self._unique_path(new_path)
+            if choice == "overwrite":
+                self._safe_overwrite(old_path, new_path)
 
         row = self.fetchone("SELECT 1 FROM media WHERE path=?", (str(new_path),))
         if row:
@@ -151,6 +154,24 @@ class MediaManager(BaseManager, QObject):
             return
         task = _ThumbTask(path, self.thumb_size, self._on_thumb_complete)
         self.pool.start(task)
+
+    def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
+        try:
+            with self.conn:  # atomic
+                self.execute("DELETE FROM media WHERE path=?", (str(new_path),))
+                old_path.rename(new_path)
+                self.execute("UPDATE media SET path=? WHERE path=?",
+                             (str(new_path), str(old_path)))
+            _log_rename(str(old_path), str(new_path))
+            if self.undo_manager:
+                self.undo_manager.push(str(old_path), str(new_path))
+            self.renamed.emit(str(old_path), str(new_path))
+            return True
+        except OSError as exc:
+            logger.error("Disk overwrite failed: %s", exc)
+        except sqlite3.IntegrityError as exc:
+            logger.error("DB overwrite failed: %s", exc)
+        return False
 
     # ----------------------------- task callbacks (GUI thread)
     def _on_scan_complete(self, paths: list[str]) -> None:
