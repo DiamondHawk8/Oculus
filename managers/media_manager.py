@@ -13,6 +13,8 @@ from PySide6.QtGui import QPixmap
 
 from .base import BaseManager
 
+from widgets.collision_dialog import CollisionDialog
+
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 _CACHE_CAPACITY = 512
 _THUMB_CACHE: "OrderedDict[tuple[str, int], QPixmap]" = OrderedDict()
@@ -96,7 +98,14 @@ class MediaManager(BaseManager, QObject):
 
         # collision check
         if new_path.exists():
-            return False
+            choice = CollisionDialog.ask(str(old_path), str(new_path))
+            if choice == "cancel":
+                return False
+            if choice == "skip":
+                return False
+            if choice == "auto":
+                new_path = self._unique_path(new_path)
+
         row = self.fetchone("SELECT 1 FROM media WHERE path=?", (str(new_path),))
         if row:
             return False
@@ -259,6 +268,23 @@ class MediaManager(BaseManager, QObject):
                     imgs.append(str(child))
             tree[str(folder)] = (sub, imgs)
         return tree
+
+    def _unique_path(self, base: Path) -> Path:
+        """
+        Return a non-existent path by appending _1, _2 etc.
+        e.g. pics/cat.png  ->  pics/cat_1.png
+        :param base:
+        :return:
+        """
+        stem, suffix = base.stem, base.suffix
+        parent = base.parent
+
+        counter = 1
+        while True:
+            candidate = parent / f"{stem}_{counter}{suffix}"
+            if not candidate.exists():
+                return candidate
+            counter += 1
 
 
 # Thread tasks

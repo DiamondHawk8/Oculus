@@ -308,8 +308,10 @@ class GalleryController:
 
         new_path = dlg.result_path
         if not self.media_manager.rename_media(old_path, new_path):
+            """
             QMessageBox.warning(self.ui.gallery_page, "Rename failed",
                                 "A file or folder with that name already exists.")
+            """
             return
 
         self._on_renamed(old_path, new_path)
