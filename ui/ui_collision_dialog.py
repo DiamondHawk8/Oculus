@@ -25,11 +25,11 @@ class Ui_CollisionDialog(object):
         CollisionDialog.resize(338, 227)
         self.verticalLayout_2 = QVBoxLayout(CollisionDialog)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.label = QLabel(CollisionDialog)
-        self.label.setObjectName(u"label")
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label_info = QLabel(CollisionDialog)
+        self.label_info.setObjectName(u"label_info")
+        self.label_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.verticalLayout_2.addWidget(self.label)
+        self.verticalLayout_2.addWidget(self.label_info)
 
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
@@ -64,7 +64,7 @@ class Ui_CollisionDialog(object):
 
     def retranslateUi(self, CollisionDialog):
         CollisionDialog.setWindowTitle(QCoreApplication.translate("CollisionDialog", u"Dialog", None))
-        self.label.setText(QCoreApplication.translate("CollisionDialog", u"If you are seeing this text something has gone wrong", None))
+        self.label_info.setText(QCoreApplication.translate("CollisionDialog", u"If you are seeing this text something has gone wrong", None))
         self.btn_overwrite.setText(QCoreApplication.translate("CollisionDialog", u"Overwrite", None))
         self.btn_auto.setText(QCoreApplication.translate("CollisionDialog", u"Rename", None))
         self.btn_skip.setText(QCoreApplication.translate("CollisionDialog", u"Skip", None))
