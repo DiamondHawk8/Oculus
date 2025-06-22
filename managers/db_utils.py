@@ -14,62 +14,83 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
+    """
+    Create the base schema on a brand-new DB, or upgrade an
+    existing DB by adding any missing tables / indexes.
+    """
     cur = conn.cursor()
-    # check does media exist
+
+    # Does the core 'media' table exist?
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='media';")
-    if cur.fetchone():
-        logger.debug("Schema exists")
-        return
+    media_exists = bool(cur.fetchone())
 
-    # Otherwise, create the schema
-    logger.debug("No media entries found, creating schema")
-    cur.executescript(
-        """
-        PRAGMA foreign_keys = ON;
+    if not media_exists:
+        logger.debug("Fresh database – creating core schema")
+        cur.executescript(
+            """
+            PRAGMA foreign_keys = ON;
 
-        CREATE TABLE media (
-            id     INTEGER PRIMARY KEY,
-            path   TEXT UNIQUE,
-            added  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_dir BOOLEAN DEFAULT 0,
-            byte_size INTEGER DEFAULT 0
-        );
+            CREATE TABLE media (
+                id        INTEGER PRIMARY KEY,
+                path      TEXT UNIQUE,
+                added     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_dir    BOOLEAN DEFAULT 0,
+                byte_size INTEGER DEFAULT 0
+            );
 
-        CREATE TABLE variants (
-            base_id    INTEGER,
-            variant_id INTEGER UNIQUE,
-            rank       INTEGER DEFAULT 0,
-            FOREIGN KEY(base_id)    REFERENCES media(id) ON DELETE CASCADE,
-            FOREIGN KEY(variant_id) REFERENCES media(id) ON DELETE CASCADE
-        );
+            CREATE TABLE presets (
+                id        INTEGER PRIMARY KEY,
+                media_id  INTEGER,
+                name      TEXT,
+                zoom      REAL,
+                pan_x     INTEGER,
+                pan_y     INTEGER,
+                FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
+            );
 
-        CREATE TABLE presets (
-            id        INTEGER PRIMARY KEY,
-            media_id  INTEGER,
-            name      TEXT,
-            zoom      REAL,
-            pan_x     INTEGER,
-            pan_y     INTEGER,
-            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
-        );
+            CREATE TABLE attributes (
+                media_id  INTEGER PRIMARY KEY,
+                favorite  BOOLEAN DEFAULT 0,
+                weight    REAL    DEFAULT 1.0,
+                FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
+            );
 
-        CREATE TABLE attributes (
-            media_id  INTEGER PRIMARY KEY,
-            favorite  BOOLEAN DEFAULT 0,
-            weight    REAL    DEFAULT 1.0,
-            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
-        );
+            CREATE TABLE tags (
+                media_id  INTEGER,
+                tag       TEXT,
+                FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE,
+                UNIQUE(media_id, tag)
+            );
 
-        CREATE TABLE tags (
-            media_id  INTEGER,
-            tag       TEXT,
-            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE,
-            UNIQUE(media_id, tag)
-        );
+            CREATE INDEX idx_tags_tag ON tags(tag);
+            """
+        )
+        conn.commit()
+        logger.debug("Core schema created")
 
-        CREATE INDEX idx_tags_tag ON tags(tag);
-        """
-    )
+    # ALWAYS ensure variants table/indexes exist (upgrade path)
+    ensure_variants_schema(conn)
+    logger.debug("Schema verified / upgraded")
+
+
+def ensure_variants_schema(conn) -> None:
+    cur = conn.cursor()
+
+    # main table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS variants (
+            base_id     INTEGER NOT NULL,
+            variant_id  INTEGER NOT NULL UNIQUE,
+            rank        INTEGER DEFAULT 0,
+            FOREIGN KEY(base_id)    REFERENCES media(id)  ON DELETE CASCADE,
+            FOREIGN KEY(variant_id) REFERENCES media(id)  ON DELETE CASCADE
+        )
+    """)
+
+    # lookup indexes
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_variants_base  ON variants(base_id)")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_variants_rank ON variants(base_id, rank)")
+
     conn.commit()
 
 
