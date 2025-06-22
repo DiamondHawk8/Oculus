@@ -5,8 +5,15 @@ import logging
 import time
 from collections import deque
 from pathlib import Path
+from typing import Deque
 
 logger = logging.getLogger(__name__)
+
+
+class UndoEntry:
+    old: str
+    new: str
+    backup: str | None = None
 
 
 class UndoManager:
@@ -32,29 +39,35 @@ class UndoManager:
 
             logger.info("UndoManager initialized")
 
-    def push(self, old_path: str, new_path: str) -> None:
+    def push(self, old_path: str, new_path: str, *, backup: str | None = None) -> None:
         """
         Record a successful rename
+        :param backup:
         :param old_path:
         :param new_path:
         :return:
         """
-        self._history.append((old_path, new_path))
+        self._history.append(UndoEntry(old_path, new_path, backup))
         self._dump()
 
-    def undo_last(self, fs_rename) -> bool:
+    def undo_last(self, media_mgr) -> bool:
         """
-        Undo the most recent rename.
-        :param fs_rename: Usually MediaManager.rename_media.
+        Revert the most-recent operation.
+        :param media_mgr: Media manager to allow for db operations to be reversed
         :return:
         """
+
         if not self._history:
             return False
 
-        old_path, new_path = self._history.pop()  # reverse order
-        ok = fs_rename(new_path, old_path)  # inverse rename
+        entry = self._history.pop()
+        ok = (
+            media_mgr.restore_overwrite(entry) if entry.backup
+            else media_mgr.rename_media(entry.new, entry.old)
+        )
         self._dump()
         return ok
+
 
     def _dump(self) -> None:
         data = [
@@ -69,4 +82,3 @@ class UndoManager:
         :return: True if self._history is not empty else False
         """
         return bool(self._history)
-
