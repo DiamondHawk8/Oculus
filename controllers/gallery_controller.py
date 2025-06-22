@@ -318,24 +318,41 @@ class GalleryController:
 
     def _on_renamed(self, old_path: str, new_path: str) -> None:
         """
-        Update UI/data when any rename (including Undo) occurs.
-        :param old_path:
-        :param new_path:
-        :return:
+        Refresh gallery rows whenever MediaManager emits renamed(old, new).
+
+        Behaviour:
+          • rename inside current folder → row key + label updated
+          • move out of folder          → row removed
+          • move into folder            → new row added
         """
+        root_dir = Path(self._current_folder)          # adjust if your var differs
+        new_parent = Path(new_path).parent
+        old_in_view = old_path in self._gallery_items
 
-        if old_path not in self._gallery_items:
-            return  # this tab doesn't show that item
+        # Rename stays within this folder
+        if old_in_view and new_parent == root_dir:
+            row = self._gallery_items.pop(old_path)
+            self._gallery_items[new_path] = row
+            self._model.update_display(old_path,
+                                       Path(new_path).name,
+                                       new_user_role=new_path)
+            self.media_manager.thumb(new_path)
+            self._apply_sort()
+            return
 
-        row = self._gallery_items.pop(old_path)
-        self._gallery_items[new_path] = row
+        # File moved out of this folder, therfore drop the row
+        if old_in_view and new_parent != root_dir:
+            row = self._gallery_items.pop(old_path)
+            self._model.removeRow(row)
+            self._apply_sort()
+            return
 
-        self._model.update_display(old_path, Path(new_path).name, new_user_role=new_path)
-
-        self.media_manager.thumb(new_path)  # enqueue new thumb
-        self._apply_sort()
-
-        logger.debug(f"{old_path} -> {new_path}")
+        # File moved into this folder (wasn't visible before)
+        if not old_in_view and new_parent == root_dir:
+            row = self._model.add_path(new_path)       # your helper to append
+            self._gallery_items[new_path] = row
+            self.media_manager.thumb(new_path)
+            self._apply_sort()
 
 
 

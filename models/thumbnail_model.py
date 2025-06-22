@@ -19,6 +19,22 @@ class ThumbnailListModel(QAbstractListModel):
         self._icons.clear()
         self.endResetModel()
 
+    def add_path(self, path: str) -> int:
+        """
+        Append a new absolute path to the model and return its row index.
+        If the path already exists, nothing is done and its current row is returned.
+        :param path:
+        :return:
+        """
+        if path in self._paths:
+            return self._paths.index(path)
+
+        row = len(self._paths)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._paths.append(path)
+        self.endInsertRows()
+        return row
+
     def update_icon(self, path: str, icon: QIcon) -> None:
         """
         Called by the controller when a thumbnail is generated.

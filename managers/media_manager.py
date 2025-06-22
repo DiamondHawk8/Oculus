@@ -5,6 +5,7 @@ import logging
 import os
 import sqlite3
 import time
+import uuid
 from collections import deque, OrderedDict
 from pathlib import Path
 from typing import Callable
@@ -100,14 +101,12 @@ class MediaManager(BaseManager, QObject):
         # collision check
         if new_path.exists():
             choice = CollisionDialog.ask(str(old_path), str(new_path))
-            if choice == "cancel":
-                return False
-            if choice == "skip":
+            if choice in ("cancel", "skip"):
                 return False
             if choice == "auto":
                 new_path = self._unique_path(new_path)
-            if choice == "overwrite":
-                self._safe_overwrite(old_path, new_path)
+            elif choice == "overwrite":
+                return self._safe_overwrite(old_path, new_path)
 
         row = self.fetchone("SELECT 1 FROM media WHERE path=?", (str(new_path),))
         if row:
@@ -155,35 +154,103 @@ class MediaManager(BaseManager, QObject):
         task = _ThumbTask(path, self.thumb_size, self._on_thumb_complete)
         self.pool.start(task)
 
+    # ---------------------------- db backup management methods
+
     def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
         """
-        Remove DB row for new_path, then replace the on-disk target.
-        :param old_path:
-        :param new_path:
-        :return:
+        1. Move destination file → backup.
+        2. Move source file     → destination.
+        3. Update DB rows inside ONE transaction.
+        4. Push UndoEntry with backup so it can be fully restored.
+        Signals emitted for both moves so all views update instantly.
         """
+        logger = logging.getLogger(__name__)
+        backup_path = self._backup_path(new_path)
+
         try:
+            # -- A: FILE SYSTEM -------------------------------------------------
+            # move dest → backup  (may not exist ; catch FileNotFound)
+            if new_path.exists():
+                new_path.replace(backup_path)
+                # UI: dest has disappeared (new → backup)
+                self.renamed.emit(str(new_path), str(backup_path))
+
+            # move src → dest
+            old_path.replace(new_path)
+            # UI: src now at dest
+            self.renamed.emit(str(old_path), str(new_path))
+
+            # -- B: DATABASE (single atomic scope) -----------------------------
             with self.conn:
-                # delete any DB row that already owns new_path
-                self.execute("DELETE FROM media WHERE path=?", (str(new_path),))
-                old_path.replace(new_path)
-                # update this item's path in DB
-                self.execute("UPDATE media SET path=? WHERE path=?",
-                             (str(new_path), str(old_path)))
+                # If dest record existed, migrate it to backup_path
+                self.execute(
+                    "UPDATE media SET path=? WHERE path=?",
+                    (str(backup_path), str(new_path))
+                )
+                # Update source record to new_path
+                self.execute(
+                    "UPDATE media SET path=? WHERE path=?",
+                    (str(new_path), str(old_path))
+                )
+
+            # -- C: Logging & undo ---------------------------------------------
             _log_rename(str(old_path), str(new_path))
             if self.undo_manager:
-                self.undo_manager.push(str(old_path), str(new_path))
-            self.renamed.emit(str(old_path), str(new_path))
+                self.undo_manager.push(str(old_path), str(new_path),
+                                   backup=str(backup_path))
             return True
 
-        except PermissionError as exc:
-            logger.error("Overwrite failed (permission): %s", exc)
-        except OSError as exc:
-            logger.error("Overwrite failed on disk: %s", exc)
-        except sqlite3.IntegrityError as exc:
-            logger.error("Overwrite failed in DB: %s", exc)
+        except Exception as exc:
+            logger.error("Safe overwrite failed: %s", exc)
+            # Best-effort roll-back (optional: add more elaborate recovery)
+            return False
 
-        return False
+    def _backup_path(self, original: Path) -> Path:
+        bk_dir = Path.home() / "OculusBackups" / "overwritten"
+        bk_dir.mkdir(parents=True, exist_ok=True)
+        return bk_dir / f"{uuid.uuid4()}{original.suffix}"
+
+    def restore_overwrite(self, entry: "UndoEntry") -> bool:
+        """
+        Revert a safe overwrite recorded in UndoEntry:
+            new_path -> old_path
+            backup -> new_path
+            DB rows adjusted
+        :param entry:
+        :return:
+        """
+        old_path = Path(entry.old)
+        new_path = Path(entry.new)
+        backup = Path(entry.backup)
+
+        try:
+            # -- A: FILE SYSTEM
+            # Move current file back to old_path
+            new_path.replace(old_path)
+            self.renamed.emit(str(new_path), str(old_path))
+
+            # Restore backup → new_path
+            backup.replace(new_path)
+            self.renamed.emit(str(backup), str(new_path))
+
+            # B: DATABASE
+            with self.conn:
+                # Row that represents current file -> old_path
+                self.execute(
+                    "UPDATE media SET path=? WHERE path=?",
+                    (str(old_path), str(new_path))
+                )
+                # Row for backup file -> new_path
+                self.execute(
+                    "UPDATE media SET path=? WHERE path=?",
+                    (str(new_path), str(backup))
+                )
+
+            return True
+
+        except Exception as exc:
+            logger.error("Undo overwrite failed: %s", exc)
+            return False
 
     # ----------------------------- task callbacks (GUI thread)
     def _on_scan_complete(self, paths: list[str]) -> None:

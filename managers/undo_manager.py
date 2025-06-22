@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import time
 from collections import deque
 from pathlib import Path
 from typing import Deque
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class UndoEntry:
     old: str
     new: str
@@ -25,17 +28,17 @@ class UndoManager:
     _MAX = 1024  # keep last 1024 renames
 
     def __init__(self) -> None:
-        self._history: deque[tuple[str, str]] = deque(maxlen=self._MAX)
+        self._history: Deque[UndoEntry] = deque(maxlen=self._MAX)
         self._LOG_PATH.parent.mkdir(exist_ok=True)
 
-        # warm-start from previous session
         if self._LOG_PATH.exists():
             try:
                 data = json.loads(self._LOG_PATH.read_text())
-                self._history.extend((d["old"], d["new"]) for d in data if {"old", "new"} <= d.keys())
+                self._history.extend(UndoEntry(**d) for d in data)
             except Exception:
-                logger.error("Error in reading log file", exc_info=True)
+                # corrupt log -> wipe history
                 self._history.clear()
+                self._LOG_PATH.unlink(missing_ok=True)
 
             logger.info("UndoManager initialized")
 
@@ -56,18 +59,17 @@ class UndoManager:
         :param media_mgr: Media manager to allow for db operations to be reversed
         :return:
         """
-
         if not self._history:
             return False
 
         entry = self._history.pop()
         ok = (
-            media_mgr.restore_overwrite(entry) if entry.backup
+            media_mgr.restore_overwrite(entry)
+            if entry.backup
             else media_mgr.rename_media(entry.new, entry.old)
         )
         self._dump()
         return ok
-
 
     def _dump(self) -> None:
         data = [
