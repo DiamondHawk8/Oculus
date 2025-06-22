@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, Slot
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 
 from .base import BaseManager
 
@@ -158,8 +158,8 @@ class MediaManager(BaseManager, QObject):
 
     def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
         """
-        1. Move destination file → backup.
-        2. Move source file     → destination.
+        1. Move destination file -> backup.
+        2. Move source file -> destination.
         3. Update DB rows inside ONE transaction.
         4. Push UndoEntry with backup so it can be fully restored.
         Signals emitted for both moves so all views update instantly.
@@ -168,19 +168,19 @@ class MediaManager(BaseManager, QObject):
         backup_path = self._backup_path(new_path)
 
         try:
-            # -- A: FILE SYSTEM -------------------------------------------------
-            # move dest → backup  (may not exist ; catch FileNotFound)
+            # -- A: FILE SYSTEM
+            # move dest -> backup  (may not exist ; catch FileNotFound)
             if new_path.exists():
                 new_path.replace(backup_path)
-                # UI: dest has disappeared (new → backup)
+                # UI: dest has disappeared (new -> backup)
                 self.renamed.emit(str(new_path), str(backup_path))
 
-            # move src → dest
+            # move src -> dest
             old_path.replace(new_path)
             # UI: src now at dest
             self.renamed.emit(str(old_path), str(new_path))
 
-            # -- B: DATABASE (single atomic scope) -----------------------------
+            # -- B: DATABASE (single atomic scope)
             with self.conn:
                 # If dest record existed, migrate it to backup_path
                 self.execute(
@@ -193,16 +193,16 @@ class MediaManager(BaseManager, QObject):
                     (str(new_path), str(old_path))
                 )
 
-            # -- C: Logging & undo ---------------------------------------------
+            # -- C: Logging & undo
             _log_rename(str(old_path), str(new_path))
             if self.undo_manager:
                 self.undo_manager.push(str(old_path), str(new_path),
-                                   backup=str(backup_path))
+                                       backup=str(backup_path))
             return True
 
         except Exception as exc:
             logger.error("Safe overwrite failed: %s", exc)
-            # Best-effort roll-back (optional: add more elaborate recovery)
+            # Best-effort roll-back (TODO add more elaborate recovery)
             return False
 
     def _backup_path(self, original: Path) -> Path:
@@ -229,7 +229,7 @@ class MediaManager(BaseManager, QObject):
             new_path.replace(old_path)
             self.renamed.emit(str(new_path), str(old_path))
 
-            # Restore backup → new_path
+            # Restore backup -> new_path
             backup.replace(new_path)
             self.renamed.emit(str(backup), str(new_path))
 
@@ -260,9 +260,19 @@ class MediaManager(BaseManager, QObject):
         self.scan_finished.emit(paths)
 
     def _on_thumb_complete(self, path: str, pix: QPixmap) -> None:
+        """
+        Receive raw pixmap from worker, decorate if stacked, then cache and emit.
+        :param path: Path to media
+        :param pix: pixmap representing the media's thumbnail
+        :return: None
+        """
+        # Decorate badge if this file is part of a stack
+        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        if row and self._is_stacked(row["id"]):
+            pix = self._decorate_stack_badge(pix)
+
         _thumbnail_cache_set(path, self.thumb_size, pix)
         self.thumb_ready.emit(path, pix)
-
     # ----------------------------- Path Getters
 
     def all_paths(self, *, files_only: bool = True) -> list[str]:
@@ -335,6 +345,48 @@ class MediaManager(BaseManager, QObject):
         # Any paths missing from DB or filtered out are appended in original order
         missing = [p for p in subset if p not in ordered]
         return ordered + missing
+
+    # ----------------------------- Variant Management
+    def _is_stacked(self, media_id: int) -> bool:
+        """
+        Return True if this media_id has at least one variant.
+        :param media_id: media to check
+        :return: boolean representing if this media_id has at least one variant.
+        """
+        row = self.fetchone(
+            "SELECT 1 FROM variants WHERE base_id=? OR variant_id=? LIMIT 1",
+            (media_id, media_id)
+        )
+        return row is not None
+
+    def _decorate_stack_badge(self, base: QPixmap) -> QPixmap:
+        """
+        Paint a small purple 'S' badge in the bottom right corner
+        :param base:
+        :return: New QPixmap (leaves original untouched)
+        """
+        badge = max(12, base.width() // 6)  # scale with thumb
+        result = QPixmap(base)  # shallow copy
+        painter = QPainter(result)
+
+        # circle
+        radius = badge // 2
+        x = base.width() - badge - 2
+        y = base.height() - badge - 2
+        painter.setBrush(QColor("#5e5eff"))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(x, y, badge, badge)
+
+        # white 'S'
+        painter.setPen(Qt.white)
+        f = QFont()
+        f.setBold(True)
+        f.setPixelSize(badge - 4)
+        painter.setFont(f)
+        painter.drawText(x, y, badge, badge, Qt.AlignCenter, "S")
+
+        painter.end()
+        return result
 
     # ----------------------------- Misc
     @Slot(object)
