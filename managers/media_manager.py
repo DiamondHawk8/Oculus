@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sqlite3
+import re
 import time
 import uuid
 from collections import deque, OrderedDict
@@ -34,6 +34,8 @@ _SORT_SQL = {
 
 _BACKUP_DIR = Path.home() / "OculusBackups"
 _BACKUP_DIR.mkdir(exist_ok=True)
+
+_VARIANT_RE = re.compile(r"^(.*)_v(\d+)$", re.I)  # captures (stem, index)
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,13 @@ class MediaManager(BaseManager, QObject):
 
     # DB helpers (sync)
     def add_media(self, path: str, *, is_dir: bool, size: int = 0) -> int:
+        """
+        Adds the given path with args to database
+        :param path: Path to Media
+        :param is_dir: Specifies if the given path is a directory or not
+        :param size: Byte size of Media
+        :return: ID of newly added media
+        """
         self.execute(
             "INSERT OR IGNORE INTO media(path, is_dir, byte_size) VALUES (?,?,?)",
             (path, int(is_dir), size),
@@ -273,6 +282,7 @@ class MediaManager(BaseManager, QObject):
 
         _thumbnail_cache_set(path, self.thumb_size, pix)
         self.thumb_ready.emit(path, pix)
+
     # ----------------------------- Path Getters
 
     def all_paths(self, *, files_only: bool = True) -> list[str]:
@@ -347,6 +357,21 @@ class MediaManager(BaseManager, QObject):
         return ordered + missing
 
     # ----------------------------- Variant Management
+
+    def add_variant(self, base_id: int, variant_id: int, rank: int) -> None:
+        """
+        Insert variant with explicit rank (_vN suffix), if the rank exists, skip (prevents duplicates).
+        :param base_id:
+        :param variant_id:
+        :param rank:
+        :return:
+        """
+        self.execute(
+            "INSERT OR IGNORE INTO variants(base_id, variant_id, rank) "
+            "VALUES (?, ?, ?)",
+            (base_id, variant_id, rank)
+        )
+
     def _is_stacked(self, media_id: int) -> bool:
         """
         Return True if this media_id has at least one variant.
@@ -358,6 +383,29 @@ class MediaManager(BaseManager, QObject):
             (media_id, media_id)
         )
         return row is not None
+
+    def detect_and_stack(self, media_id: int, path: str) -> None:
+        """
+        Auto-stack when filename ends with _vN before the extension. Base file must exist without the suffix.
+        :param media_id:
+        :param path:
+        :return:
+        """
+        p = Path(path)
+        m = _VARIANT_RE.match(p.stem)
+        if not m:
+            return  # no _vN pattern
+
+        base_stem, idx_str = m.groups()
+        base_path = str(p.with_name(base_stem + p.suffix))
+
+        row = self.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
+        if not row:
+            return  # base file not yet imported
+
+        base_id = row["id"]
+        rank = int(idx_str)
+        self.add_variant(base_id, media_id, rank)
 
     def _decorate_stack_badge(self, base: QPixmap) -> QPixmap:
         """
@@ -395,9 +443,14 @@ class MediaManager(BaseManager, QObject):
         seen_dirs = set()
         for p, sz in items:
 
-            self.add_media(p, is_dir=False, size=sz)
-            parent = str(Path(p).parent)
+            # add (or fetch) media row and capture its id
+            media_id = self.add_media(p, is_dir=False, size=sz)
 
+            # auto-detect variant relationship, if any
+            self.detect_and_stack(media_id, str(p))
+
+            # Ensure parent folder exists in DB
+            parent = str(Path(p).parent)
             if parent not in seen_dirs:
                 self.add_media(parent, is_dir=True)
                 seen_dirs.add(parent)
