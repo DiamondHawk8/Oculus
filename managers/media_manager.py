@@ -275,11 +275,26 @@ class MediaManager(BaseManager, QObject):
         :param pix: pixmap representing the media's thumbnail
         :return: None
         """
-        # Decorate badge if this file is part of a stack
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        if row and self._is_stacked(row["id"]):
-            pix = self._decorate_stack_badge(pix)
 
+        # Decorate badge if this file is part of a variant stack
+        try:
+
+            # Fetch media.id for this path
+            row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
+
+            if row is not None and self._is_stacked(row["id"]):
+                is_base = self.fetchone(
+                    "SELECT 1 FROM variants WHERE base_id=? AND variant_id=?",
+                    (row["id"], row["id"])
+                ) is None
+
+                if is_base:
+                    pix = self._decorate_stack_badge(pix)
+
+        except Exception as exc:
+            logger.warning("Badge check failed: %s", exc)
+
+        # Cache & emit
         _thumbnail_cache_set(path, self.thumb_size, pix)
         self.thumb_ready.emit(path, pix)
 
