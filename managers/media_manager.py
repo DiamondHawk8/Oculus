@@ -8,7 +8,7 @@ import time
 import uuid
 from collections import deque, OrderedDict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 
 from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, Slot
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
@@ -404,6 +404,21 @@ class MediaManager(BaseManager, QObject):
             (base_id, variant_id, rank)
         )
 
+    def is_variant(self, path: str) -> bool:
+        """
+        True if this path is NOT the base but belongs to a stack.
+        :param path:
+        :return:
+        """
+        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        if not row:
+            return False
+        media_id = row["id"]
+        # variant if it appears in variants.variant_id and NOT as base_id
+        return bool(self.fetchone(
+            "SELECT 1 FROM variants WHERE variant_id=? LIMIT 1", (media_id,))
+        )
+
     def _is_stacked(self, media_id: int) -> bool:
         """
         Return True if this media_id has at least one variant.
@@ -453,6 +468,42 @@ class MediaManager(BaseManager, QObject):
             if m2:
                 _, idx2 = m2.groups()
                 self.add_variant(media_id, v_id, int(idx2))
+
+    def _stack_ids_for_base(self, base_id: int) -> List[int]:
+        rows = self.fetchall(
+            "SELECT variant_id, rank FROM variants WHERE base_id=? ORDER BY rank",
+            (base_id,)
+        )
+        return [base_id] + [vid for vid, _ in rows]
+
+    def stack_paths(self, path: str) -> List[str]:
+        """
+        :param path: Media to check
+        :return: An ordered list [base, v1, v2, ...] for any path. If the file isn’t stacked, returns [path].
+        """
+        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        if not row:
+            return [path]
+
+        media_id = row["id"]
+
+        # Is this the base?
+        if self.fetchone("SELECT 1 FROM variants WHERE base_id=? LIMIT 1", (media_id,)):
+            ids = self._stack_ids_for_base(media_id)
+        else:
+            # it might be a variant -> find its base
+            row2 = self.fetchone("SELECT base_id FROM variants WHERE variant_id=?", (media_id,))
+            if not row2:
+                return [path]  # not stacked
+            ids = self._stack_ids_for_base(row2["base_id"])
+
+        # map ids -> paths
+        rows = self.fetchall(
+            f"SELECT id, path FROM media WHERE id IN ({','.join('?'*len(ids))})",
+            tuple(ids)
+        )
+        id_to_path = {r['id']: r['path'] for r in rows}
+        return [id_to_path[i] for i in ids if i in id_to_path]
 
     # ----------------------------- Misc
     @Slot(object)
