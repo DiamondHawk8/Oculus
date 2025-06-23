@@ -56,6 +56,36 @@ def _log_rename(old_path: str, new_path: str):
     log_file.write_text(json.dumps(data, indent=2))
 
 
+def decorate_stack_badge(base: QPixmap) -> QPixmap:
+    """
+    Paint a small purple 'S' badge in the bottom right corner
+    :param base:
+    :return: New QPixmap (leaves original untouched)
+    """
+    badge = max(12, base.width() // 6)  # scale with thumb
+    result = QPixmap(base)  # shallow copy
+    painter = QPainter(result)
+
+    # circle
+    radius = badge // 2
+    x = base.width() - badge - 2
+    y = base.height() - badge - 2
+    painter.setBrush(QColor("#5e5eff"))
+    painter.setPen(Qt.NoPen)
+    painter.drawEllipse(x, y, badge, badge)
+
+    # white 'S'
+    painter.setPen(Qt.white)
+    f = QFont()
+    f.setBold(True)
+    f.setPixelSize(badge - 4)
+    painter.setFont(f)
+    painter.drawText(x, y, badge, badge, Qt.AlignCenter, "S")
+
+    painter.end()
+    return result
+
+
 class MediaManager(BaseManager, QObject):
     """
     Thread-aware loader for image assets, currently only processes images
@@ -160,9 +190,13 @@ class MediaManager(BaseManager, QObject):
         if cached is not None:
             self.thumb_ready.emit(path, cached)
             return
-        task = _ThumbTask(path, self.thumb_size, self._on_thumb_complete)
-        self.pool.start(task)
 
+        # Decide badge in GUI thread (safe for DB access)
+        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        decorate = bool(row and self._is_stacked_base(row["id"]))
+
+        task = _ThumbTask(path, self.thumb_size, decorate, self._on_thumb_complete)
+        self.pool.start(task)
     # ---------------------------- db backup management methods
 
     def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
@@ -219,7 +253,7 @@ class MediaManager(BaseManager, QObject):
         bk_dir.mkdir(parents=True, exist_ok=True)
         return bk_dir / f"{uuid.uuid4()}{original.suffix}"
 
-    def restore_overwrite(self, entry: "UndoEntry") -> bool:
+    def restore_overwrite(self, entry) -> bool:
         """
         Revert a safe overwrite recorded in UndoEntry:
             new_path -> old_path
@@ -268,36 +302,19 @@ class MediaManager(BaseManager, QObject):
             self.add_media(p, is_dir=False)
         self.scan_finished.emit(paths)
 
-    def _on_thumb_complete(self, path: str, pix: QPixmap) -> None:
+    def _on_thumb_complete(self, path: str, pix: QPixmap, decorate: bool) -> None:
         """
         Receive raw pixmap from worker, decorate if stacked, then cache and emit.
         :param path: Path to media
         :param pix: pixmap representing the media's thumbnail
         :return: None
         """
+        if decorate:
+            pix = decorate_stack_badge(pix)
 
-        # Decorate badge if this file is part of a variant stack
-        try:
-
-            # Fetch media.id for this path
-            row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-
-            if row is not None and self._is_stacked(row["id"]):
-                is_base = self.fetchone(
-                    "SELECT 1 FROM variants WHERE base_id=? AND variant_id=?",
-                    (row["id"], row["id"])
-                ) is None
-
-                if is_base:
-                    pix = self._decorate_stack_badge(pix)
-
-        except Exception as exc:
-            logger.warning("Badge check failed: %s", exc)
-
-        # Cache & emit
         _thumbnail_cache_set(path, self.thumb_size, pix)
+        # Emit is thread-safe; Qt delivers to UI thread
         self.thumb_ready.emit(path, pix)
-
     # ----------------------------- Path Getters
 
     def all_paths(self, *, files_only: bool = True) -> list[str]:
@@ -399,6 +416,15 @@ class MediaManager(BaseManager, QObject):
         )
         return row is not None
 
+    def _is_stacked_base(self, media_id: int) -> bool:
+        """
+        True if this media_id is the base (rank 0) of a stack.
+        :param media_id:
+        :return:
+        """
+        row = self.fetchone("SELECT 1 FROM variants WHERE base_id=? LIMIT 1", (media_id,))
+        return row is not None
+
     def detect_and_stack(self, media_id: int, path: str) -> None:
         """
         Auto-stack when filename ends with _vN before the extension. Base file must exist without the suffix.
@@ -408,48 +434,25 @@ class MediaManager(BaseManager, QObject):
         """
         p = Path(path)
         m = _VARIANT_RE.match(p.stem)
-        if not m:
-            return  # no _vN pattern
 
-        base_stem, idx_str = m.groups()
-        base_path = str(p.with_name(base_stem + p.suffix))
+        # add variant file first
+        if m:
+            base_stem, idx = m.groups()
+            base_path = str(p.with_name(base_stem + p.suffix))
+            row = self.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
+            if row:
+                self.add_variant(row["id"], media_id, int(idx))
+            return
 
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
-        if not row:
-            return  # base file not yet imported
-
-        base_id = row["id"]
-        rank = int(idx_str)
-        self.add_variant(base_id, media_id, rank)
-
-    def _decorate_stack_badge(self, base: QPixmap) -> QPixmap:
-        """
-        Paint a small purple 'S' badge in the bottom right corner
-        :param base:
-        :return: New QPixmap (leaves original untouched)
-        """
-        badge = max(12, base.width() // 6)  # scale with thumb
-        result = QPixmap(base)  # shallow copy
-        painter = QPainter(result)
-
-        # circle
-        radius = badge // 2
-        x = base.width() - badge - 2
-        y = base.height() - badge - 2
-        painter.setBrush(QColor("#5e5eff"))
-        painter.setPen(Qt.NoPen)
-        painter.drawEllipse(x, y, badge, badge)
-
-        # white 'S'
-        painter.setPen(Qt.white)
-        f = QFont()
-        f.setBold(True)
-        f.setPixelSize(badge - 4)
-        painter.setFont(f)
-        painter.drawText(x, y, badge, badge, Qt.AlignCenter, "S")
-
-        painter.end()
-        return result
+        # look for any _vN already in DB
+        base_stem = p.stem
+        like_pattern = f"{base_stem}_v%{p.suffix}"
+        rows = self.fetchall("SELECT id, path FROM media WHERE path LIKE ?", (like_pattern,))
+        for v_id, v_path in rows:
+            m2 = _VARIANT_RE.match(Path(v_path).stem)
+            if m2:
+                _, idx2 = m2.groups()
+                self.add_variant(media_id, v_id, int(idx2))
 
     # ----------------------------- Misc
     @Slot(object)
@@ -526,17 +529,20 @@ class _ScanTask(QRunnable):
 
 
 class _ThumbTask(QRunnable):
-    def __init__(self, path: str, size: int, cb: Callable[[str, QPixmap], None]):
+    def __init__(self, path: str, size: int,
+                 decorate: bool,
+                 cb: Callable[[str, QPixmap, bool], None]):
         super().__init__()
         self.p = path
         self.s = size
+        self.decorate = decorate
         self.cb = cb
         self.setAutoDelete(True)
 
     def run(self):
         pix = _generate_thumb(self.p, self.s)
         if not pix.isNull():
-            self.cb(self.p, pix)
+            self.cb(self.p, pix, self.decorate)
 
 
 def _generate_thumb(path: str, size: int) -> QPixmap:
