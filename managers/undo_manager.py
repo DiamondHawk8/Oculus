@@ -72,10 +72,7 @@ class UndoManager:
         return ok
 
     def _dump(self) -> None:
-        data = [
-            {"timestamp": time.time(), "old": o, "new": n}
-            for o, n in self._history
-        ]
+        data = [entry.__dict__ for entry in self._history]
         self._LOG_PATH.write_text(json.dumps(data, indent=2))
 
     def can_undo(self) -> bool:
