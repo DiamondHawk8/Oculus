@@ -10,11 +10,13 @@ class ImageViewerDialog(QDialog):
 
     BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
-    def __init__(self, paths: list[str], cur_idx: int, parent=None):
+    def __init__(self, paths: list[str], cur_idx: int, media_manager, stack, parent=None):
         super().__init__(parent)
 
         self._paths = list(paths)
         self._idx = cur_idx
+        self._media_manager = media_manager
+        self._stack = stack
 
         self._scale = 1.0  # 1.0 = fit-to-window
         self._fit_to_win = True  # start in fit mode
@@ -61,6 +63,7 @@ class ImageViewerDialog(QDialog):
             self._pix = None
         else:
             self._pix = pix
+            self._current_path = path
             self._update_scaled()
 
     def _update_scaled(self):
@@ -118,6 +121,12 @@ class ImageViewerDialog(QDialog):
             # Previous
             self._step(-1)
 
+        elif event.key() == Qt.Key_Down:
+            self._cycle_variant(+1)
+
+        elif event.key() == Qt.Key_Up:
+            self._cycle_variant(-1)
+
         elif event.key() in (Qt.Key_Plus, Qt.Key_Equal):
             self._zoom(1.25)
 
@@ -128,6 +137,7 @@ class ImageViewerDialog(QDialog):
             self._fit_to_win = True
             self._update_scaled()
 
+
         else:
             super().keyPressEvent(event)
 
@@ -135,7 +145,21 @@ class ImageViewerDialog(QDialog):
         new_idx = self._idx + delta
         if 0 <= new_idx < len(self._paths):
             self._idx = new_idx
-            self._load_image(self._paths[new_idx])
+            self._stack = self._media_manager.stack_paths(self._paths[new_idx])  # refresh stack
+            self._current_path = self._paths[new_idx]
+            self._load_image(self._current_path)
+
+    def _cycle_variant(self, delta: int):
+        if len(self._stack) <= 1:
+            return  # not stacked
+
+        cur_idx = self._stack.index(self._current_path)
+        next_idx = (cur_idx + delta) % len(self._stack)
+        next_path = self._stack[next_idx]
+
+        # load the new file
+        self._current_path = next_path
+        self._load_image(next_path)
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y()

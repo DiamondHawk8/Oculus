@@ -43,6 +43,7 @@ class GalleryController:
         # Attribute used to differentiate between the root gallery page and other opened tabs
         self._host_widget = host_widget
 
+
         # View dialog opened for any given gallery
         self._viewer = None
         self._viewer_open = False
@@ -56,6 +57,8 @@ class GalleryController:
         self._gallery_items: dict[str, int] = {}
 
         self._current_folder: str | None = None
+
+        self._expanded_stacks: set[str] = set()  # base paths currently expanded
 
         # Apply gallery defaults
         self._gallery_grid = True  # default mode
@@ -215,8 +218,7 @@ class GalleryController:
         """
         logger.info("populate_gallery called")
         logger.debug(f"populate_gallery called with paths: {paths}")
-        self._model.set_paths(paths)
-        self._gallery_items = {p: i for i, p in enumerate(paths)}
+        self._set_paths_filtered(paths)
 
         for p in paths:
             if Path(p).is_file():
@@ -266,13 +268,35 @@ class GalleryController:
         # Combine folders first (unsorted), then ordered files
         self.populate_gallery(dirs + ordered_files)
 
+    def _set_paths_filtered(self, paths: list[str]) -> None:
+        """
+        Push paths to the model, hiding variants unless expanded.
+        :param paths:
+        :return:
+        """
+        shown: list[str] = []
+        for p in paths:
+            if self.media_manager.is_variant(p):
+                base = self.media_manager.stack_paths(p)[0]
+                if base not in self._expanded_stacks:
+                    continue  # collapsed -> hide
+            shown.append(p)
+
+        self._model.set_paths(shown)
+        self._gallery_items = {p: i for i, p in enumerate(shown)}
+
     # ---------------------------- Other methods ----------------------------
 
     def _show_ctx_menu(self, pos):
         logger.debug(f"_show_ctx_menu called, context menu opening at {pos}")
+
         idx = self.ui.galleryList.indexAt(pos)
+        # Path under the cursor
+        abs_path = self._model.data(idx, Qt.UserRole)  # stored full path
+
         if not idx.isValid():
             return
+
         menu = QMenu(self.ui.galleryList)
         menu.setStyleSheet("""
             QMenu {
@@ -284,6 +308,18 @@ class GalleryController:
                 background-color: #3c3f41;
             }
         """)
+
+        base_path = self.media_manager.stack_paths(abs_path)[0]
+        id_row = self.media_manager.fetchone(
+            "SELECT id FROM media WHERE path=?", (base_path,))
+        if id_row and self.media_manager._is_stacked_base(id_row["id"]):
+            txt = ("Collapse variants"
+                   if base_path in self._expanded_stacks
+                   else "Expand variants")
+            act_toggle = menu.addAction(txt)
+        else:
+            act_toggle = None
+
         act_new = menu.addAction("Open in New Tab")
         rename_act = menu.addAction("Rename")
 
@@ -293,6 +329,20 @@ class GalleryController:
             self._open_in_new_tab(idx)
         elif chosen == rename_act:
             self._on_rename_triggered()
+
+    def _toggle_stack(self, base_path: str) -> None:
+        """
+        Expand or collapse this stack, then refresh the list.
+        :param base_path:
+        :return:
+        """
+        if base_path in self._expanded_stacks:
+            self._expanded_stacks.remove(base_path)
+        else:
+            self._expanded_stacks.add(base_path)
+
+        paths = self.media_manager.get_sorted_paths(self._sort_key, self._ascending)
+        self._set_paths_filtered(paths)
 
     def _on_rename_triggered(self):
         logger.info("Renaming media")
@@ -412,6 +462,7 @@ class GalleryController:
         view_utils.open_image_viewer(
             self._model,
             index,
+            media_manager=self.media_manager,
             host_widget=self._host_widget,
             flag_container=self,
             flag_attr="_viewer_open",
