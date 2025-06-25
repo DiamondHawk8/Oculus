@@ -3,9 +3,9 @@ from pathlib import Path
 from PySide6.QtCore import QStringListModel, Qt
 from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter
 from ui.ui_metadata_dialog import Ui_MetadataDialog
-import re
+import logging
 
-_RANGE_RE = re.compile(r"^\s*(-?\d+)\s*,\s*(-?\d+)\s*$")  # "-1,2" etc.
+logger = logging.getLogger(__name__)
 
 
 class MetadataDialog(QDialog):
@@ -27,7 +27,7 @@ class MetadataDialog(QDialog):
         self._tags = tag_manager
 
         # Default
-        self.ui.radThis.setChecked(True)
+        self.ui.radSelected.setChecked(True)
 
         # Obtain all tags for auto-completion
         all_tags = self._tags.fetchall("SELECT DISTINCT tag FROM tags", ())
@@ -69,8 +69,11 @@ class MetadataDialog(QDialog):
         Apply tag changes to selected scope, then close dialog.
         :return: None
         """
-        scope, rng = self.selected_scope()
+
+        scope = self.selected_scope()
+
         if scope == "invalid":
+            logger.error("invalid scope")
             return  # keep dialog open
 
         # Build final tag list from UI
@@ -78,44 +81,53 @@ class MetadataDialog(QDialog):
 
         # Determine which media_id rows to update
         ids: list[int] = []
+
+        include_variants = self.ui.chkVariants.isChecked()
+
         if scope == "this":
-            ids = [self._id_for_path(self._paths[0])]
+            ids.extend(self._ids_with_variants(self._paths[0], include_variants))
 
         elif scope == "selected":
-            ids = [self._id_for_path(p) for p in self._paths]
-
-        elif scope == "stack":
-            base, *variants = self._media.stack_paths(self._paths[0])
-            ids = [self._id_for_path(p) for p in [base, *variants]]
+            for p in self._paths:
+                ids.extend(self._ids_with_variants(p, include_variants))
 
         elif scope == "folder":
             folder = str(Path(self._paths[0]).parent)
             rows = self._media.fetchall(
-                "SELECT id FROM media WHERE path LIKE ?", (f"{folder}%",))
-            ids = [r["id"] for r in rows]
+                "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",))
+            for r in rows:
+                ids.extend(self._ids_with_variants(r["path"], include_variants))
 
+        # remove duplicates while preserving order
+        ids = list(dict.fromkeys(ids))
 
         for mid in ids:
             self._tags.set_tags(mid, tags, overwrite=True)
 
         super().accept()
 
+    def _ids_with_variants(self, path: str, include: bool) -> list[int]:
+        """
+        Return media IDs for path (and its variants if include=True)
+        :param path:
+        :param include:
+        :return:
+        """
+        base_and_variants = (self._media.stack_paths(path) if include else [path])
+        return [self._id_for_path(p) for p in base_and_variants]
+
     # -------------------------- Misc ------------------------
-    def selected_scope(self) -> tuple[str, tuple[int, int] | None]:
+    def selected_scope(self) -> str:
         """
         Method for obtaining the user defined scope of metadata dialog.
-        :return: ("this" | "folder" | "selected" | "stack" | "range", (start_offset, end_offset) or None)
         """
         if self.ui.radThis.isChecked():
-            return "this", None
+            return "this"
         if self.ui.radFolder.isChecked():
-            return "folder", None
+            return "folder"
         if self.ui.radSelected.isChecked():
-            return "selected", None
-        if self.ui.radStack.isChecked():
-            return "stack", None
-
-        return "invalid", None
+            return "selected"
+        return "invalid"
 
     def _id_for_path(self, p: str) -> int:
         row = self._media.fetchone("SELECT id FROM media WHERE path=?", (p,))

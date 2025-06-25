@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QMessageBox
+from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QMessageBox, QAbstractItemView
 
 import controllers.view_utils as view_utils
 
@@ -83,6 +83,9 @@ class GalleryController:
         self.ui.galleryList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
 
+        # Allow for advanced selection
+        self.ui.galleryList.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
         # Hook Back/Forward buttons
         ui.btn_back.clicked.connect(lambda: self._navigate(-1))
         if hasattr(ui, "btn_forward"):
@@ -115,6 +118,7 @@ class GalleryController:
         self.ui.cmb_gallery_size.addItems(SIZE_PRESETS.keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
+
 
         logger.info("Gallery setup complete")
 

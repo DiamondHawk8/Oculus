@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogButtonBox,
-    QGroupBox, QHBoxLayout, QLineEdit, QListWidget,
-    QListWidgetItem, QPushButton, QRadioButton, QSizePolicy,
-    QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QCheckBox, QDialog,
+    QDialogButtonBox, QGroupBox, QHBoxLayout, QLineEdit,
+    QListWidget, QListWidgetItem, QPushButton, QRadioButton,
+    QSizePolicy, QTabWidget, QVBoxLayout, QWidget)
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
@@ -74,37 +74,42 @@ class Ui_MetadataDialog(object):
 
         self.verticalLayout.addWidget(self.tabs)
 
+        self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.grpScope = QGroupBox(MetadataDialog)
         self.grpScope.setObjectName(u"grpScope")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.grpScope.sizePolicy().hasHeightForWidth())
-        self.grpScope.setSizePolicy(sizePolicy1)
+        sizePolicy.setHeightForWidth(self.grpScope.sizePolicy().hasHeightForWidth())
+        self.grpScope.setSizePolicy(sizePolicy)
         self.horizontalLayout = QHBoxLayout(self.grpScope)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.radThis = QRadioButton(self.grpScope)
-        self.radThis.setObjectName(u"radThis")
-
-        self.horizontalLayout.addWidget(self.radThis)
-
-        self.radFolder = QRadioButton(self.grpScope)
-        self.radFolder.setObjectName(u"radFolder")
-
-        self.horizontalLayout.addWidget(self.radFolder)
-
-        self.radStack = QRadioButton(self.grpScope)
-        self.radStack.setObjectName(u"radStack")
-
-        self.horizontalLayout.addWidget(self.radStack)
-
         self.radSelected = QRadioButton(self.grpScope)
         self.radSelected.setObjectName(u"radSelected")
+        self.radSelected.setChecked(True)
 
         self.horizontalLayout.addWidget(self.radSelected)
 
+        self.radFolder = QRadioButton(self.grpScope)
+        self.radFolder.setObjectName(u"radFolder")
+        self.radFolder.setEnabled(True)
 
-        self.verticalLayout.addWidget(self.grpScope)
+        self.horizontalLayout.addWidget(self.radFolder)
+
+        self.radThis = QRadioButton(self.grpScope)
+        self.radThis.setObjectName(u"radThis")
+        self.radThis.setEnabled(True)
+
+        self.horizontalLayout.addWidget(self.radThis)
+
+
+        self.horizontalLayout_2.addWidget(self.grpScope)
+
+        self.chkVariants = QCheckBox(MetadataDialog)
+        self.chkVariants.setObjectName(u"chkVariants")
+
+        self.horizontalLayout_2.addWidget(self.chkVariants)
+
+
+        self.verticalLayout.addLayout(self.horizontalLayout_2)
 
         self.buttonBox = QDialogButtonBox(MetadataDialog)
         self.buttonBox.setObjectName(u"buttonBox")
@@ -132,9 +137,9 @@ class Ui_MetadataDialog(object):
         self.tabs.setTabText(self.tabs.indexOf(self.AttributesTab), QCoreApplication.translate("MetadataDialog", u"Attributes", None))
         self.tabs.setTabText(self.tabs.indexOf(self.PresetsTab), QCoreApplication.translate("MetadataDialog", u"Presets", None))
         self.grpScope.setTitle(QCoreApplication.translate("MetadataDialog", u"Apply to", None))
-        self.radThis.setText(QCoreApplication.translate("MetadataDialog", u"This file only", None))
-        self.radFolder.setText(QCoreApplication.translate("MetadataDialog", u"All files in this folder", None))
-        self.radStack.setText(QCoreApplication.translate("MetadataDialog", u"Whole variant stack", None))
-        self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current selection", None))
+        self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current Selection", None))
+        self.radFolder.setText(QCoreApplication.translate("MetadataDialog", u"All Files in This Folder", None))
+        self.radThis.setText(QCoreApplication.translate("MetadataDialog", u"This File Only", None))
+        self.chkVariants.setText(QCoreApplication.translate("MetadataDialog", u"Apply to Variants", None))
     # retranslateUi
 
