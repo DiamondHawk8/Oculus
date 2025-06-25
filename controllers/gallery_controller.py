@@ -284,47 +284,52 @@ class GalleryController:
 
         self._model.set_paths(shown)
         self._gallery_items = {p: i for i, p in enumerate(shown)}
+        logger.debug(f"_set_paths_filtered called, new gallery items: {self._gallery_items}")
 
     # ---------------------------- Other methods ----------------------------
 
     def _show_ctx_menu(self, pos):
         logger.debug(f"_show_ctx_menu called, context menu opening at {pos}")
 
+        # Which item was right-clicked?
         idx = self.ui.galleryList.indexAt(pos)
-        # Path under the cursor
-        abs_path = self._model.data(idx, Qt.UserRole)  # stored full path
-
         if not idx.isValid():
             return
 
+        abs_path = self._model.data(idx, Qt.UserRole)  # absolute path of given row
+
+        # ---------- build menu -------------------------------------------------
         menu = QMenu(self.ui.galleryList)
         menu.setStyleSheet("""
-            QMenu {
-                background-color: #2b2b2b;
-                color: white;
-                border: 1px solid #444;
-            }
-            QMenu::item:selected {
-                background-color: #3c3f41;
-            }
+            QMenu { background:#2b2b2b; color:white; border:1px solid #444; }
+            QMenu::item:selected { background:#3c3f41; }
         """)
 
+        # Expand / Collapse variants  (only if this row is a stack base)
         base_path = self.media_manager.stack_paths(abs_path)[0]
-        id_row = self.media_manager.fetchone(
+        base_id_row = self.media_manager.fetchone(
             "SELECT id FROM media WHERE path=?", (base_path,))
-        if id_row and self.media_manager._is_stacked_base(id_row["id"]):
+        if base_id_row and self.media_manager._is_stacked_base(base_id_row["id"]):
             txt = ("Collapse variants"
                    if base_path in self._expanded_stacks
                    else "Expand variants")
-            act_toggle = menu.addAction(txt)
+            act_toggle = menu.addAction(txt)  # keep reference
         else:
-            act_toggle = None
+            act_toggle = None  # not a stack base
 
+        # Existing actions
         act_new = menu.addAction("Open in New Tab")
         rename_act = menu.addAction("Rename")
 
+        # ---------- execute menu
         chosen = menu.exec(self.ui.galleryList.mapToGlobal(pos))
 
+        # Variant toggle selected?
+        if chosen == act_toggle:
+            self._toggle_stack(base_path)
+            return  # done
+
+        # Existing behaviour
         if chosen == act_new:
             self._open_in_new_tab(idx)
         elif chosen == rename_act:
@@ -332,17 +337,18 @@ class GalleryController:
 
     def _toggle_stack(self, base_path: str) -> None:
         """
-        Expand or collapse this stack, then refresh the list.
+        Expand or collapse a given stack
         :param base_path:
         :return:
         """
         if base_path in self._expanded_stacks:
+            logger.debug(f"Removing {base_path} from _expanded_stacks")
             self._expanded_stacks.remove(base_path)
         else:
+            logger.debug(f"Adding {base_path} to _expanded_stacks")
             self._expanded_stacks.add(base_path)
 
-        paths = self.media_manager.get_sorted_paths(self._sort_key, self._ascending)
-        self._set_paths_filtered(paths)
+        self._reload_gallery()
 
     def _on_rename_triggered(self):
         logger.info("Renaming media")
@@ -467,6 +473,19 @@ class GalleryController:
             flag_container=self,
             flag_attr="_viewer_open",
         )
+
+    def _reload_gallery(self) -> None:
+        """
+        Refresh list from scratch, then apply the hide/expand filter.
+        :return:
+        """
+        logger.debug("_reload_gallery called")
+        key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
+        asc = not self.ui.btn_gallery_sortDir.isChecked()
+
+        all_paths = self.media_manager.get_sorted_paths(key, asc)
+        self._set_paths_filtered(all_paths)
+        self.populate_gallery(all_paths)
 
 
 class _MiddleClickFilter(QObject):

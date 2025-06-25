@@ -18,6 +18,7 @@ class ImageViewerDialog(QDialog):
         self._media_manager = media_manager
         self._stack = stack
 
+        self._variant_pos: dict[str, int] = {}
         self._scale = 1.0  # 1.0 = fit-to-window
         self._fit_to_win = True  # start in fit mode
         self._pix: QPixmap | None = None
@@ -145,21 +146,31 @@ class ImageViewerDialog(QDialog):
         new_idx = self._idx + delta
         if 0 <= new_idx < len(self._paths):
             self._idx = new_idx
-            self._stack = self._media_manager.stack_paths(self._paths[new_idx])  # refresh stack
-            self._current_path = self._paths[new_idx]
+
+            # refresh current stack for this new gallery item
+            self._stack = self._media_manager.stack_paths(self._paths[new_idx])
+            base = self._stack[0]
+
+            # pick stored variant if we have one, else base (index 0)
+            next_idx = self._variant_pos.get(base, 0)
+            next_idx = min(next_idx, len(self._stack) - 1)
+
+            self._current_path = self._stack[next_idx]
             self._load_image(self._current_path)
 
     def _cycle_variant(self, delta: int):
         if len(self._stack) <= 1:
-            return  # not stacked
+            return
 
+        base = self._stack[0]  # first element is base
         cur_idx = self._stack.index(self._current_path)
         next_idx = (cur_idx + delta) % len(self._stack)
-        next_path = self._stack[next_idx]
 
-        # load the new file
-        self._current_path = next_path
-        self._load_image(next_path)
+        # remember position for this stack
+        self._variant_pos[base] = next_idx
+
+        self._current_path = self._stack[next_idx]
+        self._load_image(self._current_path)
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y()
