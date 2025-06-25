@@ -70,6 +70,11 @@ class Ui_MetadataDialog(object):
 
         self.horizontalLayout.addWidget(self.radStack)
 
+        self.radSelected = QRadioButton(self.grpScope)
+        self.radSelected.setObjectName(u"radSelected")
+
+        self.horizontalLayout.addWidget(self.radSelected)
+
         self.verticalLayout_2 = QVBoxLayout()
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.radRange = QRadioButton(self.grpScope)
@@ -117,6 +122,7 @@ class Ui_MetadataDialog(object):
         self.radThis.setText(QCoreApplication.translate("MetadataDialog", u"This file only", None))
         self.radFolder.setText(QCoreApplication.translate("MetadataDialog", u"All files in this folder", None))
         self.radStack.setText(QCoreApplication.translate("MetadataDialog", u"Whole variant stack", None))
+        self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current selection", None))
         self.radRange.setText(QCoreApplication.translate("MetadataDialog", u"Custom range", None))
     # retranslateUi
 
