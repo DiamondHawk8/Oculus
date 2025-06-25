@@ -9,6 +9,7 @@ import controllers.view_utils as view_utils
 from models.thumbnail_model import ThumbnailListModel
 
 from ui.ui_gallery_tab import Ui_Form
+from widgets.metadata_dialog import MetadataDialog
 
 from widgets.rename_dialog import RenameDialog
 
@@ -320,6 +321,7 @@ class GalleryController:
         # Existing actions
         act_new = menu.addAction("Open in New Tab")
         rename_act = menu.addAction("Rename")
+        edit_act = menu.addAction("Edit metadata")
 
         # ---------- execute menu
         chosen = menu.exec(self.ui.galleryList.mapToGlobal(pos))
@@ -329,11 +331,15 @@ class GalleryController:
             self._toggle_stack(base_path)
             return  # done
 
-        # Existing behaviour
         if chosen == act_new:
             self._open_in_new_tab(idx)
         elif chosen == rename_act:
             self._on_rename_triggered()
+        if chosen == edit_act:
+            sel_paths = self.get_selected_paths()
+            dlg = MetadataDialog(sel_paths, self.media_manager, parent=self._host_widget)
+            dlg.exec()
+            return
 
     def _toggle_stack(self, base_path: str) -> None:
         """
@@ -486,6 +492,17 @@ class GalleryController:
         all_paths = self.media_manager.get_sorted_paths(key, asc)
         self._set_paths_filtered(all_paths)
         self.populate_gallery(all_paths)
+
+    def get_selected_paths(self) -> list[str]:
+        """
+        Return a list of absolute paths for all currently-selected thumbnails in the gallery QListView.
+        :return:
+        """
+        indexes = self.ui.galleryList.selectedIndexes()
+        if not indexes:
+            return []
+
+        return [self._model.data(idx, Qt.UserRole) for idx in indexes]
 
 
 class _MiddleClickFilter(QObject):
