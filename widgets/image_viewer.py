@@ -20,10 +20,14 @@ class ImageViewerDialog(QDialog):
 
         self._variant_pos: dict[str, int] = {}
         self._scale = 1.0  # 1.0 = fit-to-window
+        self._fit_scale = 1.0  # how much to scale to fit dialog
         self._fit_to_win = True  # start in fit mode
         self._pix: QPixmap | None = None
         self._dragging = False
         self._last_pos = QPoint()
+
+        self._drag_start_cursor = QPoint()
+        self._drag_start_label = QPoint()
 
         # Window setup
         self.setWindowFlag(Qt.FramelessWindowHint, True)
@@ -62,34 +66,51 @@ class ImageViewerDialog(QDialog):
             self._label.setText(f"Could not load\n{Path(path).name}")
             self._label.setStyleSheet("color:white; background:transparent;")
             self._pix = None
-        else:
-            self._pix = pix
-            self._current_path = path
-            self._update_scaled()
+            return
+
+        self._pix = pix
+        self._current_path = path
+
+        # Fit image to current window
+        self._recompute_fit_scale()
+        self._fit_to_win = True
+        self._scale = self._fit_scale
+        self._update_scaled()
+
+    def _recompute_fit_scale(self):
+        if not self._pix:
+            self._fit_scale = 1.0
+            return
+        self._fit_scale = min(
+            self.width() / self._pix.width(),
+            self.height() / self._pix.height()
+        )
 
     def _update_scaled(self):
         if not self._pix:
             return
 
         if self._fit_to_win:
-            target = self.size()
-        else:
-            w = self._pix.width() * self._scale
-            h = self._pix.height() * self._scale
-            target = QSize(int(w), int(h))
+            self._scale = self._fit_scale  # always track fit exactly
+
+        target_w = self._pix.width() * self._scale
+        target_h = self._pix.height() * self._scale
+        target = QSize(int(target_w), int(target_h))
 
         scaled = self._pix.scaled(target, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self._label.setPixmap(scaled)
         self._label.resize(scaled.size())
 
-        # auto-center when not dragging
-        if not self._dragging:
-            x = max(0, (self.width() - scaled.width()) // 2)
-            y = max(0, (self.height() - scaled.height()) // 2)
-            self._label.move(x, y)
+        # if the image now fits entirely inside the window, center it
+        if scaled.width() <= self.width() and scaled.height() <= self.height():
+            self._center_label()
+        else:
+            # otherwise keep current pos but clamp to new bounds
+            self._move_label(self._label.pos())
 
     def resizeEvent(self, ev):
-        self._backdrop.setGeometry(self.rect())  # keep backdrop full-size
+        self._backdrop.setGeometry(self.rect())
+        self._recompute_fit_scale()
         self._update_scaled()
         super().resizeEvent(ev)
 
@@ -188,47 +209,47 @@ class ImageViewerDialog(QDialog):
         self._zoom(1.25 if delta > 0 else 0.8)
 
     def _zoom(self, factor: float):
+        if not self._pix:
+            return
+
+        # Leaving fit-to-window for the first time
+        if self._fit_to_win:
+            self._fit_to_win = False
+
+        self._scale = max(0.05, min(self._scale * factor, 16.0))
         self._dragging = False
-        self._fit_to_win = False
-        self._scale = max(0.1, min(self._scale * factor, 16.0))
         self._update_scaled()
 
     # Panning logic
     def eventFilter(self, obj, event):
         if obj is self._label:
             if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
-                print("test")
                 if not self._fit_to_win:
                     self._dragging = True
-                    self._last_pos = event.globalPos()
+                    self._drag_start_cursor = event.globalPos()
+                    self._drag_start_label = self._label.pos()
                     return True
 
             elif event.type() == QEvent.MouseMove and self._dragging:
-                print("dragging")
-                delta = event.globalPos() - self._last_pos
-                self._last_pos = event.globalPos()
-                self._move_label(delta)
+                delta = event.globalPos() - self._drag_start_cursor
+                self._move_label(self._drag_start_label + delta)
                 return True
 
             elif event.type() == QEvent.MouseButtonRelease and self._dragging:
-                print("released")
                 self._dragging = False
                 return True
 
         return super().eventFilter(obj, event)
 
-    def _move_label(self, delta):
+    def _center_label(self):
+        x = (self.width() - self._label.width()) // 2
+        y = (self.height() - self._label.height()) // 2
+        self._label.move(max(0, x), max(0, y))
+
+    def _move_label(self, new_pos: QPoint):
         """
-        Move label by delta while keeping at least one edge visible
-        :param delta:
+        Clamp label so at least one edge stays visible.
+        :param new_pos:
         :return:
         """
-        new_pos = self._label.pos() + delta
-        # horizontal bounds
-        min_x = self.width() - self._label.width()
-        max_x = 0
-        min_y = self.height() - self._label.height()
-        max_y = 0
-        new_x = min(max_x, max(min_x, new_pos.x()))
-        new_y = min(max_y, max(min_y, new_pos.y()))
-        self._label.move(new_x, new_y)
+        self._label.move(new_pos)
