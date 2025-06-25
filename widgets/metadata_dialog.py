@@ -1,7 +1,8 @@
 from pathlib import Path
+from typing import List
 
 from PySide6.QtCore import QStringListModel, Qt
-from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter
+from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView
 from ui.ui_metadata_dialog import Ui_MetadataDialog
 import logging
 
@@ -13,7 +14,7 @@ class MetadataDialog(QDialog):
     Unified dialog for Tags, Attributes, and Presets.
     """
 
-    def __init__(self, media_paths: list[str], media_manager, tag_manager, parent=None):
+    def __init__(self, media_paths: List[str], media_manager, tag_manager, parent=None):
         """
         :param media_paths: The thumbnail paths currently selected, if len==1 it's the single file dialog
         :param media_manager: Needed for TagManager, Attribute table etc
@@ -26,21 +27,32 @@ class MetadataDialog(QDialog):
         self._media = media_manager
         self._tags = tag_manager
 
+        self._copy_buffer: List[str] | None = None
+
         # Default
         self.ui.radSelected.setChecked(True)
 
-        # Obtain all tags for auto-completion
-        all_tags = self._tags.fetchall("SELECT DISTINCT tag FROM tags", ())
-        model = QStringListModel([r['tag'] for r in all_tags])
+        # populate file list
+        for p in self._paths:
+            self.ui.listFiles.addItem(Path(p).name)
+        self.ui.listFiles.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+
+        self.ui.listFiles.setCurrentRow(0)
+        self.ui.listFiles.currentRowChanged.connect(self._on_file_change)
+
+        self._load_tags_for_row(0)
+
+        # Obtain tags for auto-completion
+        rows = self._tags.fetchall("SELECT DISTINCT tag FROM tags", ())
+        model = QStringListModel([r["tag"] for r in rows])
         self.ui.editTag.setCompleter(QCompleter(model, self))
 
-        # Populate listTags with first file in provided paths
-        first_id = self._id_for_path(self._paths[0])
-        for t in self._tags.get_tags(first_id):
-            self.ui.listTags.addItem(t)
-
+        #  wire buttons
         self.ui.btnAddTag.clicked.connect(self._add_tag)
         self.ui.btnRemoveTag.clicked.connect(self._remove_selected)
+        self.ui.btnCopyTags.clicked.connect(self._copy_tags)
+        self.ui.btnPasteTags.clicked.connect(self._paste_tags)
 
     # -------------------- Tagging ------------------
 
@@ -132,3 +144,36 @@ class MetadataDialog(QDialog):
     def _id_for_path(self, p: str) -> int:
         row = self._media.fetchone("SELECT id FROM media WHERE path=?", (p,))
         return row["id"] if row else -1
+
+    def _copy_tags(self):
+        self._copy_buffer = [
+            self.ui.listTags.item(i).text()
+            for i in range(self.ui.listTags.count())
+        ]
+
+    def _paste_tags(self):
+        if not self._copy_buffer:
+            QMessageBox.information(
+                self, "Nothing copied", "Copy a tag list first.")
+            return
+        existing = {self.ui.listTags.item(i).text()
+                    for i in range(self.ui.listTags.count())}
+        for t in self._copy_buffer:
+            if t not in existing:
+                self.ui.listTags.addItem(t)
+
+    def _load_tags_for_row(self, row: int):
+        """
+        Fill listTags with tags for file at row
+        :param row:
+        :return:
+        """
+        self.ui.listTags.clear()
+        if row < 0 or row >= len(self._paths):
+            return
+        mid = self._id_for_path(self._paths[row])
+        for t in self._tags.get_tags(mid):
+            self.ui.listTags.addItem(t)
+
+    def _on_file_change(self, row: int):
+        self._load_tags_for_row(row)
