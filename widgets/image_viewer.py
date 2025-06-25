@@ -159,18 +159,29 @@ class ImageViewerDialog(QDialog):
             self._load_image(self._current_path)
 
     def _cycle_variant(self, delta: int):
+        """
+        Swap to another variant of the current image.
+        :param delta:
+        :return:
+        """
         if len(self._stack) <= 1:
             return
 
-        base = self._stack[0]  # first element is base
+        base = self._stack[0]
         cur_idx = self._stack.index(self._current_path)
         next_idx = (cur_idx + delta) % len(self._stack)
+        next_path = self._stack[next_idx]
 
         # remember position for this stack
         self._variant_pos[base] = next_idx
 
-        self._current_path = self._stack[next_idx]
-        self._load_image(self._current_path)
+        # load new variant
+        self._current_path = next_path
+        self._load_image(next_path)
+
+        # If this variant is visible in the gallery list, update self._idx so Left/Right stay in sync
+        if next_path in self._paths:
+            self._idx = self._paths.index(next_path)
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y()
