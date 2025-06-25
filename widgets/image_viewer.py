@@ -18,6 +18,7 @@ class ImageViewerDialog(QDialog):
         self._media_manager = media_manager
         self._stack = stack
 
+        self._view_states: dict[str, tuple[float, QPoint]] = {}
         self._variant_pos: dict[str, int] = {}
         self._scale = 1.0  # 1.0 = fit-to-window
         self._fit_scale = 1.0  # how much to scale to fit dialog
@@ -31,9 +32,7 @@ class ImageViewerDialog(QDialog):
 
         # Window setup
         self.setWindowFlag(Qt.FramelessWindowHint, True)
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setModal(True)
 
         # ---- backdrop ---------------------------------------------------
         # fills entire dialog
@@ -70,6 +69,15 @@ class ImageViewerDialog(QDialog):
 
         self._pix = pix
         self._current_path = path
+
+        # Check session cache
+        if path in self._view_states:
+            self._scale, saved_pos = self._view_states[path]
+            self._fit_to_win = False
+            self._recompute_fit_scale()  # still needed for bounds
+            self._update_scaled()
+            self._label.move(saved_pos)  # restore pan
+            return
 
         # Fit image to current window
         self._recompute_fit_scale()
@@ -135,6 +143,13 @@ class ImageViewerDialog(QDialog):
             self.close()
             return
 
+        if mods & Qt.AltModifier and key == Qt.Key_H:
+            self._center_horiz()
+            return
+        if mods & Qt.AltModifier and key == Qt.Key_V:
+            self._center_vert()
+            return
+
         # ---------- Fine zoom / nudge first ----------
         if mods & Qt.AltModifier:
             if key == Qt.Key_Plus:
@@ -187,6 +202,7 @@ class ImageViewerDialog(QDialog):
         super().keyPressEvent(event)
 
     def _step(self, delta: int):
+        self._save_current_state()
         new_idx = self._idx + delta
         if 0 <= new_idx < len(self._paths):
             self._idx = new_idx
@@ -210,6 +226,8 @@ class ImageViewerDialog(QDialog):
         """
         if len(self._stack) <= 1:
             return
+
+        self._save_current_state()
 
         base = self._stack[0]
         cur_idx = self._stack.index(self._current_path)
@@ -313,3 +331,19 @@ class ImageViewerDialog(QDialog):
             Qt.Key_Down: QPoint(0, 1),
         }[key]
         self._label.move(self._label.pos() + offset)
+
+    def _save_current_state(self):
+        """Remember current image’s zoom & pan for this session."""
+        if self._pix:
+            self._view_states[self._current_path] = (
+                self._scale,
+                self._label.pos()
+            )
+
+    def _center_horiz(self):
+        self._label.move((self.width() - self._label.width()) // 2,
+                         self._label.y())
+
+    def _center_vert(self):
+        self._label.move(self._label.x(),
+                         (self.height() - self._label.height()) // 2)
