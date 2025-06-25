@@ -103,22 +103,6 @@ class Ui_MetadataDialog(object):
 
         self.horizontalLayout.addWidget(self.radSelected)
 
-        self.verticalLayout_2 = QVBoxLayout()
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.radRange = QRadioButton(self.grpScope)
-        self.radRange.setObjectName(u"radRange")
-
-        self.verticalLayout_2.addWidget(self.radRange)
-
-        self.editRange = QLineEdit(self.grpScope)
-        self.editRange.setObjectName(u"editRange")
-        self.editRange.setEnabled(False)
-
-        self.verticalLayout_2.addWidget(self.editRange)
-
-
-        self.horizontalLayout.addLayout(self.verticalLayout_2)
-
 
         self.verticalLayout.addWidget(self.grpScope)
 
@@ -133,7 +117,6 @@ class Ui_MetadataDialog(object):
         self.retranslateUi(MetadataDialog)
         self.buttonBox.accepted.connect(MetadataDialog.accept)
         self.buttonBox.rejected.connect(MetadataDialog.reject)
-        self.radRange.toggled.connect(self.editRange.setEnabled)
 
         self.tabs.setCurrentIndex(0)
 
@@ -153,6 +136,5 @@ class Ui_MetadataDialog(object):
         self.radFolder.setText(QCoreApplication.translate("MetadataDialog", u"All files in this folder", None))
         self.radStack.setText(QCoreApplication.translate("MetadataDialog", u"Whole variant stack", None))
         self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current selection", None))
-        self.radRange.setText(QCoreApplication.translate("MetadataDialog", u"Custom range", None))
     # retranslateUi
 

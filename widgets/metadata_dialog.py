@@ -94,12 +94,6 @@ class MetadataDialog(QDialog):
                 "SELECT id FROM media WHERE path LIKE ?", (f"{folder}%",))
             ids = [r["id"] for r in rows]
 
-        elif scope == "range":
-            start_off, end_off = rng
-            center = self._paths.index(self._paths[0])
-            begin = max(0, center + start_off)
-            end = min(len(self._paths) - 1, center + end_off)
-            ids = [self._id_for_path(self._paths[i]) for i in range(begin, end + 1)]
 
         for mid in ids:
             self._tags.set_tags(mid, tags, overwrite=True)
@@ -120,13 +114,8 @@ class MetadataDialog(QDialog):
             return "selected", None
         if self.ui.radStack.isChecked():
             return "stack", None
-        # custom range
-        txt = self.ui.editRange.text()
-        m = _RANGE_RE.match(txt)
-        if not m:
-            QMessageBox.warning(self, "Invalid range", "Please enter as: -N, +M  (e.g. -1,2)")
-            return "invalid", None
-        return "range", (int(m.group(1)), int(m.group(2)))
+
+        return "invalid", None
 
     def _id_for_path(self, p: str) -> int:
         row = self._media.fetchone("SELECT id FROM media WHERE path=?", (p,))

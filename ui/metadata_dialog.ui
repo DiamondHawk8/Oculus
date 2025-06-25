@@ -114,24 +114,6 @@
         </property>
        </widget>
       </item>
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="QRadioButton" name="radRange">
-          <property name="text">
-           <string>Custom range</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLineEdit" name="editRange">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
      </layout>
     </widget>
    </item>
@@ -178,22 +160,6 @@
     <hint type="destinationlabel">
      <x>286</x>
      <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>radRange</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>editRange</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>505</x>
-     <y>253</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>505</x>
-     <y>282</y>
     </hint>
    </hints>
   </connection>
