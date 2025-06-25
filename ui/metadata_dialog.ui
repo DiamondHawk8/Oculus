@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>638</width>
+    <width>812</width>
     <height>501</height>
    </rect>
   </property>
@@ -37,12 +37,33 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
-        <widget class="QListWidget" name="listTags"/>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QListWidget" name="listTags"/>
+         </item>
+         <item>
+          <widget class="QListWidget" name="listFiles"/>
+         </item>
+        </layout>
        </item>
        <item>
         <layout class="QHBoxLayout" name="hboxTagEdit">
          <item>
           <widget class="QLineEdit" name="editTag"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnCopyTags">
+           <property name="text">
+            <string>Copy</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnPasteTags">
+           <property name="text">
+            <string>Paste</string>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QPushButton" name="btnRemoveTag">

@@ -24,7 +24,7 @@ class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(638, 501)
+        MetadataDialog.resize(812, 501)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -39,10 +39,20 @@ class Ui_MetadataDialog(object):
         self.TagsTab.setObjectName(u"TagsTab")
         self.verticalLayout_3 = QVBoxLayout(self.TagsTab)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.horizontalLayout_3 = QHBoxLayout()
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
         self.listTags = QListWidget(self.TagsTab)
         self.listTags.setObjectName(u"listTags")
 
-        self.verticalLayout_3.addWidget(self.listTags)
+        self.horizontalLayout_3.addWidget(self.listTags)
+
+        self.listFiles = QListWidget(self.TagsTab)
+        self.listFiles.setObjectName(u"listFiles")
+
+        self.horizontalLayout_3.addWidget(self.listFiles)
+
+
+        self.verticalLayout_3.addLayout(self.horizontalLayout_3)
 
         self.hboxTagEdit = QHBoxLayout()
         self.hboxTagEdit.setObjectName(u"hboxTagEdit")
@@ -50,6 +60,16 @@ class Ui_MetadataDialog(object):
         self.editTag.setObjectName(u"editTag")
 
         self.hboxTagEdit.addWidget(self.editTag)
+
+        self.btnCopyTags = QPushButton(self.TagsTab)
+        self.btnCopyTags.setObjectName(u"btnCopyTags")
+
+        self.hboxTagEdit.addWidget(self.btnCopyTags)
+
+        self.btnPasteTags = QPushButton(self.TagsTab)
+        self.btnPasteTags.setObjectName(u"btnPasteTags")
+
+        self.hboxTagEdit.addWidget(self.btnPasteTags)
 
         self.btnRemoveTag = QPushButton(self.TagsTab)
         self.btnRemoveTag.setObjectName(u"btnRemoveTag")
@@ -131,6 +151,8 @@ class Ui_MetadataDialog(object):
 
     def retranslateUi(self, MetadataDialog):
         MetadataDialog.setWindowTitle(QCoreApplication.translate("MetadataDialog", u"Edit Metadata", None))
+        self.btnCopyTags.setText(QCoreApplication.translate("MetadataDialog", u"Copy", None))
+        self.btnPasteTags.setText(QCoreApplication.translate("MetadataDialog", u"Paste", None))
         self.btnRemoveTag.setText(QCoreApplication.translate("MetadataDialog", u"Remove", None))
         self.btnAddTag.setText(QCoreApplication.translate("MetadataDialog", u"Add", None))
         self.tabs.setTabText(self.tabs.indexOf(self.TagsTab), QCoreApplication.translate("MetadataDialog", u"Tags", None))
