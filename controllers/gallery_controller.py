@@ -337,7 +337,7 @@ class GalleryController:
             self._on_rename_triggered()
         if chosen == edit_act:
             sel_paths = self.get_selected_paths()
-            dlg = MetadataDialog(sel_paths, self.media_manager, parent=self._host_widget)
+            dlg = MetadataDialog(sel_paths, self.media_manager, self.tag_manager, self._host_widget)
             dlg.exec()
             return
 
