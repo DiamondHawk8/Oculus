@@ -127,41 +127,64 @@ class ImageViewerDialog(QDialog):
             self._update_scaled()
 
     def keyPressEvent(self, event):
-        """
-        Handles the following key events: cycling media, zooming media, fitting media to window
-        :param event:
-        :return:
-        """
-        if event.key() == Qt.Key_Escape:
+        key = event.key()
+        mods = event.modifiers()
+
+        # ---------- Immediate actions ----------
+        if key == Qt.Key_Escape:
             self.close()
+            return
 
-        elif event.key() == Qt.Key_Right:
-            # Next
-            self._step(+1)
+        # ---------- Fine zoom / nudge first ----------
+        if mods & Qt.AltModifier:
+            if key == Qt.Key_Plus:
+                self._zoom(1.01)  # +1 %
+                return
+            if key == Qt.Key_Minus:
+                self._zoom(0.99)  # −1 %
+                return
+            if key in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down):
+                self._nudge(key)  # 1-pixel pan
+                return
 
-        elif event.key() == Qt.Key_Left:
-            # Previous
-            self._step(-1)
+        # ---------- Pixel-zoom ----------
+        if key == Qt.Key_Plus:
+            self._zoom_by_pixels(+1)
+            return
+        if key == Qt.Key_Minus:
+            self._zoom_by_pixels(-1)
+            return
 
-        elif event.key() == Qt.Key_Down:
-            self._cycle_variant(+1)
-
-        elif event.key() == Qt.Key_Up:
-            self._cycle_variant(-1)
-
-        elif event.key() in (Qt.Key_Plus, Qt.Key_Equal):
-            self._zoom(1.25)
-
-        elif event.key() == Qt.Key_Minus:
-            self._zoom(0.8)
-
-        elif event.key() == Qt.Key_0:  # fit-to-window reset
+        # ---------- Fit / coarse zoom ----------
+        if key == Qt.Key_0:
             self._fit_to_win = True
             self._update_scaled()
+            return
+        if key in (Qt.Key_Plus, Qt.Key_Equal):
+            self._zoom(1.25)
+            return
+        if key == Qt.Key_Minus:
+            self._zoom(0.8)
+            return
 
+        # ---------- Variant cycling ----------
+        if key == Qt.Key_Down:
+            self._cycle_variant(+1);
+            return
+        if key == Qt.Key_Up:
+            self._cycle_variant(-1);
+            return
 
-        else:
-            super().keyPressEvent(event)
+        # ---------- Gallery navigation ----------
+        if key == Qt.Key_Right:
+            self._step(+1);
+            return
+        if key == Qt.Key_Left:
+            self._step(-1);
+            return
+
+        # Fallback: default handling
+        super().keyPressEvent(event)
 
     def _step(self, delta: int):
         new_idx = self._idx + delta
@@ -205,8 +228,16 @@ class ImageViewerDialog(QDialog):
             self._idx = self._paths.index(next_path)
 
     def wheelEvent(self, event):
-        delta = event.angleDelta().y()
-        self._zoom(1.25 if delta > 0 else 0.8)
+        delta = event.angleDelta()
+
+        if event.modifiers() & Qt.AltModifier:
+            # 1 % per wheel‐step. 120: +1 %; −120: −1 %
+            sign = 1 if delta.x() > 0 else -1
+            factor = 1.0 + 0.01 * sign
+        else:
+            factor = 1.25 if delta.y() > 0 else 0.8
+
+        self._zoom(factor)
 
     def _zoom(self, factor: float):
         if not self._pix:
@@ -219,6 +250,26 @@ class ImageViewerDialog(QDialog):
         self._scale = max(0.05, min(self._scale * factor, 16.0))
         self._dragging = False
         self._update_scaled()
+
+    def _center_label(self):
+        x = (self.width() - self._label.width()) // 2
+        y = (self.height() - self._label.height()) // 2
+        self._label.move(max(0, x), max(0, y))
+
+    def _move_label(self, new_pos: QPoint):
+        """
+        Clamp label so at least one edge stays visible.
+        :param new_pos:
+        :return:
+        """
+        self._label.move(new_pos)
+
+    def get_view_state(self) -> tuple[float, QPoint]:
+        """
+        Return (scale, top-left label pos) for saving as a preset. Scale is absolute (not relative to fit-scale).
+        :return:
+        """
+        return self._scale, self._label.pos()
 
     # Panning logic
     def eventFilter(self, obj, event):
@@ -241,15 +292,24 @@ class ImageViewerDialog(QDialog):
 
         return super().eventFilter(obj, event)
 
-    def _center_label(self):
-        x = (self.width() - self._label.width()) // 2
-        y = (self.height() - self._label.height()) // 2
-        self._label.move(max(0, x), max(0, y))
 
-    def _move_label(self, new_pos: QPoint):
-        """
-        Clamp label so at least one edge stays visible.
-        :param new_pos:
-        :return:
-        """
-        self._label.move(new_pos)
+    def _zoom_by_pixels(self, px: int):
+        """Add or subtract exactly 1 output pixel in image width."""
+        if not self._pix:
+            return
+        cur_out_w = self._pix.width() * self._scale
+        new_scale = (cur_out_w + px) / self._pix.width()
+        self._scale = max(0.05, min(new_scale, 16.0))
+        self._fit_to_win = False
+        self._update_scaled()
+
+    # ----------------------------------------------------------
+    def _nudge(self, key: int):
+        """Arrow-key pan by one pixel with ALT."""
+        offset = {
+            Qt.Key_Left: QPoint(-1, 0),
+            Qt.Key_Right: QPoint(1, 0),
+            Qt.Key_Up: QPoint(0, -1),
+            Qt.Key_Down: QPoint(0, 1),
+        }[key]
+        self._label.move(self._label.pos() + offset)
