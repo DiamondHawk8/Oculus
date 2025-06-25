@@ -16,14 +16,15 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogButtonBox,
-    QGroupBox, QHBoxLayout, QLineEdit, QRadioButton,
-    QSizePolicy, QTabWidget, QVBoxLayout, QWidget)
+    QGroupBox, QHBoxLayout, QLineEdit, QListWidget,
+    QListWidgetItem, QPushButton, QRadioButton, QSizePolicy,
+    QTabWidget, QVBoxLayout, QWidget)
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(638, 347)
+        MetadataDialog.resize(638, 501)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -36,6 +37,33 @@ class Ui_MetadataDialog(object):
         self.tabs.setMinimumSize(QSize(0, 200))
         self.TagsTab = QWidget()
         self.TagsTab.setObjectName(u"TagsTab")
+        self.verticalLayout_3 = QVBoxLayout(self.TagsTab)
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.listTags = QListWidget(self.TagsTab)
+        self.listTags.setObjectName(u"listTags")
+
+        self.verticalLayout_3.addWidget(self.listTags)
+
+        self.hboxTagEdit = QHBoxLayout()
+        self.hboxTagEdit.setObjectName(u"hboxTagEdit")
+        self.editTag = QLineEdit(self.TagsTab)
+        self.editTag.setObjectName(u"editTag")
+
+        self.hboxTagEdit.addWidget(self.editTag)
+
+        self.btnRemoveTag = QPushButton(self.TagsTab)
+        self.btnRemoveTag.setObjectName(u"btnRemoveTag")
+
+        self.hboxTagEdit.addWidget(self.btnRemoveTag)
+
+        self.btnAddTag = QPushButton(self.TagsTab)
+        self.btnAddTag.setObjectName(u"btnAddTag")
+
+        self.hboxTagEdit.addWidget(self.btnAddTag)
+
+
+        self.verticalLayout_3.addLayout(self.hboxTagEdit)
+
         self.tabs.addTab(self.TagsTab, "")
         self.AttributesTab = QWidget()
         self.AttributesTab.setObjectName(u"AttributesTab")
@@ -107,7 +135,7 @@ class Ui_MetadataDialog(object):
         self.buttonBox.rejected.connect(MetadataDialog.reject)
         self.radRange.toggled.connect(self.editRange.setEnabled)
 
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MetadataDialog)
@@ -115,6 +143,8 @@ class Ui_MetadataDialog(object):
 
     def retranslateUi(self, MetadataDialog):
         MetadataDialog.setWindowTitle(QCoreApplication.translate("MetadataDialog", u"Edit Metadata", None))
+        self.btnRemoveTag.setText(QCoreApplication.translate("MetadataDialog", u"Remove", None))
+        self.btnAddTag.setText(QCoreApplication.translate("MetadataDialog", u"Add", None))
         self.tabs.setTabText(self.tabs.indexOf(self.TagsTab), QCoreApplication.translate("MetadataDialog", u"Tags", None))
         self.tabs.setTabText(self.tabs.indexOf(self.AttributesTab), QCoreApplication.translate("MetadataDialog", u"Attributes", None))
         self.tabs.setTabText(self.tabs.indexOf(self.PresetsTab), QCoreApplication.translate("MetadataDialog", u"Presets", None))

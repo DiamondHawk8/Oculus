@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>638</width>
-    <height>347</height>
+    <height>501</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,12 +29,38 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="TagsTab">
       <attribute name="title">
        <string>Tags</string>
       </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QListWidget" name="listTags"/>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="hboxTagEdit">
+         <item>
+          <widget class="QLineEdit" name="editTag"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnRemoveTag">
+           <property name="text">
+            <string>Remove</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnAddTag">
+           <property name="text">
+            <string>Add</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="AttributesTab">
       <attribute name="title">
