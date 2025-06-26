@@ -347,3 +347,9 @@ class ImageViewerDialog(QDialog):
     def _center_vert(self):
         self._label.move(self._label.x(),
                          (self.height() - self._label.height()) // 2)
+
+    def apply_view_state(self, scale: float, pos: QPoint):
+        self._fit_to_win = False
+        self._scale = max(0.05, min(scale, 16.0))
+        self._update_scaled()
+        self._label.move(pos)

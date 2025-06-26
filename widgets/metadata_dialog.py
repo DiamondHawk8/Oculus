@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import List
 
-from PySide6.QtCore import QStringListModel, Qt
-from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView
+from PySide6.QtCore import QStringListModel, Qt, QPoint
+from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem
 from ui.ui_metadata_dialog import Ui_MetadataDialog
 import logging
 
@@ -42,17 +42,23 @@ class MetadataDialog(QDialog):
         self.ui.listFiles.currentRowChanged.connect(self._on_file_change)
 
         self._load_tags_for_row(0)
+        self._populate_presets(self._id_for_path(self._paths[0]))
 
         # Obtain tags for auto-completion
         rows = self._tags.fetchall("SELECT DISTINCT tag FROM tags", ())
         model = QStringListModel([r["tag"] for r in rows])
         self.ui.editTag.setCompleter(QCompleter(model, self))
 
-        #  wire buttons
+        # Tagging buttons
         self.ui.btnAddTag.clicked.connect(self._add_tag)
         self.ui.btnRemoveTag.clicked.connect(self._remove_selected)
         self.ui.btnCopyTags.clicked.connect(self._copy_tags)
         self.ui.btnPasteTags.clicked.connect(self._paste_tags)
+
+        # Preset Buttons
+        self.ui.btnSavePreset.clicked.connect(self._save_preset)
+        self.ui.btnLoadPreset.clicked.connect(self._load_selected_preset)
+        self.ui.btnDeletePreset.clicked.connect(self._delete_selected_preset)
 
     # -------------------- Tagging ------------------
 
@@ -177,3 +183,61 @@ class MetadataDialog(QDialog):
 
     def _on_file_change(self, row: int):
         self._load_tags_for_row(row)
+        self._populate_presets(self._id_for_path(self._paths[row]))
+
+    # -------------------- Presets --------------
+
+    def _populate_presets(self, media_id: int):
+        self.ui.tblPresets.setRowCount(0)
+        rows = self._media.fetchall(
+            "SELECT id, name, media_id FROM presets WHERE media_id IS NULL OR media_id=?",
+            (media_id,)
+        )
+        for r in rows:
+            row = self.ui.tblPresets.rowCount()
+            self.ui.tblPresets.insertRow(row)
+            self.ui.tblPresets.setItem(row, 0, QTableWidgetItem(r["name"]))
+            scope = "Folder default" if r["media_id"] is None else "This file"
+            self.ui.tblPresets.setItem(row, 1, QTableWidgetItem(scope))
+            self.ui.tblPresets.setRowHeight(row, 20)  # tidy
+            self.ui.tblPresets.item(row, 0).setData(Qt.UserRole, r["id"])
+
+    def _current_view_state(self) -> tuple[float, int, int]:
+        viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
+        if viewer:
+            scale, pos = viewer.get_view_state()
+            return scale, pos.x(), pos.y()
+        return 1.0, 0, 0
+
+    def _save_preset(self):
+        name = self.ui.editPresetName.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Preset name", "Enter a preset name.")
+            return
+        mid = self._id_for_path(self._paths[0])
+        scale, px, py = self._current_view_state()
+        self._media.execute(
+            "INSERT INTO presets(name, media_id, zoom, pan_x, pan_y) VALUES (?,?,?,?,?)",
+            (name, mid, scale, px, py)
+        )
+        self.ui.editPresetName.clear()
+        self._populate_presets(mid)
+
+    def _load_selected_preset(self):
+        items = self.ui.tblPresets.selectedItems()
+        if not items:
+            return
+        preset_id = items[0].data(Qt.UserRole)
+        p = self._media.fetchone(
+            "SELECT zoom, pan_x, pan_y FROM presets WHERE id=?", (preset_id,))
+        viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
+        if viewer and p:
+            viewer.apply_view_state(p["zoom"], QPoint(p["pan_x"], p["pan_y"]))
+
+    def _delete_selected_preset(self):
+        items = self.ui.tblPresets.selectedItems()
+        if not items:
+            return
+        preset_id = items[0].data(Qt.UserRole)
+        self._media.execute("DELETE FROM presets WHERE id=?", (preset_id,))
+        self._populate_presets(self._id_for_path(self._paths[0]))
