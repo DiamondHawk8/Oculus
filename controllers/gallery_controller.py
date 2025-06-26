@@ -320,7 +320,7 @@ class GalleryController:
                    else "Expand variants")
             act_toggle = menu.addAction(txt)  # keep reference
         else:
-            act_toggle = None  # not a stack base
+            act_toggle = "Not a base stack"
 
         # Existing actions
         act_new = menu.addAction("Open in New Tab")
