@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QPoint, QEvent
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QApplication, QWidget
+from PySide6.QtWidgets import QDialog, QLabel, QWidget
 
 
 class ImageViewerDialog(QDialog):

@@ -15,16 +15,17 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QCheckBox, QDialog,
-    QDialogButtonBox, QGroupBox, QHBoxLayout, QLineEdit,
-    QListWidget, QListWidgetItem, QPushButton, QRadioButton,
-    QSizePolicy, QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication, QCheckBox,
+    QDialog, QDialogButtonBox, QGroupBox, QHBoxLayout,
+    QHeaderView, QLineEdit, QListWidget, QListWidgetItem,
+    QPushButton, QRadioButton, QSizePolicy, QTabWidget,
+    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(812, 501)
+        MetadataDialog.resize(812, 481)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -90,6 +91,47 @@ class Ui_MetadataDialog(object):
         self.tabs.addTab(self.AttributesTab, "")
         self.PresetsTab = QWidget()
         self.PresetsTab.setObjectName(u"PresetsTab")
+        self.verticalLayout_2 = QVBoxLayout(self.PresetsTab)
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
+        self.tblPresets = QTableWidget(self.PresetsTab)
+        if (self.tblPresets.columnCount() < 2):
+            self.tblPresets.setColumnCount(2)
+        __qtablewidgetitem = QTableWidgetItem()
+        self.tblPresets.setHorizontalHeaderItem(0, __qtablewidgetitem)
+        __qtablewidgetitem1 = QTableWidgetItem()
+        self.tblPresets.setHorizontalHeaderItem(1, __qtablewidgetitem1)
+        self.tblPresets.setObjectName(u"tblPresets")
+        self.tblPresets.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.tblPresets.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tblPresets.setColumnCount(2)
+
+        self.verticalLayout_2.addWidget(self.tblPresets)
+
+        self.hboxPresetBtns = QHBoxLayout()
+        self.hboxPresetBtns.setObjectName(u"hboxPresetBtns")
+        self.editPresetName = QLineEdit(self.PresetsTab)
+        self.editPresetName.setObjectName(u"editPresetName")
+
+        self.hboxPresetBtns.addWidget(self.editPresetName)
+
+        self.btnLoadPreset = QPushButton(self.PresetsTab)
+        self.btnLoadPreset.setObjectName(u"btnLoadPreset")
+
+        self.hboxPresetBtns.addWidget(self.btnLoadPreset)
+
+        self.btnDeletePreset = QPushButton(self.PresetsTab)
+        self.btnDeletePreset.setObjectName(u"btnDeletePreset")
+
+        self.hboxPresetBtns.addWidget(self.btnDeletePreset)
+
+        self.btnSavePreset = QPushButton(self.PresetsTab)
+        self.btnSavePreset.setObjectName(u"btnSavePreset")
+
+        self.hboxPresetBtns.addWidget(self.btnSavePreset)
+
+
+        self.verticalLayout_2.addLayout(self.hboxPresetBtns)
+
         self.tabs.addTab(self.PresetsTab, "")
 
         self.verticalLayout.addWidget(self.tabs)
@@ -143,7 +185,7 @@ class Ui_MetadataDialog(object):
         self.buttonBox.accepted.connect(MetadataDialog.accept)
         self.buttonBox.rejected.connect(MetadataDialog.reject)
 
-        self.tabs.setCurrentIndex(0)
+        self.tabs.setCurrentIndex(2)
 
 
         QMetaObject.connectSlotsByName(MetadataDialog)
@@ -157,6 +199,14 @@ class Ui_MetadataDialog(object):
         self.btnAddTag.setText(QCoreApplication.translate("MetadataDialog", u"Add", None))
         self.tabs.setTabText(self.tabs.indexOf(self.TagsTab), QCoreApplication.translate("MetadataDialog", u"Tags", None))
         self.tabs.setTabText(self.tabs.indexOf(self.AttributesTab), QCoreApplication.translate("MetadataDialog", u"Attributes", None))
+        ___qtablewidgetitem = self.tblPresets.horizontalHeaderItem(0)
+        ___qtablewidgetitem.setText(QCoreApplication.translate("MetadataDialog", u"Name", None));
+        ___qtablewidgetitem1 = self.tblPresets.horizontalHeaderItem(1)
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("MetadataDialog", u"Scope", None));
+        self.editPresetName.setText(QCoreApplication.translate("MetadataDialog", u"New preset name...", None))
+        self.btnLoadPreset.setText(QCoreApplication.translate("MetadataDialog", u"Load", None))
+        self.btnDeletePreset.setText(QCoreApplication.translate("MetadataDialog", u"Delete", None))
+        self.btnSavePreset.setText(QCoreApplication.translate("MetadataDialog", u"Save", None))
         self.tabs.setTabText(self.tabs.indexOf(self.PresetsTab), QCoreApplication.translate("MetadataDialog", u"Presets", None))
         self.grpScope.setTitle(QCoreApplication.translate("MetadataDialog", u"Apply to", None))
         self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current Selection", None))
