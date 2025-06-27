@@ -28,7 +28,6 @@ class TabController(QObject):
 
         self.media_manager = media_manager
         self.tag_manager = tag_manager
-        self._tab_viewers: dict[int, ImageViewerDialog] = {}
         self._viewers: dict[QWidget, ImageViewerDialog] = {}
 
         self._tabs = tab_widget
@@ -88,6 +87,8 @@ class TabController(QObject):
             host_widget=tab_page
         )
 
+        clone_controller.open_folder(root_path)
+
         # ----- viewer callback ---------------------------------
         def open_viewer(paths, cur_idx, stack):
             viewer = self._viewers.get(tab_page)
@@ -118,8 +119,8 @@ class TabController(QObject):
             if viewer is None:
                 continue
             if page is active_page:
-                viewer.show()
-                viewer.raise_()
+                if viewer.isVisible():
+                    viewer.raise_()
             else:
                 viewer.hide()
 
