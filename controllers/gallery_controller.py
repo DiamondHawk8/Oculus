@@ -107,25 +107,21 @@ class GalleryController:
 
         logger.info("Gallery setup complete")
 
+
     def _push_page(self, folder_abspath: str):
         """
-        Refresh view with contents of folder_abspath
-        Folders first then image files.
+        Refresh view with contents of folder_abspath. Folders first then image files.
+        :param folder_abspath:
+        :return:
         """
-
         logger.debug(f"_push_page called with folder abspath: {folder_abspath}")
-
         folder = Path(folder_abspath)
         if not folder.is_dir():
             return
 
-        paths = (
-                sorted(path_utils.list_subdirs(folder), key=lambda x: x.lower()) +
-                sorted(path_utils.list_images(folder), key=lambda x: x.lower())
-        )
-
-        self.populate_gallery(paths)
-        self._apply_sort()
+        raw_paths = path_utils.list_subdirs(folder) + path_utils.list_images(folder)
+        sorted_paths = self._get_sorted_paths(raw_paths)
+        self.populate_gallery(sorted_paths)
 
     # ---------------------------- Nav methods ----------------------------
 
@@ -135,11 +131,8 @@ class GalleryController:
         :param folder_abspath: The absolute path to the folder
         :return: None
         """
-
         logger.debug(f"open_folder called with folder abspath: {folder_abspath}")
-
         self.state.current_folder = folder_abspath
-
         if not self.history.push(folder_abspath):
             return
 
@@ -156,23 +149,16 @@ class GalleryController:
         :param index: The item that is being activated
         :return: None
         """
-
         logger.debug(f"on_item_activated called with index: {index}")
-
-        # Obtain
         path = self._model.data(index, Qt.UserRole)
-
         logger.debug(f"path: {path}")
-
-        # If item does not contain any usable data
-        if not path:
+        if not path: # If item does not contain any usable data
             logger.warning(f"Item at {path} does not exist")
             return
 
         # If the item is recognized as a folder, call the open folder method on the path
         if Path(path).is_dir():
             self.open_folder(path)
-
         # Otherwise, its media, and it will be opened accordingly
         else:
             self._open_viewer(index)
@@ -224,28 +210,29 @@ class GalleryController:
         self._gallery_preset = preset
         view_utils.apply_gallery_view(self.ui.galleryList, grid=self._gallery_grid, preset=preset)
 
-    def _apply_sort(self):
-        logger.info("_apply_sort called")
-
-        # Determine key + direction
+    def _get_sorted_paths(self, paths: list[str]) -> list[str]:
+        """
+        Sort a mixed list of file and folder paths using current sort settings. Excludes root folder.
+        :param paths:
+        :return:
+        """
         key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
         asc = not self.ui.btn_gallery_sortDir.isChecked()
-        logger.debug(f"_apply_sort key: {key}, asc: {asc}")
 
-        # Split current view into dirs and files
-        current_paths = self._model.get_paths()
-        dirs, files = path_utils.split_dirs_files(current_paths)
-
-        # Exclude the current root folder from being displayed as an entry
+        dirs, files = path_utils.split_dirs_files(paths)
         dirs = [p for p in dirs if p != self.state.current_folder]
-        logger.debug(f"_apply_sort dirs: {dirs}, files: {files}")
 
-        # Order the files slice
         ordered_files = self.media_manager.order_subset(files, key, asc)
-        logger.debug(f"_apply_sort ordered_files: {ordered_files}")
+        return dirs + ordered_files
 
-        # Display: folders first, then sorted files
-        self.populate_gallery(dirs + ordered_files)
+    def _apply_sort(self):
+        logger.info("_apply_sort called")
+        if not self._model.rowCount():
+            logger.warning("Model is empty; nothing to sort")
+            return
+
+        sorted_paths = self._get_sorted_paths(self._model.get_paths())
+        self.populate_gallery(sorted_paths)
 
     def _set_paths_filtered(self, paths: list[str]) -> None:
         """
@@ -269,9 +256,7 @@ class GalleryController:
 
     def _show_ctx_menu(self, pos):
         logger.debug(f"_show_ctx_menu called, context menu opening at {pos}")
-
-        # Which item was right-clicked?
-        idx = self.ui.galleryList.indexAt(pos)
+        idx = self.ui.galleryList.indexAt(pos)  # Item that was right-clicked
         if not idx.isValid():
             return
 
@@ -362,6 +347,9 @@ class GalleryController:
     def _on_renamed(self, old_path: str, new_path: str) -> None:
         """
         Refresh gallery rows whenever MediaManager emits renamed(old, new).
+        :param old_path: original gallery path
+        :param new_path: new gallery path
+        :return:
         """
         root_dir = Path(self.state.current_folder)
         new_parent = Path(new_path).parent
@@ -371,9 +359,7 @@ class GalleryController:
         if old_in_view and new_parent == root_dir:
             row = self.state.row_map.pop(old_path)
             self.state.row_map[new_path] = row
-            self._model.update_display(old_path,
-                                       Path(new_path).name,
-                                       new_user_role=new_path)
+            self._model.update_display(old_path, Path(new_path).name, new_user_role=new_path)
             self.media_manager.thumb(new_path)
             self._apply_sort()
             return
@@ -445,17 +431,13 @@ class GalleryController:
         return widget, ui_local
 
     def _reload_gallery(self) -> None:
-        """
-        Refresh list from scratch, then apply the hide/expand filter.
-        :return:
-        """
         logger.debug("_reload_gallery called")
-        key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
-        asc = not self.ui.btn_gallery_sortDir.isChecked()
 
-        all_paths = self.media_manager.get_sorted_paths(key, asc)
-        self._set_paths_filtered(all_paths)
-        self.populate_gallery(all_paths)
+        if not self.state.current_folder:
+            logger.warning("No current folder set. Aborting reload.")
+            return
+
+        self._push_page(self.state.current_folder)
 
     def get_selected_paths(self) -> list[str]:
         """
