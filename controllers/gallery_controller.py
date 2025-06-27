@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, Q
 from controllers.utils import view_utils
 from controllers.utils import path_utils
 from controllers.utils.gallery_history import GalleryHistory
+from controllers.utils.state_utils import GalleryState, ViewerState
 
 from models.thumbnail_model import ThumbnailListModel
 
@@ -30,16 +31,6 @@ _SORT_KEYS = {
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class GalleryState:
-    current_folder: str | None = None
-    expanded_bases: Set[str] = field(default_factory=set)
-    row_map: Dict[str, int] = field(default_factory=dict)
-
-    def is_expanded(self, base: str) -> bool:
-        return base in self.expanded_bases
-
-
 class GalleryController:
     def __init__(self, ui, media_manager, tag_manager, tab_controller, host_widget):
         super().__init__()
@@ -54,8 +45,7 @@ class GalleryController:
         self._host_widget = host_widget
 
         # View dialog opened for any given gallery
-        self._viewer = None
-        self._viewer_open = False
+        self.viewer = ViewerState()
 
         # model & view
         self._model = ThumbnailListModel()
@@ -69,8 +59,6 @@ class GalleryController:
         self.state.current_folder = None
 
         self.history = GalleryHistory()
-
-        self._open_viewer_fn = None
 
         # Apply gallery defaults
         self._gallery_grid = True
@@ -456,16 +444,6 @@ class GalleryController:
         logger.debug(f"Newly built gallery tab data {widget, ui_local}")
         return widget, ui_local
 
-    def _open_viewer(self, index: QModelIndex):
-        view_utils.open_image_viewer(
-            self._model,
-            index,
-            media_manager=self.media_manager,
-            host_widget=self._host_widget,
-            flag_container=self,
-            flag_attr="_viewer_open",
-        )
-
     def _reload_gallery(self) -> None:
         """
         Refresh list from scratch, then apply the hide/expand filter.
@@ -491,20 +469,23 @@ class GalleryController:
         return [self._model.data(idx, Qt.UserRole) for idx in indexes]
 
     def set_viewer_callback(self, fn):
-        self._open_viewer_fn = fn
+        self.viewer.callback = fn
 
     def _open_viewer(self, index: QModelIndex):
+        """
+
+        :param index:
+        :return:
+        """
         path = self._model.data(index, Qt.UserRole)
         stack = self.media_manager.stack_paths(path)
+        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
+        cur_idx = paths.index(path)
 
-        if callable(self._open_viewer_fn):
-            # Tab-managed viewer
-            self._open_viewer_fn(self._model.get_paths(), index.row(), stack)
+        if self.viewer.callback:
+            self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
         else:
-            # Fallback: standalone viewer for controllers without a callback
-            ImageViewerDialog(self._model.get_paths(), index.row(),
-                              self.media_manager, stack,
-                              parent=self._host_widget).show()
+            self.viewer.open(self._model, index, self.media_manager, self._host_widget)
 
 
 class _MiddleClickFilter(QObject):

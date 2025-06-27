@@ -6,14 +6,8 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QStyle
 
 import controllers.utils.view_utils as view_utils
+from controllers.utils.state_utils import ViewerState
 from models.thumbnail_model import ThumbnailListModel
-
-SIZE_PRESETS = {
-    "Small": (64, QSize(82, 82)),
-    "Medium": (96, QSize(118, 118)),
-    "Large": (128, QSize(150, 150)),
-    "XL": (192, QSize(216, 216)),
-}
 
 GALLERY_PAGE_INDEX = 0
 WIDGET_PAGE_INDEX = 1
@@ -46,7 +40,7 @@ class SearchController(QObject):
         self._search_items: dict[str, int] = {}
         self._result_paths: list[str] = []
 
-        self._viewer_open = False
+        self.viewer = ViewerState()
         self._host_widget = host_widget
 
         self._model = ThumbnailListModel()
@@ -70,7 +64,7 @@ class SearchController(QObject):
         self.ui.btn_search_view.toggled.connect(self._toggle_view)
 
         # size combo
-        self.ui.cmb_search_size.addItems(SIZE_PRESETS.keys())
+        self.ui.cmb_gallery_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
         self.ui.cmb_search_size.setCurrentText(self._search_preset)
         self.ui.cmb_search_size.currentTextChanged.connect(self.change_size)
 
@@ -145,13 +139,18 @@ class SearchController(QObject):
         view_utils.apply_gallery_view(self.ui.resultsList, grid=self._search_grid, preset=preset)
 
     def _open_viewer(self, index: QModelIndex):
-        view_utils.open_image_viewer(
-            self._model,
-            index,
-            host_widget=self._host_widget,
-            flag_container=self,
-            flag_attr="_viewer_open",
-        )
+        path = self._model.data(index, Qt.UserRole)
+        stack = self.media_manager.stack_paths(path)
+        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
+        cur_idx = paths.index(path)
+
+        if self.viewer.callback:
+            self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
+        else:
+            self.viewer.open(self._model, index, self.media_manager, self._host_widget)
+
+    def set_viewer_callback(self, fn):
+        self.viewer.callback = fn
 
     def _on_item_activated(self, index: QModelIndex):
         if not index.isValid():

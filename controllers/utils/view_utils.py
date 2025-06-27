@@ -54,34 +54,3 @@ def apply_gallery_view(view: QListView | QListWidget, *, grid: bool, preset: str
 
     # consistent scroll speed
     view.verticalScrollBar().setSingleStep(300)
-
-
-def open_image_viewer(model, index, media_manager, host_widget, flag_container, flag_attr: str):
-    """
-    Shared helper to open ImageViewerDialog and toggle a boolean flag so multiple instances aren't opened.
-    :param model:
-    :param index:
-    :param host_widget:
-    :param flag_container:
-    :param flag_attr:
-    :return:
-    """
-    logger.info("Opening media viewer")
-    logger.debug(f"open_image_viewer args: index: {index}, host_widget: {host_widget}, flag_container: {flag_container}"
-                 f", flag_attr: {flag_attr}")
-    if getattr(flag_container, flag_attr):
-        return  # viewer already open
-
-    abs_path = model.data(index, Qt.UserRole)
-    if not abs_path or not Path(abs_path).is_file():
-        return
-
-    stack = media_manager.stack_paths(abs_path)  # [base, v1, v2]  or [abs_path]
-    paths = [p for p in model.get_paths() if Path(p).is_file()]
-
-    cur_idx = paths.index(abs_path)
-
-    setattr(flag_container, flag_attr, True)
-    dlg = ImageViewerDialog(paths, cur_idx, media_manager, stack, parent=host_widget)
-    dlg.finished.connect(lambda *_: setattr(flag_container, flag_attr, False))
-    dlg.exec()
