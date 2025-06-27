@@ -1,0 +1,37 @@
+from pathlib import Path
+from typing import List, Tuple
+
+IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
+
+
+def list_subdirs(folder: str | Path) -> List[str]:
+    """
+    Return absolute paths of immediate sub-folders (no files).
+    :param folder:
+    :return:
+    """
+    return [str(p) for p in Path(folder).iterdir() if p.is_dir()]
+
+
+def list_images(folder: str | Path) -> List[str]:
+    """
+    Return absolute paths of image files in that folder (non-recursive).
+    :param folder:
+    :return:
+    """
+    return [
+        str(p) for p in Path(folder).iterdir()
+        if p.is_file() and p.suffix.lower() in IMAGE_EXT
+    ]
+
+
+def split_dirs_files(paths: List[str]) -> Tuple[List[str], List[str]]:
+    """
+    Split an arbitrary path list into (dirs, files).
+    :param paths:
+    :return:
+    """
+    dirs = [p for p in paths if Path(p).is_dir()]
+    files = [p for p in paths if Path(p).is_file()]
+    return dirs, files
+
