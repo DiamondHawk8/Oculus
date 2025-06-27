@@ -167,6 +167,7 @@ class GalleryController:
         logger.debug(f"navigate {delta}")
         new_folder = self.history.step(delta)
         if new_folder:
+            self.state.current_folder = new_folder
             self._push_page(new_folder)
             self._update_nav_buttons()
 
