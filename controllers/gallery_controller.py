@@ -19,12 +19,6 @@ from widgets.rename_dialog import RenameDialog
 
 import logging
 
-SIZE_PRESETS = {
-    "Small": (64, QSize(82, 82)),
-    "Medium": (96, QSize(118, 118)),
-    "Large": (128, QSize(150, 150)),
-    "XL": (192, QSize(216, 216)),
-}
 
 _SORT_KEYS = {
     0: "name",
@@ -42,7 +36,6 @@ class GalleryState:
     row_map: Dict[str, int] = field(default_factory=dict)
 
     def is_expanded(self, base: str) -> bool:
-        print(base, self.expanded_bases)
         return base in self.expanded_bases
 
 
@@ -77,12 +70,9 @@ class GalleryController:
         self._open_viewer_fn = None
 
         # Apply gallery defaults
-        self._gallery_grid = True  # default mode
+        self._gallery_grid = True
         self._gallery_preset = "Medium"
-        logger.debug("Applying gallery view")
-        view_utils.apply_view(self.ui.galleryList,
-                              grid=self._gallery_grid,
-                              preset=self._gallery_preset)
+        view_utils.apply_gallery_view(self.ui.galleryList, grid=self._gallery_grid, preset=self._gallery_preset)
 
         # Create folder icon
         self._folder_icon = QApplication.style().standardIcon(QStyle.SP_DirIcon)
@@ -124,7 +114,7 @@ class GalleryController:
 
         # TODO derive size preset dynamically
         # Connect dropdown to select icon sizes
-        self.ui.cmb_gallery_size.addItems(SIZE_PRESETS.keys())
+        self.ui.cmb_gallery_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
 
@@ -245,17 +235,12 @@ class GalleryController:
     def _toggle_view(self, checked):
         logger.info("toggle_view called")
         self._gallery_grid = checked
-        view_utils.apply_view(self.ui.galleryList,
-                              grid=checked,
-                              preset=self._gallery_preset)
-        self.ui.galleryList.verticalScrollBar().setSingleStep(300)
+        view_utils.apply_gallery_view(self.ui.galleryList, grid=checked, preset=self._gallery_preset)
 
     def _change_size(self, preset):
         logger.info("_change_size called")
         self._gallery_preset = preset
-        view_utils.apply_view(self.ui.galleryList,
-                              grid=self._gallery_grid,
-                              preset=preset)
+        view_utils.apply_gallery_view(self.ui.galleryList, grid=self._gallery_grid, preset=preset)
 
     def _apply_sort(self):
         logger.info("_apply_sort called")
@@ -324,10 +309,8 @@ class GalleryController:
         if base_id_row and self.media_manager._is_stacked_base(base_id_row["id"]):
 
             if self.state.is_expanded(base_path):
-                print("SETTING TEXT TO EXPAND")
                 txt = "Expand variants"
             else:
-                print("SETTING TEXT TO COLLAPSE")
                 txt = "Collapse variants"
 
             act_toggle = menu.addAction(txt)  # keep reference

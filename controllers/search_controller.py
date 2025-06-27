@@ -57,9 +57,7 @@ class SearchController(QObject):
         # Apply search defaults
         self._search_grid = True
         self._search_preset = "Medium"
-        view_utils.apply_view(self.ui.resultsList,
-                              grid=self._search_grid,
-                              preset=self._search_preset)
+        view_utils.apply_gallery_view(self.ui.resultsList, grid=self._search_grid, preset=self._search_preset)
 
         # Connect Search bar
         self.ui.searchBtn.clicked.connect(self._exec_search)
@@ -137,18 +135,14 @@ class SearchController(QObject):
     def _toggle_view(self, checked):
         logger.info("_toggle_view called")
         self._search_grid = checked
-        view_utils.apply_view(self.ui.resultsList,
-                              grid=checked,
-                              preset=self._search_preset)
+        view_utils.apply_gallery_view(self.ui.resultsList, grid=checked, preset=self._search_preset)
         # Set scrolling speeds
         self.ui.resultsList.verticalScrollBar().setSingleStep(300)
 
     def change_size(self, preset):
         logger.info("_change_size called")
         self._search_preset = preset
-        view_utils.apply_view(self.ui.resultsList,
-                              grid=self._search_grid,
-                              preset=preset)
+        view_utils.apply_gallery_view(self.ui.resultsList, grid=self._search_grid, preset=preset)
 
     def _open_viewer(self, index: QModelIndex):
         view_utils.open_image_viewer(
