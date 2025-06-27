@@ -7,6 +7,7 @@ from PySide6.QtGui import QIcon, QKeySequence, QAction
 from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QMessageBox, QAbstractItemView
 
 import controllers.view_utils as view_utils
+from controllers import path_utils
 
 from models.thumbnail_model import ThumbnailListModel
 
@@ -37,11 +38,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GalleryState:
     current_folder: str | None = None
-    expanded_stacks: Set[str] = field(default_factory=set)
+    expanded_bases: Set[str] = field(default_factory=set)
     row_map: Dict[str, int] = field(default_factory=dict)
 
     def is_expanded(self, base: str) -> bool:
-        return base in self.expanded_stacks
+        print(base, self.expanded_bases)
+        return base in self.expanded_bases
 
 
 class GalleryController:
@@ -140,16 +142,11 @@ class GalleryController:
         if not folder.is_dir():
             return
 
-        subdirs = [
-            str(p) for p in folder.iterdir() if p.is_dir()
-        ]
-        images = [
-            str(p) for p in folder.iterdir()
-            if p.is_file() and p.suffix.lower() in {".jpg", ".png", ".gif", ".bmp"}
-        ]
+        paths = (
+                sorted(path_utils.list_subdirs(folder), key=lambda x: x.lower()) +
+                sorted(path_utils.list_images(folder), key=lambda x: x.lower())
+        )
 
-        paths = sorted(subdirs, key=str.lower) + sorted(images, key=str.lower)
-        logger.debug(f"Populating gallery with paths:\n{paths}")
         self.populate_gallery(paths)
         self._apply_sort()
 
@@ -262,25 +259,25 @@ class GalleryController:
 
     def _apply_sort(self):
         logger.info("_apply_sort called")
+
         # Determine key + direction
         key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
         asc = not self.ui.btn_gallery_sortDir.isChecked()
         logger.debug(f"_apply_sort key: {key}, asc: {asc}")
 
-        # Split current view into dirs vs. files
-        current_paths = self._model.get_paths()  # whatever is shown now
-        dirs = [p for p in current_paths if Path(p).is_dir()]
-        files = [p for p in current_paths if Path(p).is_file()]
+        # Split current view into dirs and files
+        current_paths = self._model.get_paths()
+        dirs, files = path_utils.split_dirs_files(current_paths)
 
-        # remove current dir from sort order
+        # Exclude the current root folder from being displayed as an entry
         dirs = [p for p in dirs if p != self.state.current_folder]
         logger.debug(f"_apply_sort dirs: {dirs}, files: {files}")
 
-        # Sort only the file slice
+        # Order the files slice
         ordered_files = self.media_manager.order_subset(files, key, asc)
         logger.debug(f"_apply_sort ordered_files: {ordered_files}")
 
-        # Combine folders first (unsorted), then ordered files
+        # Display: folders first, then sorted files
         self.populate_gallery(dirs + ordered_files)
 
     def _set_paths_filtered(self, paths: list[str]) -> None:
@@ -293,7 +290,7 @@ class GalleryController:
         for p in paths:
             if self.media_manager.is_variant(p):
                 base = self.media_manager.stack_paths(p)[0]
-                if self.state.expanded_stacks:
+                if self.state.expanded_bases:
                     continue  # collapsed -> hide
             shown.append(p)
 
@@ -325,10 +322,13 @@ class GalleryController:
         base_id_row = self.media_manager.fetchone(
             "SELECT id FROM media WHERE path=?", (base_path,))
         if base_id_row and self.media_manager._is_stacked_base(base_id_row["id"]):
+
             if self.state.is_expanded(base_path):
-                txt = "Collapse variants"
-            else:
+                print("SETTING TEXT TO EXPAND")
                 txt = "Expand variants"
+            else:
+                print("SETTING TEXT TO COLLAPSE")
+                txt = "Collapse variants"
 
             act_toggle = menu.addAction(txt)  # keep reference
         else:
@@ -364,11 +364,11 @@ class GalleryController:
         :return:
         """
         if self.state.is_expanded(base_path):
-            logger.debug(f"Removing {base_path} from state.expanded_stacks")
-            self.state.expanded_stacks.remove(base_path)
+            logger.debug(f"Removing {base_path} from state.expanded_bases")
+            self.state.expanded_bases.remove(base_path)
         else:
-            logger.debug(f"Adding {base_path} to state.expanded_stacks")
-            self.state.expanded_stacks.add(base_path)
+            logger.debug(f"Adding {base_path} to state.expanded_bases")
+            self.state.expanded_bases.add(base_path)
 
         self._reload_gallery()
 
