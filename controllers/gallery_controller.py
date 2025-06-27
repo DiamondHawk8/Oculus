@@ -1,4 +1,6 @@
+from dataclasses import field, dataclass
 from pathlib import Path
+from typing import Dict, Set
 
 from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
@@ -9,6 +11,7 @@ import controllers.view_utils as view_utils
 from models.thumbnail_model import ThumbnailListModel
 
 from ui.ui_gallery_tab import Ui_Form
+from widgets.image_viewer import ImageViewerDialog
 from widgets.metadata_dialog import MetadataDialog
 
 from widgets.rename_dialog import RenameDialog
@@ -31,6 +34,16 @@ _SORT_KEYS = {
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class GalleryState:
+    current_folder: str | None = None
+    expanded_stacks: Set[str] = field(default_factory=set)
+    row_map: Dict[str, int] = field(default_factory=dict)
+
+    def is_expanded(self, base: str) -> bool:
+        return base in self.expanded_stacks
+
+
 class GalleryController:
     def __init__(self, ui, media_manager, tag_manager, tab_controller, host_widget):
         super().__init__()
@@ -44,7 +57,6 @@ class GalleryController:
         # Attribute used to differentiate between the root gallery page and other opened tabs
         self._host_widget = host_widget
 
-
         # View dialog opened for any given gallery
         self._viewer = None
         self._viewer_open = False
@@ -55,11 +67,12 @@ class GalleryController:
         self.ui.galleryList.setResizeMode(QListView.Adjust)
         self.ui.galleryList.setModel(self._model)
 
-        self._gallery_items: dict[str, int] = {}
+        # State control
+        self.state = GalleryState()
+        self.state.row_map = []
+        self.state.current_folder = None
 
-        self._current_folder: str | None = None
-
-        self._expanded_stacks: set[str] = set()  # base paths currently expanded
+        self._open_viewer_fn = None
 
         # Apply gallery defaults
         self._gallery_grid = True  # default mode
@@ -106,19 +119,12 @@ class GalleryController:
         # Connect sorting functionality
         self.ui.cmb_gallery_sortKey.currentIndexChanged.connect(self._apply_sort)
         self.ui.btn_gallery_sortDir.toggled.connect(self._apply_sort)
-        self._apply_sort()  # initial sort
-
-        # Obtain any existing media paths
-        cached_paths = self.media_manager.folder_paths()
-        if cached_paths:
-            self.populate_gallery(cached_paths)
 
         # TODO derive size preset dynamically
         # Connect dropdown to select icon sizes
         self.ui.cmb_gallery_size.addItems(SIZE_PRESETS.keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
-
 
         logger.info("Gallery setup complete")
 
@@ -145,6 +151,7 @@ class GalleryController:
         paths = sorted(subdirs, key=str.lower) + sorted(images, key=str.lower)
         logger.debug(f"Populating gallery with paths:\n{paths}")
         self.populate_gallery(paths)
+        self._apply_sort()
 
     # ---------------------------- Nav methods ----------------------------
 
@@ -157,7 +164,7 @@ class GalleryController:
 
         logger.debug(f"open_folder called with folder abspath: {folder_abspath}")
 
-        self._current_folder = folder_abspath
+        self.state.current_folder = folder_abspath
 
         if self._cursor >= 0 and self._history[self._cursor] == folder_abspath:
             return  # same folder; ignore
@@ -264,6 +271,9 @@ class GalleryController:
         current_paths = self._model.get_paths()  # whatever is shown now
         dirs = [p for p in current_paths if Path(p).is_dir()]
         files = [p for p in current_paths if Path(p).is_file()]
+
+        # remove current dir from sort order
+        dirs = [p for p in dirs if p != self.state.current_folder]
         logger.debug(f"_apply_sort dirs: {dirs}, files: {files}")
 
         # Sort only the file slice
@@ -283,13 +293,13 @@ class GalleryController:
         for p in paths:
             if self.media_manager.is_variant(p):
                 base = self.media_manager.stack_paths(p)[0]
-                if base not in self._expanded_stacks:
+                if self.state.expanded_stacks:
                     continue  # collapsed -> hide
             shown.append(p)
 
         self._model.set_paths(shown)
-        self._gallery_items = {p: i for i, p in enumerate(shown)}
-        logger.debug(f"_set_paths_filtered called, new gallery items: {self._gallery_items}")
+        self.state.row_map = {p: i for i, p in enumerate(shown)}
+        logger.debug(f"_set_paths_filtered called, new gallery items: {self.state.row_map}")
 
     # ---------------------------- Other methods ----------------------------
 
@@ -315,9 +325,11 @@ class GalleryController:
         base_id_row = self.media_manager.fetchone(
             "SELECT id FROM media WHERE path=?", (base_path,))
         if base_id_row and self.media_manager._is_stacked_base(base_id_row["id"]):
-            txt = ("Collapse variants"
-                   if base_path in self._expanded_stacks
-                   else "Expand variants")
+            if self.state.is_expanded(base_path):
+                txt = "Collapse variants"
+            else:
+                txt = "Expand variants"
+
             act_toggle = menu.addAction(txt)  # keep reference
         else:
             act_toggle = "Not a base stack"
@@ -351,12 +363,12 @@ class GalleryController:
         :param base_path:
         :return:
         """
-        if base_path in self._expanded_stacks:
-            logger.debug(f"Removing {base_path} from _expanded_stacks")
-            self._expanded_stacks.remove(base_path)
+        if self.state.is_expanded(base_path):
+            logger.debug(f"Removing {base_path} from state.expanded_stacks")
+            self.state.expanded_stacks.remove(base_path)
         else:
-            logger.debug(f"Adding {base_path} to _expanded_stacks")
-            self._expanded_stacks.add(base_path)
+            logger.debug(f"Adding {base_path} to state.expanded_stacks")
+            self.state.expanded_stacks.add(base_path)
 
         self._reload_gallery()
 
@@ -385,20 +397,15 @@ class GalleryController:
     def _on_renamed(self, old_path: str, new_path: str) -> None:
         """
         Refresh gallery rows whenever MediaManager emits renamed(old, new).
-
-        Behaviour:
-          • rename inside current folder → row key + label updated
-          • move out of folder          → row removed
-          • move into folder            → new row added
         """
-        root_dir = Path(self._current_folder)          # adjust if your var differs
+        root_dir = Path(self.state.current_folder)
         new_parent = Path(new_path).parent
-        old_in_view = old_path in self._gallery_items
+        old_in_view = old_path in self.state.row_map
 
         # Rename stays within this folder
         if old_in_view and new_parent == root_dir:
-            row = self._gallery_items.pop(old_path)
-            self._gallery_items[new_path] = row
+            row = self.state.row_map.pop(old_path)
+            self.state.row_map[new_path] = row
             self._model.update_display(old_path,
                                        Path(new_path).name,
                                        new_user_role=new_path)
@@ -406,21 +413,19 @@ class GalleryController:
             self._apply_sort()
             return
 
-        # File moved out of this folder, therfore drop the row
+        # File moved out of this folder, therefore drop the row
         if old_in_view and new_parent != root_dir:
-            row = self._gallery_items.pop(old_path)
+            row = self.state.row_map.pop(old_path)
             self._model.removeRow(row)
             self._apply_sort()
             return
 
         # File moved into this folder (wasn't visible before)
         if not old_in_view and new_parent == root_dir:
-            row = self._model.add_path(new_path)       # your helper to append
-            self._gallery_items[new_path] = row
+            row = self._model.add_path(new_path)  # your helper to append
+            self.state.row_map[new_path] = row
             self.media_manager.thumb(new_path)
             self._apply_sort()
-
-
 
     def eventFilter(self, obj, event):
         # If MMB on the gallery list
@@ -507,6 +512,22 @@ class GalleryController:
             return []
 
         return [self._model.data(idx, Qt.UserRole) for idx in indexes]
+
+    def set_viewer_callback(self, fn):
+        self._open_viewer_fn = fn
+
+    def _open_viewer(self, index: QModelIndex):
+        path = self._model.data(index, Qt.UserRole)
+        stack = self.media_manager.stack_paths(path)
+
+        if callable(self._open_viewer_fn):
+            # Tab-managed viewer
+            self._open_viewer_fn(self._model.get_paths(), index.row(), stack)
+        else:
+            # Fallback: standalone viewer for controllers without a callback
+            ImageViewerDialog(self._model.get_paths(), index.row(),
+                              self.media_manager, stack,
+                              parent=self._host_widget).show()
 
 
 class _MiddleClickFilter(QObject):
