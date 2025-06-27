@@ -1,32 +1,24 @@
-from dataclasses import field, dataclass
 from pathlib import Path
-from typing import Dict, Set
 
 from PySide6.QtCore import Qt, QModelIndex, QEvent, QObject
-from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QAbstractItemView
+from PySide6.QtGui import QIcon, QAction, QKeySequence
+from PySide6.QtWidgets import (
+    QListView, QMenu, QWidget, QApplication,
+    QStyle, QAbstractItemView
+)
 
-from controllers.utils import view_utils
-from controllers.utils import path_utils
+from controllers.utils import view_utils, path_utils
 from controllers.utils.gallery_history import GalleryHistory
 from controllers.utils.state_utils import GalleryState, ViewerState
-
 from models.thumbnail_model import ThumbnailListModel
 
 from ui.ui_gallery_tab import Ui_Form
-from widgets.image_viewer import ImageViewerDialog
 from widgets.metadata_dialog import MetadataDialog
-
 from widgets.rename_dialog import RenameDialog
 
 import logging
 
-
-_SORT_KEYS = {
-    0: "name",
-    1: "date",
-    2: "size",
-}
+_SORT_KEYS = {0: "name", 1: "date", 2: "size"}
 
 logger = logging.getLogger(__name__)
 
@@ -37,82 +29,73 @@ class GalleryController:
 
         self.ui = ui
         self.media_manager = media_manager
-        self.media_manager.renamed.connect(self._on_renamed)
-
         self.tag_manager = tag_manager
         self.tab_controller = tab_controller
-        # Attribute used to differentiate between the root gallery page and other opened tabs
-        self._host_widget = host_widget
+        self._host_widget = host_widget  # differentiate root vs tabs
 
-        # View dialog opened for any given gallery
-        self.viewer = ViewerState()
+        self.media_manager.renamed.connect(self._on_renamed)
 
-        # model & view
+        # ---------- model / view ----------
         self._model = ThumbnailListModel()
         self.ui.galleryList.setViewMode(QListView.IconMode)
         self.ui.galleryList.setResizeMode(QListView.Adjust)
         self.ui.galleryList.setModel(self._model)
 
-        # State control
+        # ---------- state objects ----------
         self.state = GalleryState()
-        self.state.row_map = []
-        self.state.current_folder = None
-
         self.history = GalleryHistory()
+        self.viewer = ViewerState()
 
-        # Apply gallery defaults
+        # ---------- gallery defaults ----------
         self._gallery_grid = True
         self._gallery_preset = "Medium"
-        view_utils.apply_gallery_view(self.ui.galleryList, grid=self._gallery_grid, preset=self._gallery_preset)
+        view_utils.apply_gallery_view(
+            self.ui.galleryList,
+            grid=self._gallery_grid,
+            preset=self._gallery_preset,
+        )
 
-        # Create folder icon
+        # ---------- icons & helpers ----------
         self._folder_icon = QApplication.style().standardIcon(QStyle.SP_DirIcon)
-
-        # Signals
         self._mid_filter = _MiddleClickFilter(self.ui.galleryList, self._open_in_new_tab)
         self.ui.galleryList.viewport().installEventFilter(self._mid_filter)
 
+        # ---------- selection & context ----------
+        self.ui.galleryList.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.ui.galleryList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.galleryList.customContextMenuRequested.connect(self._show_ctx_menu)
 
-        # Allow for advanced selection
-        self.ui.galleryList.setSelectionMode(QAbstractItemView.ExtendedSelection)
-
-        # Hook Back/Forward buttons
+        # ---------- navigation ----------
         ui.btn_back.clicked.connect(lambda: self._navigate(-1))
         if hasattr(ui, "btn_forward"):
             ui.btn_forward.clicked.connect(lambda: self._navigate(+1))
-        # Hook keyboard
         self._add_shortcut("Alt+Left", lambda: self._navigate(-1))
         self._add_shortcut("Alt+Right", lambda: self._navigate(+1))
 
-        # Connect double-click / Enter activation
+        # ---------- activation ----------
         self.ui.galleryList.activated.connect(self._on_item_activated)
-
-        # Connect thumbnail method to media signals
         self.media_manager.thumb_ready.connect(self._on_thumb_ready)
 
-        # Connect button to toggle between list and grid view
+        # ---------- view / sort controls ----------
         self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
-
-        # Connect sorting functionality
         self.ui.cmb_gallery_sortKey.currentIndexChanged.connect(self._apply_sort)
         self.ui.btn_gallery_sortDir.toggled.connect(self._apply_sort)
 
-        # TODO derive size preset dynamically
-        # Connect dropdown to select icon sizes
+        # ---------- size combo ----------
+        # TODO derive sizes dynamically
         self.ui.cmb_gallery_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
 
         logger.info("Gallery setup complete")
 
+    # ----------------------------- Navigation / History -----------------------------
 
     def _push_page(self, folder_abspath: str):
         """
         Refresh view with contents of folder_abspath. Folders first then image files.
-        :param folder_abspath:
-        :return:
+        :param folder_abspath: Absolute path of folder to display contents of
+        :return: None
         """
         logger.debug(f"_push_page called with folder abspath: {folder_abspath}")
         folder = Path(folder_abspath)
@@ -122,8 +105,6 @@ class GalleryController:
         raw_paths = path_utils.list_subdirs(folder) + path_utils.list_images(folder)
         sorted_paths = self._get_sorted_paths(raw_paths)
         self.populate_gallery(sorted_paths)
-
-    # ---------------------------- Nav methods ----------------------------
 
     def open_folder(self, folder_abspath: str):
         """
@@ -135,33 +116,10 @@ class GalleryController:
         self.state.current_folder = folder_abspath
         if not self.history.push(folder_abspath):
             return
-
         self._push_page(folder_abspath)
-
-        # enable/disable nav buttons
         self.ui.btn_back.setEnabled(self.history.can_go_back())
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(False)
-
-    def _on_item_activated(self, index: QModelIndex):
-        """
-        Method that determines what should be done when an item is activated (usually via clicking)
-        :param index: The item that is being activated
-        :return: None
-        """
-        logger.debug(f"on_item_activated called with index: {index}")
-        path = self._model.data(index, Qt.UserRole)
-        logger.debug(f"path: {path}")
-        if not path: # If item does not contain any usable data
-            logger.warning(f"Item at {path} does not exist")
-            return
-
-        # If the item is recognized as a folder, call the open folder method on the path
-        if Path(path).is_dir():
-            self.open_folder(path)
-        # Otherwise, its media, and it will be opened accordingly
-        else:
-            self._open_viewer(index)
 
     def _navigate(self, delta: int) -> None:
         logger.debug(f"navigate {delta}")
@@ -177,7 +135,59 @@ class GalleryController:
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(self.history.can_go_forward())
 
-    # ---------------------------- Thumbnail methods ----------------------------
+    def _on_item_activated(self, index: QModelIndex):
+        """
+        Method that determines what should be done when an item is activated (usually via clicking)
+        :param index: The item that is being activated
+        :return: None
+        """
+        logger.debug(f"on_item_activated called with index: {index}")
+        path = self._model.data(index, Qt.UserRole)
+        if not path:  # If item does not contain any usable data
+            logger.warning(f"Item at {index.row()} has no path")
+            return
+        # If the item is recognized as a folder, call the open folder method on the path
+        if Path(path).is_dir():
+            self.open_folder(path)
+        # Otherwise, its media, and it will be opened accordingly
+        else:
+            self._open_viewer(index)
+
+    # ----------------------------- Sorting & appearance -----------------------------
+
+    def _toggle_view(self, checked):
+        logger.info("toggle_view called")
+        self._gallery_grid = checked
+        view_utils.apply_gallery_view(self.ui.galleryList, grid=checked, preset=self._gallery_preset)
+
+    def _change_size(self, preset):
+        logger.info("_change_size called")
+        self._gallery_preset = preset
+        view_utils.apply_gallery_view(self.ui.galleryList, grid=self._gallery_grid, preset=preset)
+
+    def _get_sorted_paths(self, paths: list[str]) -> list[str]:
+        """
+        Sort a mixed list of file and folder paths using current sort settings. Excludes root folder.
+        :param paths: list of paths to be sorted
+        :return:
+        """
+        key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
+        asc = not self.ui.btn_gallery_sortDir.isChecked()
+        dirs, files = path_utils.split_dirs_files(paths)
+        dirs = [p for p in dirs if p != self.state.current_folder]
+        ordered_files = self.media_manager.order_subset(files, key, asc)
+        return dirs + ordered_files
+
+    def _apply_sort(self):
+        logger.info("_apply_sort called")
+        if not self._model.rowCount():
+            logger.warning("Model is empty; nothing to sort")
+            return
+
+        sorted_paths = self._get_sorted_paths(self._model.get_paths())
+        self.populate_gallery(sorted_paths)
+
+    # ----------------------------- Gallery population & thumbnails -----------------------------
     def populate_gallery(self, paths: list[str]) -> None:
         """
         Method that takes in a list of paths, and creates the gallery data structures accordingly
@@ -194,46 +204,6 @@ class GalleryController:
             # If is folder
             else:
                 self._model.update_icon(p, self._folder_icon)
-
-    def _on_thumb_ready(self, path: str, pix) -> None:
-        icon = QIcon(pix)
-        self._model.update_icon(path, icon)
-
-    # ---------------------------- Appearance methods ----------------------------
-
-    def _toggle_view(self, checked):
-        logger.info("toggle_view called")
-        self._gallery_grid = checked
-        view_utils.apply_gallery_view(self.ui.galleryList, grid=checked, preset=self._gallery_preset)
-
-    def _change_size(self, preset):
-        logger.info("_change_size called")
-        self._gallery_preset = preset
-        view_utils.apply_gallery_view(self.ui.galleryList, grid=self._gallery_grid, preset=preset)
-
-    def _get_sorted_paths(self, paths: list[str]) -> list[str]:
-        """
-        Sort a mixed list of file and folder paths using current sort settings. Excludes root folder.
-        :param paths:
-        :return:
-        """
-        key = _SORT_KEYS.get(self.ui.cmb_gallery_sortKey.currentIndex(), "name")
-        asc = not self.ui.btn_gallery_sortDir.isChecked()
-
-        dirs, files = path_utils.split_dirs_files(paths)
-        dirs = [p for p in dirs if p != self.state.current_folder]
-
-        ordered_files = self.media_manager.order_subset(files, key, asc)
-        return dirs + ordered_files
-
-    def _apply_sort(self):
-        logger.info("_apply_sort called")
-        if not self._model.rowCount():
-            logger.warning("Model is empty; nothing to sort")
-            return
-
-        sorted_paths = self._get_sorted_paths(self._model.get_paths())
-        self.populate_gallery(sorted_paths)
 
     def _set_paths_filtered(self, paths: list[str]) -> None:
         """
@@ -253,7 +223,16 @@ class GalleryController:
         self.state.row_map = {p: i for i, p in enumerate(shown)}
         logger.debug(f"_set_paths_filtered called, new gallery items: {self.state.row_map}")
 
-    # ---------------------------- Other methods ----------------------------
+    def _on_thumb_ready(self, path: str, pix) -> None:
+        icon = QIcon(pix)
+        self._model.update_icon(path, icon)
+
+
+
+
+    # Variant-stack handling
+
+    # ---------------------------- TO BE SORTED ----------------------------
 
     def _show_ctx_menu(self, pos):
         logger.debug(f"_show_ctx_menu called, context menu opening at {pos}")
@@ -456,7 +435,6 @@ class GalleryController:
 
     def _open_viewer(self, index: QModelIndex):
         """
-
         :param index:
         :return:
         """
