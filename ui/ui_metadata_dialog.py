@@ -25,7 +25,7 @@ class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(812, 481)
+        MetadataDialog.resize(812, 433)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -104,6 +104,8 @@ class Ui_MetadataDialog(object):
         self.tblPresets.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tblPresets.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tblPresets.setColumnCount(2)
+        self.tblPresets.horizontalHeader().setStretchLastSection(True)
+        self.tblPresets.verticalHeader().setStretchLastSection(False)
 
         self.verticalLayout_2.addWidget(self.tblPresets)
 
