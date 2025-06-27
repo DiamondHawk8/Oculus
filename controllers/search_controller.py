@@ -5,7 +5,7 @@ from PySide6.QtCore import QSize, QModelIndex, Qt, QEvent, QObject
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QStyle
 
-import controllers.view_utils as view_utils
+import controllers.utils.view_utils as view_utils
 from models.thumbnail_model import ThumbnailListModel
 
 SIZE_PRESETS = {

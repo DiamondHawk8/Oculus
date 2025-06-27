@@ -2,12 +2,12 @@ from dataclasses import field, dataclass
 from pathlib import Path
 from typing import Dict, Set
 
-from PySide6.QtCore import Qt, QSize, QModelIndex, QEvent, QObject
+from PySide6.QtCore import Qt, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
-from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QMessageBox, QAbstractItemView
+from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QAbstractItemView
 
-import controllers.view_utils as view_utils
-from controllers import path_utils
+import controllers.utils.view_utils as view_utils
+from controllers.utils import path_utils
 
 from models.thumbnail_model import ThumbnailListModel
 
