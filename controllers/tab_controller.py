@@ -10,6 +10,7 @@ from managers.media_manager import MediaManager
 from managers.tag_manager import TagManager
 from ui.ui_gallery_tab import Ui_Form
 from controllers.gallery_controller import GalleryController
+from widgets.image_viewer import ImageViewerDialog
 
 # how many tabs Ctrl+Shift+T can restore, higher values may lead to decreased performance
 MAX_CLOSED_STACK = 15
@@ -27,6 +28,8 @@ class TabController(QObject):
 
         self.media_manager = media_manager
         self.tag_manager = tag_manager
+        self._tab_viewers: dict[int, ImageViewerDialog] = {}
+        self._viewers: dict[QWidget, ImageViewerDialog] = {}
 
         self._tabs = tab_widget
         self._closed: deque = deque(maxlen=MAX_CLOSED_STACK)
@@ -34,6 +37,7 @@ class TabController(QObject):
         # wire TabWidget signals
         self._tabs.setTabsClosable(True)
         self._tabs.tabCloseRequested.connect(self._close_index)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
 
         # register global shortcuts
         keybinds.register("Ctrl+W", self.close_current)
@@ -61,8 +65,7 @@ class TabController(QObject):
             self._tabs.setCurrentIndex(idx)
         return idx
 
-    def open_folder_tab(self, root_path: str, title: str | None = None,
-                        *, switch: bool = True) -> int:
+    def open_folder_tab(self, root_path: str, title: str | None = None, *, switch: bool = True) -> int:
         """
         Build a new Gallery page rooted at root_path and add it as a tab.
         Returns the tab index.
@@ -84,16 +87,41 @@ class TabController(QObject):
             tab_controller=self,
             host_widget=tab_page
         )
-        logger.debug(f"New gallery instance created: {clone_controller}")
 
-        clone_controller.open_folder(root_path)
+        # ----- viewer callback ---------------------------------
+        def open_viewer(paths, cur_idx, stack):
+            viewer = self._viewers.get(tab_page)
 
-        # Drop it in the QTabWidget
-        return self.open_in_new_tab(
-            tab_page,
-            title or Path(root_path).name,
-            switch=switch
-        )
+            if viewer is None:  # first time in this tab
+                viewer = ImageViewerDialog(
+                    paths, cur_idx,
+                    self.media_manager, stack,
+                    parent=self._tabs  # keep it within the tab widget
+                )
+                viewer.destroyed.connect(
+                    lambda: self._viewers.pop(tab_page, None))
+                self._viewers[tab_page] = viewer
+            else:
+                viewer.load_new_stack(paths, cur_idx, stack)  # refresh content
+                viewer.raise_()  # bring to front
+
+        clone_controller.set_viewer_callback(open_viewer)
+        tab_idx = self.open_in_new_tab(tab_page, title or Path(root_path).name, switch=switch)
+
+        return tab_idx
+
+    def _on_tab_changed(self, idx: int):
+        active_page = self._tabs.widget(idx)
+
+        # Hide every viewer except the one for the active page
+        for page, viewer in list(self._viewers.items()):
+            if viewer is None:
+                continue
+            if page is active_page:
+                viewer.show()
+                viewer.raise_()
+            else:
+                viewer.hide()
 
     def close_current(self) -> None:
         logger.debug("Closing current tab")
@@ -116,6 +144,12 @@ class TabController(QObject):
         :return: None
         """
         logger.debug(f"New closed index: {idx}")
+
+        page = self._tabs.widget(idx)
+        viewer = self._viewers.pop(page, None)
+        if viewer:
+            viewer.close()
+
         widget = self._tabs.widget(idx)
         title = self._tabs.tabText(idx)
         self._tabs.removeTab(idx)

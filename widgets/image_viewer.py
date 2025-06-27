@@ -353,3 +353,9 @@ class ImageViewerDialog(QDialog):
         self._scale = max(0.05, min(scale, 16.0))
         self._update_scaled()
         self._label.move(pos)
+
+    def load_new_stack(self, paths, cur_idx, stack):
+        self._paths = list(paths)
+        self._stack = stack
+        self._idx = cur_idx
+        self._load_image(paths[cur_idx])
