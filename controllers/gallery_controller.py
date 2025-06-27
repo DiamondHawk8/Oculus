@@ -6,8 +6,9 @@ from PySide6.QtCore import Qt, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QKeySequence, QAction
 from PySide6.QtWidgets import QListView, QMenu, QWidget, QApplication, QStyle, QAbstractItemView
 
-import controllers.utils.view_utils as view_utils
+from controllers.utils import view_utils
 from controllers.utils import path_utils
+from controllers.utils.gallery_history import GalleryHistory
 
 from models.thumbnail_model import ThumbnailListModel
 
@@ -67,6 +68,8 @@ class GalleryController:
         self.state.row_map = []
         self.state.current_folder = None
 
+        self.history = GalleryHistory()
+
         self._open_viewer_fn = None
 
         # Apply gallery defaults
@@ -76,10 +79,6 @@ class GalleryController:
 
         # Create folder icon
         self._folder_icon = QApplication.style().standardIcon(QStyle.SP_DirIcon)
-
-        # Create navigation structs
-        self._history: list[str] = []
-        self._cursor: int = -1
 
         # Signals
         self._mid_filter = _MiddleClickFilter(self.ui.galleryList, self._open_in_new_tab)
@@ -153,17 +152,13 @@ class GalleryController:
 
         self.state.current_folder = folder_abspath
 
-        if self._cursor >= 0 and self._history[self._cursor] == folder_abspath:
-            return  # same folder; ignore
+        if not self.history.push(folder_abspath):
+            return
 
-        # prune forward history if branched
-        self._history = self._history[: self._cursor + 1]
-        self._history.append(folder_abspath)
-        self._cursor += 1
         self._push_page(folder_abspath)
 
         # enable/disable nav buttons
-        self.ui.btn_back.setEnabled(self._cursor > 0)
+        self.ui.btn_back.setEnabled(self.history.can_go_back())
         if hasattr(self.ui, "btn_forward"):
             self.ui.btn_forward.setEnabled(False)
 
@@ -196,17 +191,16 @@ class GalleryController:
 
     def _navigate(self, delta: int) -> None:
         logger.debug(f"navigate {delta}")
-        nxt = self._cursor + delta
-        if 0 <= nxt < len(self._history):
-            self._cursor = nxt
-            self._push_page(self._history[self._cursor])
+        new_folder = self.history.step(delta)
+        if new_folder:
+            self._push_page(new_folder)
             self._update_nav_buttons()
 
     def _update_nav_buttons(self) -> None:
         logger.debug("_update_nav_buttons called")
-        self.ui.btn_back.setEnabled(self._cursor > 0)
+        self.ui.btn_back.setEnabled(self.history.can_go_back())
         if hasattr(self.ui, "btn_forward"):
-            self.ui.btn_forward.setEnabled(self._cursor + 1 < len(self._history))
+            self.ui.btn_forward.setEnabled(self.history.can_go_forward())
 
     # ---------------------------- Thumbnail methods ----------------------------
     def populate_gallery(self, paths: list[str]) -> None:
