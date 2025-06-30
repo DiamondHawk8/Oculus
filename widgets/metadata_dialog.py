@@ -185,7 +185,6 @@ class MetadataDialog(QDialog):
             row = self.ui.tblPresets.rowCount()
             self.ui.tblPresets.insertRow(row)
 
-            # Name
             name_item = QTableWidgetItem(r["name"])
             name_item.setData(Qt.UserRole, r["id"])
             self.ui.tblPresets.setItem(row, 0, name_item)
@@ -200,7 +199,6 @@ class MetadataDialog(QDialog):
             transform_text = f"{zoom:.2f}x, {pan_x}, {pan_y}"
             self.ui.tblPresets.setItem(row, 2, QTableWidgetItem(transform_text))
 
-            # optional: row height
             self.ui.tblPresets.setRowHeight(row, 20)
 
     def _current_view_state(self) -> tuple[float, int, int]:
