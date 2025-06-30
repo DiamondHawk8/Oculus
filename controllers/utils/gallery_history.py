@@ -36,6 +36,10 @@ class GalleryHistory:
         return self._cursor + 1 < len(self._history)
 
     def current(self) -> str | None:
+        """
+        Returns current position in history stack
+        :return:
+        """
         if 0 <= self._cursor < len(self._history):
             return self._history[self._cursor]
         return None
