@@ -359,7 +359,7 @@ class GalleryController:
         if self.viewer.callback:
             self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
         else:
-            self.viewer.open(self._model, index, self.media_manager, self._host_widget)
+            self.viewer.open(self._model, index, self.media_manager, self.tag_manager, self._host_widget)
 
     def set_viewer_callback(self, fn):
         self.viewer.callback = fn
@@ -388,8 +388,7 @@ class GalleryController:
         if not sel:
             return
         dlg = MetadataDialog(sel, self.media_manager, self.tag_manager, parent=self._host_widget)
-        if dlg.exec() == QDialog.Accepted:
-            self._push_page()
+        dlg.exec()
 
     # ---------------------------- Utility / helpers ----------------------------
     def _add_shortcut(self, keyseq: str, slot):

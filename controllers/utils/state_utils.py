@@ -26,7 +26,7 @@ class ViewerState:
         self.callback = None
         self.is_open = False
 
-    def open(self, model, index, media_manager, host_widget):
+    def open(self, model, index, media_manager, tag_manager, host_widget):
         logger.debug(f"Opening viewer state for model {model}")
         path = model.data(index, Qt.UserRole)
         if not path or not Path(path).is_file():
@@ -36,7 +36,7 @@ class ViewerState:
         paths = [p for p in model.get_paths() if Path(p).is_file()]
         cur_idx = paths.index(path)
 
-        self.dialog = ImageViewerDialog(paths, cur_idx, media_manager, stack, parent=host_widget)
+        self.dialog = ImageViewerDialog(paths, cur_idx, media_manager, tag_manager, stack, parent=host_widget)
         self.is_open = True
         self.dialog.finished.connect(self._on_closed)
         self.dialog.exec()

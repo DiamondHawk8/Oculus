@@ -1,8 +1,10 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize, QPoint, QEvent
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import QDialog, QLabel, QWidget
+
+from widgets.metadata_dialog import MetadataDialog
 
 
 class ImageViewerDialog(QDialog):
@@ -10,12 +12,13 @@ class ImageViewerDialog(QDialog):
 
     BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
-    def __init__(self, paths: list[str], cur_idx: int, media_manager, stack, parent=None):
+    def __init__(self, paths: list[str], cur_idx: int, media_manager, tag_manager, stack, parent=None):
         super().__init__(parent)
 
         self._paths = list(paths)
         self._idx = cur_idx
         self._media_manager = media_manager
+        self._tag_manager = tag_manager
         self._stack = stack
 
         self._view_states: dict[str, tuple[float, QPoint]] = {}
@@ -48,6 +51,9 @@ class ImageViewerDialog(QDialog):
         # needed for panning
         self._label.setMouseTracking(True)
         self._label.installEventFilter(self)
+
+        self._meta_shortcut = QShortcut(QKeySequence("Ctrl+P"), self._label)
+        self._meta_shortcut.activated.connect(self._open_metadata_dialog)
 
         # ---- load & show -----------------------------------------------
         self._load_image(self._paths[self._idx])
@@ -359,3 +365,17 @@ class ImageViewerDialog(QDialog):
         self._stack = stack
         self._idx = cur_idx
         self._load_image(paths[cur_idx])
+
+    def _open_metadata_dialog(self):
+        """
+        Launch the metadata dialog for the image currently displayed.
+        The only path that is provided to metadata dialog is the currently viewer image
+        :return:
+        """
+        dlg = MetadataDialog(
+            [self._paths[self._idx]],  # pass a single-item list of paths
+            self._media_manager,
+            self._tag_manager,
+            parent=self.window()  # modal over the main window
+        )
+        dlg.exec()

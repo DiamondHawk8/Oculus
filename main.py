@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         self.gallery_controller = GalleryController(self.ui, self.media, self.tags, self.tab_controller,
                                                     self.ui.gallery_page)
 
-        self.search_controller = SearchController(self.ui, self.media, self.search, self.tab_controller,
+        self.search_controller = SearchController(self.ui, self.media, self.tags, self.search, self.tab_controller,
                                                   self.ui.search_page, self.gallery_controller)
         self.import_controller = ImportController(self, self.ui, self.media, self.tags, self.gallery_controller)
         logger.debug("Controllers instantiated")

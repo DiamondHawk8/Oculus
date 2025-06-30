@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class SearchController(QObject):
-    def __init__(self, ui, media_manager, search_manager, tab_controller, host_widget, gallery_controller):
+    def __init__(self, ui, media_manager, tag_manager, search_manager, tab_controller, host_widget, gallery_controller):
         super().__init__()
 
         self.ui = ui
@@ -147,7 +147,7 @@ class SearchController(QObject):
         if self.viewer.callback:
             self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
         else:
-            self.viewer.open(self._model, index, self.media_manager, self._host_widget)
+            self.viewer.open(self._model, index, self.media_manager, self.tag_manager, self._host_widget)
 
     def set_viewer_callback(self, fn):
         self.viewer.callback = fn
