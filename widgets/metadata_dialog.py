@@ -175,10 +175,15 @@ class MetadataDialog(QDialog):
         self.ui.tblPresets.setRowCount(0)
 
         # grab the new columns from the DB
+        folder = Path(self._paths[0]).parent
         rows = self._media.fetchall(
-            "SELECT id, name, media_id, zoom, pan_x, pan_y "
-            "FROM presets WHERE media_id IS NULL OR media_id=?",
-            (media_id,)
+            """
+            SELECT p.id, p.name, p.media_id, p.zoom, p.pan_x, p.pan_y, m.path
+              FROM presets p
+              LEFT JOIN media m ON p.media_id = m.id
+             WHERE p.media_id IS NULL OR p.media_id = ?
+            """,
+            (media_id,),
         )
 
         for r in rows:
@@ -189,9 +194,36 @@ class MetadataDialog(QDialog):
             name_item.setData(Qt.UserRole, r["id"])
             self.ui.tblPresets.setItem(row, 0, name_item)
 
-            # Scope label
-            scope = "PLACEHOLDER"
-            self.ui.tblPresets.setItem(row, 1, QTableWidgetItem(scope))
+            # Scope column: list of all files this preset lives on
+            if r["media_id"] is None:
+                # folder-default: grab all media.paths under this folder
+                folder_rows = self._media.fetchall(
+                    "SELECT path FROM media WHERE path LIKE ?",
+                    (f"{str(folder)}%",),
+                )
+                all_names = [Path(fr["path"]).name for fr in folder_rows]
+            else:
+                linked = self._media.fetchall(
+                    """
+                    SELECT m.path
+                      FROM presets p
+                      JOIN media m ON p.media_id = m.id
+                     WHERE p.name = ? AND p.zoom = ? AND p.pan_x = ? AND p.pan_y = ?
+                    """,
+                    (r["name"], r["zoom"], r["pan_x"], r["pan_y"]),
+                )
+                all_names = [Path(lr["path"]).name for lr in linked]
+
+            # build a truncated display plus full-list tooltip
+            display_list = all_names[:5]
+            display_text = ", ".join(display_list)
+            if len(all_names) > 5:
+                display_text += f", … ({len(all_names)} total)"
+
+            scope_item = QTableWidgetItem(display_text)
+            scope_item.setToolTip("\n".join(all_names))
+            scope_item.setFlags(scope_item.flags() & ~Qt.ItemIsEditable)
+            self.ui.tblPresets.setItem(row, 1, scope_item)
 
             zoom = r["zoom"]
             pan_x = r["pan_x"]
@@ -289,3 +321,4 @@ class MetadataDialog(QDialog):
 
         # dedupe while preserving order
         return list(dict.fromkeys(ids))
+
