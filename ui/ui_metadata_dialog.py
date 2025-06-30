@@ -94,16 +94,18 @@ class Ui_MetadataDialog(object):
         self.verticalLayout_2 = QVBoxLayout(self.PresetsTab)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.tblPresets = QTableWidget(self.PresetsTab)
-        if (self.tblPresets.columnCount() < 2):
-            self.tblPresets.setColumnCount(2)
+        if (self.tblPresets.columnCount() < 3):
+            self.tblPresets.setColumnCount(3)
         __qtablewidgetitem = QTableWidgetItem()
         self.tblPresets.setHorizontalHeaderItem(0, __qtablewidgetitem)
         __qtablewidgetitem1 = QTableWidgetItem()
         self.tblPresets.setHorizontalHeaderItem(1, __qtablewidgetitem1)
+        __qtablewidgetitem2 = QTableWidgetItem()
+        self.tblPresets.setHorizontalHeaderItem(2, __qtablewidgetitem2)
         self.tblPresets.setObjectName(u"tblPresets")
         self.tblPresets.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tblPresets.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.tblPresets.setColumnCount(2)
+        self.tblPresets.setColumnCount(3)
         self.tblPresets.horizontalHeader().setStretchLastSection(True)
         self.tblPresets.verticalHeader().setStretchLastSection(False)
 
@@ -205,6 +207,8 @@ class Ui_MetadataDialog(object):
         ___qtablewidgetitem.setText(QCoreApplication.translate("MetadataDialog", u"Name", None));
         ___qtablewidgetitem1 = self.tblPresets.horizontalHeaderItem(1)
         ___qtablewidgetitem1.setText(QCoreApplication.translate("MetadataDialog", u"Scope", None));
+        ___qtablewidgetitem2 = self.tblPresets.horizontalHeaderItem(2)
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("MetadataDialog", u"Properties", None));
         self.editPresetName.setText(QCoreApplication.translate("MetadataDialog", u"New preset name...", None))
         self.btnLoadPreset.setText(QCoreApplication.translate("MetadataDialog", u"Load", None))
         self.btnDeletePreset.setText(QCoreApplication.translate("MetadataDialog", u"Delete", None))

@@ -167,19 +167,41 @@ class MetadataDialog(QDialog):
     # -------------------- Presets --------------
 
     def _populate_presets(self, media_id: int):
+        """
+        Refresh the presets table for the given media_id,
+        :param media_id:
+        :return:
+        """
         self.ui.tblPresets.setRowCount(0)
+
+        # grab the new columns from the DB
         rows = self._media.fetchall(
-            "SELECT id, name, media_id FROM presets WHERE media_id IS NULL OR media_id=?",
+            "SELECT id, name, media_id, zoom, pan_x, pan_y "
+            "FROM presets WHERE media_id IS NULL OR media_id=?",
             (media_id,)
         )
+
         for r in rows:
             row = self.ui.tblPresets.rowCount()
             self.ui.tblPresets.insertRow(row)
-            self.ui.tblPresets.setItem(row, 0, QTableWidgetItem(r["name"]))
-            scope = "Folder default" if r["media_id"] is None else "This file"
+
+            # Name
+            name_item = QTableWidgetItem(r["name"])
+            name_item.setData(Qt.UserRole, r["id"])
+            self.ui.tblPresets.setItem(row, 0, name_item)
+
+            # Scope label
+            scope = "PLACEHOLDER"
             self.ui.tblPresets.setItem(row, 1, QTableWidgetItem(scope))
-            self.ui.tblPresets.setRowHeight(row, 20)  # tidy
-            self.ui.tblPresets.item(row, 0).setData(Qt.UserRole, r["id"])
+
+            zoom = r["zoom"]
+            pan_x = r["pan_x"]
+            pan_y = r["pan_y"]
+            transform_text = f"{zoom:.2f}x, {pan_x}, {pan_y}"
+            self.ui.tblPresets.setItem(row, 2, QTableWidgetItem(transform_text))
+
+            # optional: row height
+            self.ui.tblPresets.setRowHeight(row, 20)
 
     def _current_view_state(self) -> tuple[float, int, int]:
         viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
@@ -203,7 +225,6 @@ class MetadataDialog(QDialog):
             QMessageBox.warning(self, "Scope", "No files selected to save preset.")
             return
 
-        # use TagManager.save_preset for INSERT OR REPLACE semantics
         for mid in ids:
             self._tags.save_preset(mid, name, scale, px, py)
 
