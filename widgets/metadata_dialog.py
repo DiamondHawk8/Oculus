@@ -87,38 +87,17 @@ class MetadataDialog(QDialog):
         Apply tag changes to selected scope, then close dialog.
         :return: None
         """
+        ids = self._target_media_ids()
+        if not ids:
+            return  # invalid scope already logged
 
-        scope = self.selected_scope()
+        # gather tags from UI
+        tags = [
+            self.ui.listTags.item(i).text()
+            for i in range(self.ui.listTags.count())
+        ]
 
-        if scope == "invalid":
-            logger.error("invalid scope")
-            return  # keep dialog open
-
-        # Build final tag list from UI
-        tags = [self.ui.listTags.item(i).text() for i in range(self.ui.listTags.count())]
-
-        # Determine which media_id rows to update
-        ids: list[int] = []
-
-        include_variants = self.ui.chkVariants.isChecked()
-
-        if scope == "this":
-            ids.extend(self._ids_with_variants(self._paths[0], include_variants))
-
-        elif scope == "selected":
-            for p in self._paths:
-                ids.extend(self._ids_with_variants(p, include_variants))
-
-        elif scope == "folder":
-            folder = str(Path(self._paths[0]).parent)
-            rows = self._media.fetchall(
-                "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",))
-            for r in rows:
-                ids.extend(self._ids_with_variants(r["path"], include_variants))
-
-        # remove duplicates while preserving order
-        ids = list(dict.fromkeys(ids))
-
+        # set tags for each media_id
         for mid in ids:
             self._tags.set_tags(mid, tags, overwrite=True)
 
@@ -209,19 +188,28 @@ class MetadataDialog(QDialog):
             return scale, pos.x(), pos.y()
         return 1.0, 0, 0
 
-    def _save_preset(self):
+    def _save_preset(self) -> None:
+        """
+        Save the current view-state as a preset for all target media_ids.
+        """
         name = self.ui.editPresetName.text().strip()
         if not name:
             QMessageBox.warning(self, "Preset name", "Enter a preset name.")
             return
-        mid = self._id_for_path(self._paths[0])
+
         scale, px, py = self._current_view_state()
-        self._media.execute(
-            "INSERT INTO presets(name, media_id, zoom, pan_x, pan_y) VALUES (?,?,?,?,?)",
-            (name, mid, scale, px, py)
-        )
+        ids = self._target_media_ids()
+        if not ids:
+            QMessageBox.warning(self, "Scope", "No files selected to save preset.")
+            return
+
+        # use TagManager.save_preset for INSERT OR REPLACE semantics
+        for mid in ids:
+            self._tags.save_preset(mid, name, scale, px, py)
+
+        # refresh UI for the first target
         self.ui.editPresetName.clear()
-        self._populate_presets(mid)
+        self._populate_presets(ids[0])
 
     def _load_selected_preset(self):
         items = self.ui.tblPresets.selectedItems()
@@ -241,3 +229,39 @@ class MetadataDialog(QDialog):
         preset_id = items[0].data(Qt.UserRole)
         self._media.execute("DELETE FROM presets WHERE id=?", (preset_id,))
         self._populate_presets(self._id_for_path(self._paths[0]))
+
+    def _target_media_ids(self) -> list[int]:
+        """
+        Return the list of media_ids to operate on, based on the selected scope
+        radio button and the 'apply to variants' checkbox.
+        :return:
+        """
+        scope = self.selected_scope()
+        include_variants = self.ui.chkVariants.isChecked()
+
+        if scope == "invalid":
+            logger.error("invalid scope")
+            return []
+
+        ids: list[int] = []
+
+        # 'This file'
+        if scope == "this":
+            ids.extend(self._ids_with_variants(self._paths[0], include_variants))
+
+        # 'Selected files'
+        elif scope == "selected":
+            for p in self._paths:
+                ids.extend(self._ids_with_variants(p, include_variants))
+
+        # 'Folder'
+        elif scope == "folder":
+            folder = str(Path(self._paths[0]).parent)
+            rows = self._media.fetchall(
+                "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
+            )
+            for r in rows:
+                ids.extend(self._ids_with_variants(r["path"], include_variants))
+
+        # dedupe while preserving order
+        return list(dict.fromkeys(ids))
