@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QModelIndex, QEvent, QObject
-from PySide6.QtGui import QIcon, QAction, QKeySequence
+from PySide6.QtGui import QIcon, QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QListView, QMenu, QWidget, QApplication,
-    QStyle, QAbstractItemView
+    QStyle, QAbstractItemView, QDialog
 )
 
 from controllers.utils import view_utils, path_utils
@@ -86,6 +86,10 @@ class GalleryController:
         self.ui.cmb_gallery_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
+
+        # ---------- other keybinds ----------
+        self._meta_shortcut = QShortcut(QKeySequence("Ctrl+P"), self.ui.galleryList)
+        self._meta_shortcut.activated.connect(self._open_metadata_dialog)
 
         logger.info("Gallery setup complete")
 
@@ -378,6 +382,14 @@ class GalleryController:
             title=Path(target).name or "Root",
             switch=True
         )
+
+    def _open_metadata_dialog(self):
+        sel = self.get_selected_paths()
+        if not sel:
+            return
+        dlg = MetadataDialog(sel, self.media_manager, self.tag_manager, parent=self._host_widget)
+        if dlg.exec() == QDialog.Accepted:
+            self._push_page()
 
     # ---------------------------- Utility / helpers ----------------------------
     def _add_shortcut(self, keyseq: str, slot):
