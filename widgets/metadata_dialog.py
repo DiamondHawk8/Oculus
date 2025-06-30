@@ -280,7 +280,12 @@ class MetadataDialog(QDialog):
                 "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
             )
             for r in rows:
-                ids.extend(self._ids_with_variants(r["path"], include_variants))
+                path = r["path"]
+                if include_variants:
+                    ids.extend(self._ids_with_variants(path, True))
+                else:
+                    if not self._media.is_variant(path):
+                        ids.append(self._id_for_path(path))
 
         # dedupe while preserving order
         return list(dict.fromkeys(ids))
