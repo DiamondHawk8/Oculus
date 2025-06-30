@@ -227,65 +227,7 @@ class GalleryController:
         icon = QIcon(pix)
         self._model.update_icon(path, icon)
 
-
-
-
-    # Variant-stack handling
-
-    # ---------------------------- TO BE SORTED ----------------------------
-
-    def _show_ctx_menu(self, pos):
-        logger.debug(f"_show_ctx_menu called, context menu opening at {pos}")
-        idx = self.ui.galleryList.indexAt(pos)  # Item that was right-clicked
-        if not idx.isValid():
-            return
-
-        abs_path = self._model.data(idx, Qt.UserRole)  # absolute path of given row
-
-        # ---------- build menu -------------------------------------------------
-        menu = QMenu(self.ui.galleryList)
-        menu.setStyleSheet("""
-            QMenu { background:#2b2b2b; color:white; border:1px solid #444; }
-            QMenu::item:selected { background:#3c3f41; }
-        """)
-
-        # Expand / Collapse variants  (only if this row is a stack base)
-        base_path = self.media_manager.stack_paths(abs_path)[0]
-        base_id_row = self.media_manager.fetchone(
-            "SELECT id FROM media WHERE path=?", (base_path,))
-        if base_id_row and self.media_manager._is_stacked_base(base_id_row["id"]):
-
-            if self.state.is_expanded(base_path):
-                txt = "Expand variants"
-            else:
-                txt = "Collapse variants"
-
-            act_toggle = menu.addAction(txt)  # keep reference
-        else:
-            act_toggle = "Not a base stack"
-
-        # Existing actions
-        act_new = menu.addAction("Open in New Tab")
-        rename_act = menu.addAction("Rename")
-        edit_act = menu.addAction("Edit metadata")
-
-        # ---------- execute menu
-        chosen = menu.exec(self.ui.galleryList.mapToGlobal(pos))
-
-        # Variant toggle selected?
-        if chosen == act_toggle:
-            self._toggle_stack(base_path)
-            return  # done
-
-        if chosen == act_new:
-            self._open_in_new_tab(idx)
-        elif chosen == rename_act:
-            self._on_rename_triggered()
-        if chosen == edit_act:
-            sel_paths = self.get_selected_paths()
-            dlg = MetadataDialog(sel_paths, self.media_manager, self.tag_manager, self._host_widget)
-            dlg.exec()
-            return
+    # ---------------------------- Variant-stack handling ----------------------------
 
     def _toggle_stack(self, base_path: str) -> None:
         """
@@ -302,27 +244,67 @@ class GalleryController:
 
         self._reload_gallery()
 
+    def _reload_gallery(self) -> None:
+        logger.debug("_reload_gallery called")
+
+        if not self.state.current_folder:
+            logger.warning("No current folder set. Aborting reload.")
+            return
+
+        self._push_page(self.state.current_folder)
+
+    # ---------------------------- Context-menu & actions ----------------------------
+
+    def _show_ctx_menu(self, pos):
+        logger.debug(f"_show_ctx_menu called, context menu opening at {pos}")
+        idx = self.ui.galleryList.indexAt(pos)  # Item that was right-clicked
+        if not idx.isValid():
+            return
+
+        abs_path = self._model.data(idx, Qt.UserRole)  # absolute path of given row
+        menu = QMenu(self.ui.galleryList)
+        menu.setStyleSheet("""
+            QMenu { background:#2b2b2b; color:white; border:1px solid #444; }
+            QMenu::item:selected { background:#3c3f41; }
+        """)
+
+        # Variant stack actions
+        base_path = self.media_manager.stack_paths(abs_path)[0]
+        base_row = self.media_manager.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
+        if base_row and self.media_manager._is_stacked_base(base_row["id"]):
+            txt = "Collapse variants" if self.state.is_expanded(base_path) else "Expand variants"
+            act_toggle = menu.addAction(txt)
+        else:
+            act_toggle = None
+
+        act_new = menu.addAction("Open in New Tab")
+        rename_act = menu.addAction("Rename")
+        edit_act = menu.addAction("Edit metadata")
+
+        chosen = menu.exec(self.ui.galleryList.mapToGlobal(pos))
+
+        if chosen == act_toggle:
+            self._toggle_stack(base_path)
+        elif chosen == act_new:
+            self._open_in_new_tab(idx)
+        elif chosen == rename_act:
+            self._on_rename_triggered()
+        elif chosen == edit_act:
+            sel = self.get_selected_paths()
+            MetadataDialog(sel, self.media_manager, self.tag_manager, self._host_widget).exec()
+
     def _on_rename_triggered(self):
         logger.info("Renaming media")
         idx = self.ui.galleryList.currentIndex()
         if not idx.isValid():
             return
-
         old_path = self._model.data(idx, Qt.UserRole)
-
         dlg = RenameDialog(old_path, parent=self.ui.gallery_page)
         if not (dlg.exec() and dlg.result_path):
             return
-
         new_path = dlg.result_path
-        if not self.media_manager.rename_media(old_path, new_path):
-            """
-            QMessageBox.warning(self.ui.gallery_page, "Rename failed",
-                                "A file or folder with that name already exists.")
-            """
-            return
-
-        self._on_renamed(old_path, new_path)
+        if self.media_manager.rename_media(old_path, new_path):
+            self._on_renamed(old_path, new_path)
 
     def _on_renamed(self, old_path: str, new_path: str) -> None:
         """
@@ -353,26 +335,34 @@ class GalleryController:
 
         # File moved into this folder (wasn't visible before)
         if not old_in_view and new_parent == root_dir:
-            row = self._model.add_path(new_path)  # your helper to append
+            row = self._model.add_path(new_path)
             self.state.row_map[new_path] = row
             self.media_manager.thumb(new_path)
             self._apply_sort()
 
-    def eventFilter(self, obj, event):
-        # If MMB on the gallery list
-        if obj is self.ui.galleryList.viewport() and event.type() == QEvent.MouseButtonRelease:
-            if event.button() == Qt.MiddleButton:
-                # If the index is valid, open a new tab for it
-                idx = self.ui.galleryList.indexAt(event.pos())
-                logger.debug(f"MMB pressed at {event.pos()}, index: {idx}")
-                if idx.isValid():
-                    self._open_in_new_tab(idx)
-                    return True
-        return super().eventFilter(obj, event)
+    # ---------------------------- Viewer integration & tab helpers ----------------------------
+
+    def _open_viewer(self, index: QModelIndex):
+        """
+        :param index:
+        :return:
+        """
+        path = self._model.data(index, Qt.UserRole)
+        stack = self.media_manager.stack_paths(path)
+        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
+        cur_idx = paths.index(path)
+
+        if self.viewer.callback:
+            self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
+        else:
+            self.viewer.open(self._model, index, self.media_manager, self._host_widget)
+
+    def set_viewer_callback(self, fn):
+        self.viewer.callback = fn
 
     def _open_in_new_tab(self, index: QModelIndex) -> None:
         """
-        Called on middle-click from inside Gallery. Code path is identical to Search’s middle-click.
+        Called on middle-click from inside Gallery. Code path is identical to Search's middle-click.
         :param index:
         :return:
         """
@@ -382,13 +372,14 @@ class GalleryController:
         abs_path = self._model.data(index, Qt.UserRole)
         target = abs_path if Path(abs_path).is_dir() else str(Path(abs_path).parent)
 
+        # TODO Allow switch parameter to be changed
         self.tab_controller.open_folder_tab(
             root_path=target,
             title=Path(target).name or "Root",
             switch=True
         )
 
-    # helper for local shortcuts (keeps them limited to gallery page)
+    # ---------------------------- Utility / helpers ----------------------------
     def _add_shortcut(self, keyseq: str, slot):
         # ensure that shortcuts are attached to gallery page itself rather than any of the tabs
         act = QAction(self._host_widget)
@@ -410,15 +401,6 @@ class GalleryController:
         logger.debug(f"Newly built gallery tab data {widget, ui_local}")
         return widget, ui_local
 
-    def _reload_gallery(self) -> None:
-        logger.debug("_reload_gallery called")
-
-        if not self.state.current_folder:
-            logger.warning("No current folder set. Aborting reload.")
-            return
-
-        self._push_page(self.state.current_folder)
-
     def get_selected_paths(self) -> list[str]:
         """
         Return a list of absolute paths for all currently-selected thumbnails in the gallery QListView.
@@ -427,26 +409,20 @@ class GalleryController:
         indexes = self.ui.galleryList.selectedIndexes()
         if not indexes:
             return []
-
         return [self._model.data(idx, Qt.UserRole) for idx in indexes]
 
-    def set_viewer_callback(self, fn):
-        self.viewer.callback = fn
 
-    def _open_viewer(self, index: QModelIndex):
-        """
-        :param index:
-        :return:
-        """
-        path = self._model.data(index, Qt.UserRole)
-        stack = self.media_manager.stack_paths(path)
-        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
-        cur_idx = paths.index(path)
-
-        if self.viewer.callback:
-            self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
-        else:
-            self.viewer.open(self._model, index, self.media_manager, self._host_widget)
+    def eventFilter(self, obj, event):
+        # If MMB on the gallery list
+        if obj is self.ui.galleryList.viewport() and event.type() == QEvent.MouseButtonRelease:
+            if event.button() == Qt.MiddleButton:
+                # If the index is valid, open a new tab for it
+                idx = self.ui.galleryList.indexAt(event.pos())
+                logger.debug(f"MMB pressed at {event.pos()}, index: {idx}")
+                if idx.isValid():
+                    self._open_in_new_tab(idx)
+                    return True
+        return super().eventFilter(obj, event)
 
 
 class _MiddleClickFilter(QObject):
