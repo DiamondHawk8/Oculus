@@ -37,7 +37,6 @@ class MetadataDialog(QDialog):
             self.ui.listFiles.addItem(Path(p).name)
         self.ui.listFiles.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-
         self.ui.listFiles.setCurrentRow(0)
         self.ui.listFiles.currentRowChanged.connect(self._on_file_change)
 
@@ -82,11 +81,7 @@ class MetadataDialog(QDialog):
         for item in self.ui.listTags.selectedItems():
             self.ui.listTags.takeItem(self.ui.listTags.row(item))
 
-    def accept(self) -> None:
-        """
-        Apply tag changes to selected scope, then close dialog.
-        :return: None
-        """
+    def _save_tags(self):
         ids = self._target_media_ids()
         if not ids:
             return  # invalid scope already logged
@@ -100,6 +95,19 @@ class MetadataDialog(QDialog):
         # set tags for each media_id
         for mid in ids:
             self._tags.set_tags(mid, tags, overwrite=True)
+
+    def accept(self) -> None:
+        """
+        Apply tag changes to selected scope, then close dialog.
+        :return: None
+        """
+
+        # Apply preset changes
+        self._save_preset()
+
+        # Apply tag changes
+        self._save_tags()
+
 
         super().accept()
 
@@ -321,4 +329,3 @@ class MetadataDialog(QDialog):
 
         # dedupe while preserving order
         return list(dict.fromkeys(ids))
-

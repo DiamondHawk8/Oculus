@@ -25,7 +25,7 @@ class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(812, 433)
+        MetadataDialog.resize(818, 446)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -115,6 +115,8 @@ class Ui_MetadataDialog(object):
         self.hboxPresetBtns.setObjectName(u"hboxPresetBtns")
         self.editPresetName = QLineEdit(self.PresetsTab)
         self.editPresetName.setObjectName(u"editPresetName")
+        self.editPresetName.setReadOnly(True)
+        self.editPresetName.setClearButtonEnabled(True)
 
         self.hboxPresetBtns.addWidget(self.editPresetName)
 
@@ -127,11 +129,6 @@ class Ui_MetadataDialog(object):
         self.btnDeletePreset.setObjectName(u"btnDeletePreset")
 
         self.hboxPresetBtns.addWidget(self.btnDeletePreset)
-
-        self.btnSavePreset = QPushButton(self.PresetsTab)
-        self.btnSavePreset.setObjectName(u"btnSavePreset")
-
-        self.hboxPresetBtns.addWidget(self.btnSavePreset)
 
 
         self.verticalLayout_2.addLayout(self.hboxPresetBtns)
@@ -212,7 +209,6 @@ class Ui_MetadataDialog(object):
         self.editPresetName.setText(QCoreApplication.translate("MetadataDialog", u"New preset name...", None))
         self.btnLoadPreset.setText(QCoreApplication.translate("MetadataDialog", u"Load", None))
         self.btnDeletePreset.setText(QCoreApplication.translate("MetadataDialog", u"Delete", None))
-        self.btnSavePreset.setText(QCoreApplication.translate("MetadataDialog", u"Save", None))
         self.tabs.setTabText(self.tabs.indexOf(self.PresetsTab), QCoreApplication.translate("MetadataDialog", u"Presets", None))
         self.grpScope.setTitle(QCoreApplication.translate("MetadataDialog", u"Apply to", None))
         self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current Selection", None))
