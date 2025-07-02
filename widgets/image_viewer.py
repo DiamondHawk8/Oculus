@@ -316,7 +316,6 @@ class ImageViewerDialog(QDialog):
 
         return super().eventFilter(obj, event)
 
-
     def _zoom_by_pixels(self, px: int):
         """Add or subtract exactly 1 output pixel in image width."""
         if not self._pix:
@@ -369,13 +368,19 @@ class ImageViewerDialog(QDialog):
     def _open_metadata_dialog(self):
         """
         Launch the metadata dialog for the image currently displayed.
-        The only path that is provided to metadata dialog is the currently viewer image
+        The only path that is provided to metadata dialog is the currently viewed image
         :return:
         """
+        if not self._paths:
+            return
+
+        z = self._scale
+        pos = self._label.pos()
         dlg = MetadataDialog(
-            [self._paths[self._idx]],  # pass a single-item list of paths
+            [self._paths[self._idx]],  # single image
             self._media_manager,
             self._tag_manager,
-            parent=self.window()  # modal over the main window
+            parent=self.window(),  # modal over main window
+            default_transform=(z, pos.x(), pos.y())  # (zoom, panX, panY)
         )
         dlg.exec()
