@@ -14,7 +14,8 @@ class MetadataDialog(QDialog):
     Unified dialog for Tags, Attributes, and Presets.
     """
 
-    def __init__(self, media_paths: List[str], media_manager, tag_manager, parent=None):
+    def __init__(self, media_paths: List[str], media_manager, tag_manager, parent=None,
+                 default_transform: tuple[float, int, int] | None = None):
         """
         :param media_paths: The thumbnail paths currently selected, if len==1 it's the single file dialog
         :param media_manager: Needed for TagManager, Attribute table etc
@@ -58,6 +59,13 @@ class MetadataDialog(QDialog):
         self.ui.btnSavePreset.clicked.connect(self._save_preset)
         self.ui.btnLoadPreset.clicked.connect(self._load_selected_preset)
         self.ui.btnDeletePreset.clicked.connect(self._delete_selected_preset)
+
+        # Preset Values
+        if default_transform:
+            z, px, py = default_transform
+            self.ui.spinZoom.setValue(z)
+            self.ui.spinPanX.setValue(px)
+            self.ui.spinPanY.setValue(py)
 
     # -------------------- Tagging ------------------
 
@@ -107,7 +115,6 @@ class MetadataDialog(QDialog):
 
         # Apply tag changes
         self._save_tags()
-
 
         super().accept()
 
@@ -241,12 +248,11 @@ class MetadataDialog(QDialog):
 
             self.ui.tblPresets.setRowHeight(row, 20)
 
-    def _current_view_state(self) -> tuple[float, int, int]:
-        viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
-        if viewer:
-            scale, pos = viewer.get_view_state()
-            return scale, pos.x(), pos.y()
-        return 1.0, 0, 0
+    def _current_view_state(self):
+        z = self.ui.spinZoom.value()
+        px = self.ui.spinPanX.value()
+        py = self.ui.spinPanY.value()
+        return z, px, py
 
     def _save_preset(self) -> None:
         """
