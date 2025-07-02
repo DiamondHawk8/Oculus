@@ -104,7 +104,12 @@ class Ui_MetadataDialog(object):
         __qtablewidgetitem2 = QTableWidgetItem()
         self.tblPresets.setHorizontalHeaderItem(2, __qtablewidgetitem2)
         self.tblPresets.setObjectName(u"tblPresets")
-        self.tblPresets.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.tblPresets.setStyleSheet(u"            QTableWidget QLineEdit {\n"
+"                background: palette(base);   /* opaque, matches normal textbox */\n"
+"                border: none;                /* no double border */\n"
+"                padding: 0px;\n"
+"            }")
+        self.tblPresets.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked)
         self.tblPresets.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tblPresets.setColumnCount(3)
         self.tblPresets.horizontalHeader().setStretchLastSection(True)

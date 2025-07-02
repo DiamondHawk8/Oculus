@@ -191,7 +191,9 @@ class MetadataDialog(QDialog):
         :param media_id:
         :return:
         """
-        self.ui.tblPresets.setRowCount(0)
+        tbl = self.ui.tblPresets
+        tbl.blockSignals(True)  # suppress cellChanged
+        tbl.setRowCount(0)
 
         # grab the new columns from the DB
         folder = Path(self._paths[0]).parent
@@ -251,6 +253,8 @@ class MetadataDialog(QDialog):
             self.ui.tblPresets.setItem(row, 2, QTableWidgetItem(transform_text))
 
             self.ui.tblPresets.setRowHeight(row, 20)
+
+            tbl.blockSignals(False)
 
     def _save_preset(self) -> None:
         """
@@ -344,9 +348,10 @@ class MetadataDialog(QDialog):
         if col != 2:  # column 2 = Properties
             return
 
-        txt = self.ui.tblPresets.item(row, col).text()
+        txt = self.ui.tblPresets.item(row, 2).text()
+        name = self.ui.tblPresets.item(row, 0).text()
         try:
-            zoom_s, pan_x_s, pan_y_s = [s.strip(" ×") for s in txt.split(",")]
+            zoom_s, pan_x_s, pan_y_s = [s.strip(" x") for s in txt.split(",")]
             zoom = float(zoom_s)
             pan_x = int(pan_x_s)
             pan_y = int(pan_y_s)
@@ -355,4 +360,8 @@ class MetadataDialog(QDialog):
             return
 
         preset_id = self.ui.tblPresets.item(row, 0).data(Qt.UserRole)
-        self._tags.save_preset(preset_id, zoom=zoom, pan_x=pan_x, pan_y=pan_y)
+        print(preset_id, name, zoom, pan_x, pan_y)
+        self._media.execute(
+            "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE id=?",
+            (zoom, pan_x, pan_y, preset_id)
+        )
