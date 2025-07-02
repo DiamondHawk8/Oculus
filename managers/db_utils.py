@@ -38,15 +38,22 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
                 byte_size INTEGER DEFAULT 0
             );
 
-            CREATE TABLE presets (
-                id        INTEGER PRIMARY KEY,
-                media_id  INTEGER,
-                name      TEXT,
-                zoom      REAL,
-                pan_x     INTEGER,
-                pan_y     INTEGER,
-                FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
+            CREATE TABLE IF NOT EXISTS presets (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                group_id    TEXT    NOT NULL,          -- same for all copies of one preset
+                name        TEXT    NOT NULL,
+                media_id    INTEGER,                   -- NULL = folder default
+                zoom        REAL    NOT NULL,
+                pan_x       INTEGER NOT NULL,
+                pan_y       INTEGER NOT NULL,
+                is_default  INTEGER NOT NULL DEFAULT 0,
+                hotkey      TEXT,                      -- e.g. "Ctrl+2"
+            
+                FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
+                UNIQUE (media_id, name),               -- keep names unique per image
+                CHECK (is_default IN (0,1))
             );
+            CREATE INDEX IF NOT EXISTS idx_presets_group ON presets(group_id);
 
             CREATE TABLE attributes (
                 media_id  INTEGER PRIMARY KEY,

@@ -13,11 +13,14 @@ variants:  # 'stacks' of related images
 
 presets: # saved zoom / pan rectangles
   id:          INTEGER PRIMARY KEY
+  group_id:    TEXT
   media_id:    INTEGER  # NULL folder-level default
   name:        TEXT  # "Profile-crop", etc.
   zoom:        REAL # e.g. 1.75
   pan_x:       INTEGER
   pan_y:       INTEGER
+  is_default:  INTEGER
+  hotkey:      TEXT
 
 attributes: # fixed K/V booleans & numbers
   media_id:    INTEGER PRIMARY KEY  # ref media.id
