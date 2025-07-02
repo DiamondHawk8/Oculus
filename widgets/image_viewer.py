@@ -5,10 +5,11 @@ from PySide6.QtGui import QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import QDialog, QLabel, QWidget
 
 from widgets.metadata_dialog import MetadataDialog
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ImageViewerDialog(QDialog):
-    """Fullscreen viewer with translucent backdrop and Esc to close."""
 
     BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
@@ -226,11 +227,12 @@ class ImageViewerDialog(QDialog):
 
     def _cycle_variant(self, delta: int):
         """
-        Swap to another variant of the current image.
+        Swap to another variant of the current media.
         :param delta:
         :return:
         """
         if len(self._stack) <= 1:
+            logger.debug("No detected variants for current media")
             return
 
         self._save_current_state()
@@ -317,7 +319,11 @@ class ImageViewerDialog(QDialog):
         return super().eventFilter(obj, event)
 
     def _zoom_by_pixels(self, px: int):
-        """Add or subtract exactly 1 output pixel in image width."""
+        """
+        Add or subtract exactly 1 output pixel in image width.
+        :param px: pixel amount to zoom
+        :return:
+        """
         if not self._pix:
             return
         cur_out_w = self._pix.width() * self._scale
@@ -328,7 +334,11 @@ class ImageViewerDialog(QDialog):
 
     # ----------------------------------------------------------
     def _nudge(self, key: int):
-        """Arrow-key pan by one pixel with ALT."""
+        """
+        Arrow-key pan by one pixel with ALT.
+        :param key:
+        :return:
+        """
         offset = {
             Qt.Key_Left: QPoint(-1, 0),
             Qt.Key_Right: QPoint(1, 0),
@@ -338,7 +348,10 @@ class ImageViewerDialog(QDialog):
         self._label.move(self._label.pos() + offset)
 
     def _save_current_state(self):
-        """Remember current image’s zoom & pan for this session."""
+        """
+        Remember current image’s zoom & pan for this session.
+        :return:
+        """
         if self._pix:
             self._view_states[self._current_path] = (
                 self._scale,
@@ -372,6 +385,7 @@ class ImageViewerDialog(QDialog):
         :return:
         """
         if not self._paths:
+            logger.warning("No media paths detected, canceling metadata dialog execution")
             return
 
         z = self._scale
@@ -383,4 +397,5 @@ class ImageViewerDialog(QDialog):
             parent=self.window(),  # modal over main window
             default_transform=(z, pos.x(), pos.y())  # (zoom, panX, panY)
         )
+        logger.debug(f"New metadata dialog opened with {z, pos.x(), pos.y()} for {self._paths[self._idx]}")
         dlg.exec()
