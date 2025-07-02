@@ -16,10 +16,6 @@ class MetadataDialog(QDialog):
 
     def __init__(self, media_paths: List[str], media_manager, tag_manager, parent=None,
                  default_transform: tuple[float, int, int] | None = None):
-        """
-        :param media_paths: The thumbnail paths currently selected, if len==1 it's the single file dialog
-        :param media_manager: Needed for TagManager, Attribute table etc
-        """
         super().__init__(parent)
         self.ui = Ui_MetadataDialog()
         self.ui.setupUi(self)
@@ -67,6 +63,45 @@ class MetadataDialog(QDialog):
             self.ui.spinPanX.setValue(px)
             self.ui.spinPanY.setValue(py)
 
+    # -------------------- Helpers ------------------
+
+    def accept(self) -> None:
+        """
+        Apply tag changes to selected scope, then close dialog.
+        :return: None
+        """
+
+        # Apply preset changes
+        self._save_preset()
+
+        # Apply tag changes
+        self._save_tags()
+
+        super().accept()
+
+    def selected_scope(self) -> str:
+        """
+        Method for obtaining the user defined scope of metadata dialog.
+        :return:
+        """
+        if self.ui.radThis.isChecked():
+            return "this"
+        if self.ui.radFolder.isChecked():
+            return "folder"
+        if self.ui.radSelected.isChecked():
+            return "selected"
+        return "invalid"
+
+    def _id_for_path(self, p: str) -> int:
+        row = self._media.fetchone("SELECT id FROM media WHERE path=?", (p,))
+        return row["id"] if row else -1
+
+    def _current_view_state(self):
+        z = self.ui.spinZoom.value()
+        px = self.ui.spinPanX.value()
+        py = self.ui.spinPanY.value()
+        return z, px, py
+
     # -------------------- Tagging ------------------
 
     def _add_tag(self):
@@ -104,20 +139,6 @@ class MetadataDialog(QDialog):
         for mid in ids:
             self._tags.set_tags(mid, tags, overwrite=True)
 
-    def accept(self) -> None:
-        """
-        Apply tag changes to selected scope, then close dialog.
-        :return: None
-        """
-
-        # Apply preset changes
-        self._save_preset()
-
-        # Apply tag changes
-        self._save_tags()
-
-        super().accept()
-
     def _ids_with_variants(self, path: str, include: bool) -> list[int]:
         """
         Return media IDs for path (and its variants if include=True)
@@ -127,23 +148,6 @@ class MetadataDialog(QDialog):
         """
         base_and_variants = (self._media.stack_paths(path) if include else [path])
         return [self._id_for_path(p) for p in base_and_variants]
-
-    # -------------------------- Misc ------------------------
-    def selected_scope(self) -> str:
-        """
-        Method for obtaining the user defined scope of metadata dialog.
-        """
-        if self.ui.radThis.isChecked():
-            return "this"
-        if self.ui.radFolder.isChecked():
-            return "folder"
-        if self.ui.radSelected.isChecked():
-            return "selected"
-        return "invalid"
-
-    def _id_for_path(self, p: str) -> int:
-        row = self._media.fetchone("SELECT id FROM media WHERE path=?", (p,))
-        return row["id"] if row else -1
 
     def _copy_tags(self):
         self._copy_buffer = [
@@ -233,7 +237,7 @@ class MetadataDialog(QDialog):
             display_list = all_names[:5]
             display_text = ", ".join(display_list)
             if len(all_names) > 5:
-                display_text += f", … ({len(all_names)} total)"
+                display_text += f", ... ({len(all_names)} total)"
 
             scope_item = QTableWidgetItem(display_text)
             scope_item.setToolTip("\n".join(all_names))
@@ -247,12 +251,6 @@ class MetadataDialog(QDialog):
             self.ui.tblPresets.setItem(row, 2, QTableWidgetItem(transform_text))
 
             self.ui.tblPresets.setRowHeight(row, 20)
-
-    def _current_view_state(self):
-        z = self.ui.spinZoom.value()
-        px = self.ui.spinPanX.value()
-        py = self.ui.spinPanY.value()
-        return z, px, py
 
     def _save_preset(self) -> None:
         """
