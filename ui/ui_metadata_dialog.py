@@ -16,21 +16,22 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication, QCheckBox,
-    QDialog, QDialogButtonBox, QGroupBox, QHBoxLayout,
-    QHeaderView, QLineEdit, QListWidget, QListWidgetItem,
-    QPushButton, QRadioButton, QSizePolicy, QTabWidget,
-    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QGroupBox,
+    QHBoxLayout, QHeaderView, QLineEdit, QListWidget,
+    QListWidgetItem, QPushButton, QRadioButton, QSizePolicy,
+    QSpinBox, QTabWidget, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget)
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(818, 446)
+        MetadataDialog.resize(930, 567)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
         self.tabs.setObjectName(u"tabs")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.tabs.sizePolicy().hasHeightForWidth())
@@ -115,20 +116,65 @@ class Ui_MetadataDialog(object):
         self.hboxPresetBtns.setObjectName(u"hboxPresetBtns")
         self.editPresetName = QLineEdit(self.PresetsTab)
         self.editPresetName.setObjectName(u"editPresetName")
-        self.editPresetName.setReadOnly(True)
+        self.editPresetName.setText(u"New preset name...")
+        self.editPresetName.setReadOnly(False)
         self.editPresetName.setClearButtonEnabled(True)
 
         self.hboxPresetBtns.addWidget(self.editPresetName)
 
+        self.vLayoutPresetOps = QVBoxLayout()
+        self.vLayoutPresetOps.setObjectName(u"vLayoutPresetOps")
+        self.vLayoutPresetOps.setContentsMargins(-1, -1, 0, -1)
+        self.horizontalLayout_5 = QHBoxLayout()
+        self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
+        self.horizontalLayout_5.setContentsMargins(-1, 0, -1, -1)
+        self.spinZoom = QDoubleSpinBox(self.PresetsTab)
+        self.spinZoom.setObjectName(u"spinZoom")
+        self.spinZoom.setMinimum(0.010000000000000)
+        self.spinZoom.setMaximum(100.000000000000000)
+
+        self.horizontalLayout_5.addWidget(self.spinZoom)
+
+        self.spinPanX = QSpinBox(self.PresetsTab)
+        self.spinPanX.setObjectName(u"spinPanX")
+        self.spinPanX.setMinimum(-99999)
+        self.spinPanX.setMaximum(99999)
+
+        self.horizontalLayout_5.addWidget(self.spinPanX)
+
+        self.spinPanY = QSpinBox(self.PresetsTab)
+        self.spinPanY.setObjectName(u"spinPanY")
+        self.spinPanY.setMinimum(-99999)
+        self.spinPanY.setMaximum(99999)
+
+        self.horizontalLayout_5.addWidget(self.spinPanY)
+
+
+        self.vLayoutPresetOps.addLayout(self.horizontalLayout_5)
+
+        self.horizontalLayout_4 = QHBoxLayout()
+        self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
+        self.horizontalLayout_4.setContentsMargins(-1, 0, -1, -1)
         self.btnLoadPreset = QPushButton(self.PresetsTab)
         self.btnLoadPreset.setObjectName(u"btnLoadPreset")
 
-        self.hboxPresetBtns.addWidget(self.btnLoadPreset)
+        self.horizontalLayout_4.addWidget(self.btnLoadPreset)
 
         self.btnDeletePreset = QPushButton(self.PresetsTab)
         self.btnDeletePreset.setObjectName(u"btnDeletePreset")
 
-        self.hboxPresetBtns.addWidget(self.btnDeletePreset)
+        self.horizontalLayout_4.addWidget(self.btnDeletePreset)
+
+        self.btnSavePreset = QPushButton(self.PresetsTab)
+        self.btnSavePreset.setObjectName(u"btnSavePreset")
+
+        self.horizontalLayout_4.addWidget(self.btnSavePreset)
+
+
+        self.vLayoutPresetOps.addLayout(self.horizontalLayout_4)
+
+
+        self.hboxPresetBtns.addLayout(self.vLayoutPresetOps)
 
 
         self.verticalLayout_2.addLayout(self.hboxPresetBtns)
@@ -141,12 +187,20 @@ class Ui_MetadataDialog(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.grpScope = QGroupBox(MetadataDialog)
         self.grpScope.setObjectName(u"grpScope")
-        sizePolicy.setHeightForWidth(self.grpScope.sizePolicy().hasHeightForWidth())
-        self.grpScope.setSizePolicy(sizePolicy)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.grpScope.sizePolicy().hasHeightForWidth())
+        self.grpScope.setSizePolicy(sizePolicy1)
         self.horizontalLayout = QHBoxLayout(self.grpScope)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.radSelected = QRadioButton(self.grpScope)
         self.radSelected.setObjectName(u"radSelected")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.radSelected.sizePolicy().hasHeightForWidth())
+        self.radSelected.setSizePolicy(sizePolicy2)
         self.radSelected.setChecked(True)
 
         self.horizontalLayout.addWidget(self.radSelected)
@@ -154,12 +208,16 @@ class Ui_MetadataDialog(object):
         self.radFolder = QRadioButton(self.grpScope)
         self.radFolder.setObjectName(u"radFolder")
         self.radFolder.setEnabled(True)
+        sizePolicy2.setHeightForWidth(self.radFolder.sizePolicy().hasHeightForWidth())
+        self.radFolder.setSizePolicy(sizePolicy2)
 
         self.horizontalLayout.addWidget(self.radFolder)
 
         self.radThis = QRadioButton(self.grpScope)
         self.radThis.setObjectName(u"radThis")
         self.radThis.setEnabled(True)
+        sizePolicy2.setHeightForWidth(self.radThis.sizePolicy().hasHeightForWidth())
+        self.radThis.setSizePolicy(sizePolicy2)
 
         self.horizontalLayout.addWidget(self.radThis)
 
@@ -206,9 +264,12 @@ class Ui_MetadataDialog(object):
         ___qtablewidgetitem1.setText(QCoreApplication.translate("MetadataDialog", u"Scope", None));
         ___qtablewidgetitem2 = self.tblPresets.horizontalHeaderItem(2)
         ___qtablewidgetitem2.setText(QCoreApplication.translate("MetadataDialog", u"Properties", None));
-        self.editPresetName.setText(QCoreApplication.translate("MetadataDialog", u"New preset name...", None))
+        self.spinZoom.setPrefix(QCoreApplication.translate("MetadataDialog", u"Zoom: ", None))
+        self.spinPanX.setPrefix(QCoreApplication.translate("MetadataDialog", u"X: ", None))
+        self.spinPanY.setPrefix(QCoreApplication.translate("MetadataDialog", u"Y: ", None))
         self.btnLoadPreset.setText(QCoreApplication.translate("MetadataDialog", u"Load", None))
         self.btnDeletePreset.setText(QCoreApplication.translate("MetadataDialog", u"Delete", None))
+        self.btnSavePreset.setText(QCoreApplication.translate("MetadataDialog", u"Save", None))
         self.tabs.setTabText(self.tabs.indexOf(self.PresetsTab), QCoreApplication.translate("MetadataDialog", u"Presets", None))
         self.grpScope.setTitle(QCoreApplication.translate("MetadataDialog", u"Apply to", None))
         self.radSelected.setText(QCoreApplication.translate("MetadataDialog", u"Current Selection", None))
