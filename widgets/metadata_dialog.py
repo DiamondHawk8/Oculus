@@ -56,6 +56,9 @@ class MetadataDialog(QDialog):
         self.ui.btnLoadPreset.clicked.connect(self._load_selected_preset)
         self.ui.btnDeletePreset.clicked.connect(self._delete_selected_preset)
 
+        # Preset value inline editing
+        self.ui.tblPresets.cellChanged.connect(self._on_transform_edited)
+
         # Preset Values
         if default_transform:
             z, px, py = default_transform
@@ -333,3 +336,26 @@ class MetadataDialog(QDialog):
 
         # dedupe while preserving order
         return list(dict.fromkeys(ids))
+
+    def _on_transform_edited(self, row: int, col: int):
+        """
+        Helper function for allowing user editing of the transformations column
+        :param row:
+        :param col:
+        :return:
+        """
+        if col != 2:  # column 2 = Properties
+            return
+
+        txt = self.ui.tblPresets.item(row, col).text()
+        try:
+            zoom_s, pan_x_s, pan_y_s = [s.strip(" ×") for s in txt.split(",")]
+            zoom = float(zoom_s)
+            pan_x = int(pan_x_s)
+            pan_y = int(pan_y_s)
+        except (ValueError, IndexError):
+            QMessageBox.warning(self, "Invalid format", "Use format like: 1.25x, 20, -15")
+            return
+
+        preset_id = self.ui.tblPresets.item(row, 0).data(Qt.UserRole)
+        self._tags.save_preset(preset_id, zoom=zoom, pan_x=pan_x, pan_y=pan_y)
