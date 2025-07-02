@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 from typing import List
 
@@ -192,14 +193,14 @@ class MetadataDialog(QDialog):
         :return:
         """
         tbl = self.ui.tblPresets
-        tbl.blockSignals(True)  # suppress cellChanged
+        tbl.blockSignals(True)  # suppress cellChanged during fill
         tbl.setRowCount(0)
 
-        # grab the new columns from the DB
         folder = Path(self._paths[0]).parent
         rows = self._media.fetchall(
             """
-            SELECT p.id, p.name, p.media_id, p.zoom, p.pan_x, p.pan_y, m.path
+            SELECT p.group_id, p.id, p.name, p.media_id,
+                   p.zoom, p.pan_x, p.pan_y, m.path
               FROM presets p
               LEFT JOIN media m ON p.media_id = m.id
              WHERE p.media_id IS NULL OR p.media_id = ?
@@ -208,53 +209,45 @@ class MetadataDialog(QDialog):
         )
 
         for r in rows:
-            row = self.ui.tblPresets.rowCount()
-            self.ui.tblPresets.insertRow(row)
+            row_idx = tbl.rowCount()
+            tbl.insertRow(row_idx)
 
+            #  column 0: Name (+ hidden data)
             name_item = QTableWidgetItem(r["name"])
-            name_item.setData(Qt.UserRole, r["id"])
-            self.ui.tblPresets.setItem(row, 0, name_item)
+            name_item.setData(Qt.UserRole, r["id"])  # preset id
+            name_item.setData(Qt.UserRole + 1, r["group_id"])  # group id
+            tbl.setItem(row_idx, 0, name_item)
 
-            # Scope column: list of all files this preset lives on
-            if r["media_id"] is None:
-                # folder-default: grab all media.paths under this folder
+            #  column 1: Scope listing
+            if r["media_id"] is None:  # folder-default: all files in folder
                 folder_rows = self._media.fetchall(
                     "SELECT path FROM media WHERE path LIKE ?",
                     (f"{str(folder)}%",),
                 )
                 all_names = [Path(fr["path"]).name for fr in folder_rows]
-            else:
-                linked = self._media.fetchall(
-                    """
-                    SELECT m.path
-                      FROM presets p
-                      JOIN media m ON p.media_id = m.id
-                     WHERE p.name = ? AND p.zoom = ? AND p.pan_x = ? AND p.pan_y = ?
-                    """,
-                    (r["name"], r["zoom"], r["pan_x"], r["pan_y"]),
+            else:  # file-specific: every row in group
+                linked_rows = self._media.fetchall(
+                    "SELECT m.path FROM presets p "
+                    "JOIN media m ON p.media_id = m.id "
+                    "WHERE p.group_id = ?", (r["group_id"],)
                 )
-                all_names = [Path(lr["path"]).name for lr in linked]
+                all_names = [Path(lr["path"]).name for lr in linked_rows]
 
-            # build a truncated display plus full-list tooltip
-            display_list = all_names[:5]
-            display_text = ", ".join(display_list)
+            display = ", ".join(all_names[:5])
             if len(all_names) > 5:
-                display_text += f", ... ({len(all_names)} total)"
-
-            scope_item = QTableWidgetItem(display_text)
+                display += f", … ({len(all_names)} total)"
+            scope_item = QTableWidgetItem(display)
             scope_item.setToolTip("\n".join(all_names))
             scope_item.setFlags(scope_item.flags() & ~Qt.ItemIsEditable)
-            self.ui.tblPresets.setItem(row, 1, scope_item)
+            tbl.setItem(row_idx, 1, scope_item)
 
-            zoom = r["zoom"]
-            pan_x = r["pan_x"]
-            pan_y = r["pan_y"]
-            transform_text = f"{zoom:.2f}x, {pan_x}, {pan_y}"
-            self.ui.tblPresets.setItem(row, 2, QTableWidgetItem(transform_text))
+            #  column 2: Transform string
+            transform = f"{r['zoom']:.2f}x, {r['pan_x']}, {r['pan_y']}"
+            tbl.setItem(row_idx, 2, QTableWidgetItem(transform))
 
-            self.ui.tblPresets.setRowHeight(row, 20)
+            tbl.setRowHeight(row_idx, 20)
 
-            tbl.blockSignals(False)
+        tbl.blockSignals(False)  # re-enable after table is filled
 
     def _save_preset(self) -> None:
         """
@@ -271,8 +264,10 @@ class MetadataDialog(QDialog):
             QMessageBox.warning(self, "Scope", "No files selected to save preset.")
             return
 
+        gid = str(uuid.uuid4())
+
         for mid in ids:
-            self._tags.save_preset(mid, name, scale, px, py)
+            self._tags.save_preset(gid, mid, name, scale, px, py)
 
         # refresh UI for the first target
         self.ui.editPresetName.clear()
@@ -359,9 +354,10 @@ class MetadataDialog(QDialog):
             QMessageBox.warning(self, "Invalid format", "Use format like: 1.25x, 20, -15")
             return
 
-        preset_id = self.ui.tblPresets.item(row, 0).data(Qt.UserRole)
-        print(preset_id, name, zoom, pan_x, pan_y)
+        # Find related rows
+        gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)
+
         self._media.execute(
-            "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE id=?",
-            (zoom, pan_x, pan_y, preset_id)
+            "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE group_id=?",
+            (zoom, pan_x, pan_y, gid)
         )

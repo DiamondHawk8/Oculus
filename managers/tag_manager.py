@@ -38,12 +38,12 @@ class TagManager(BaseManager):
         )
         self.execute(sql, (media_id, *kwargs.values()))
 
-    def save_preset(self, media_id: int, name: str, zoom: float, pan_x: int, pan_y: int):
+    def save_preset(self, group_id, media_id: int, name: str, zoom: float, pan_x: int, pan_y: int):
         logger.debug(f"Creating new preset for media with id {media_id}")
-        logger.debug(f"Preset args:\nname: {name}\nzoom: {zoom}\npan_x: {pan_x}\npan_y: {pan_y}")
+        logger.debug(f"Preset args:\ngroup_id: {group_id}\nname: {name}\nzoom: {zoom}\npan_x: {pan_x}\npan_y: {pan_y}")
         self.execute(
-            "INSERT OR REPLACE INTO presets(media_id,name,zoom,pan_x,pan_y) VALUES (?,?,?,?,?)",
-            (media_id, name, zoom, pan_x, pan_y)
+            "INSERT OR REPLACE INTO presets(group_id,media_id,name,zoom,pan_x,pan_y) VALUES (?,?,?,?,?,?)",
+            (group_id, media_id, name, zoom, pan_x, pan_y)
         )
 
     def list_presets(self, media_id: int):
