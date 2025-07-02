@@ -74,9 +74,6 @@ class MetadataDialog(QDialog):
         :return: None
         """
 
-        # Apply preset changes
-        self._save_preset()
-
         # Apply tag changes
         self._save_tags()
 
