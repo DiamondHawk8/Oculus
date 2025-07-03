@@ -67,8 +67,10 @@ class ImageViewerDialog(QDialog):
         :param path: path to image
         :return:
         """
+        logger.info(f"Loading image from {path}")
         pix = QPixmap(path)
         if pix.isNull():
+            logger.error("Could not load image %s", path)
             self._label.setText(f"Could not load\n{Path(path).name}")
             self._label.setStyleSheet("color:white; background:transparent;")
             self._pix = None
@@ -78,19 +80,30 @@ class ImageViewerDialog(QDialog):
         self._current_path = path
 
         # Check session cache
-        if path in self._view_states:
+        if self._current_path in self._view_states:
             self._scale, saved_pos = self._view_states[path]
             self._fit_to_win = False
             self._recompute_fit_scale()  # still needed for bounds
             self._update_scaled()
             self._label.move(saved_pos)  # restore pan
             return
+        # Otherwise Apply default if it exists
+        else:
+            logger.debug("Applying default preset")
+            mid = self._media_manager.fetchone("SELECT id FROM media WHERE path=?", (self._current_path,))["id"]
+            row = self._media_manager.fetchone(
+                "SELECT zoom, pan_x, pan_y FROM presets "
+                "WHERE media_id = ? AND is_default = 1", (mid,)
+            )
+            if row:
+                self.apply_view_state(row["zoom"], QPoint(row["pan_x"], row["pan_y"]))
+            else:
+                # Fallback apply nothing
+                self._recompute_fit_scale()
+                self._scale = self._fit_scale
+                self._update_scaled()
+                self._center_label()
 
-        # Fit image to current window
-        self._recompute_fit_scale()
-        self._fit_to_win = True
-        self._scale = self._fit_scale
-        self._update_scaled()
 
     def _recompute_fit_scale(self):
         if not self._pix:
@@ -102,7 +115,9 @@ class ImageViewerDialog(QDialog):
         )
 
     def _update_scaled(self):
+        logger.debug("Updating scale of current image")
         if not self._pix:
+            logger.warning("Failed to scale current image, no pix set")
             return
 
         if self._fit_to_win:
@@ -221,7 +236,6 @@ class ImageViewerDialog(QDialog):
             # pick stored variant if we have one, else base (index 0)
             next_idx = self._variant_pos.get(base, 0)
             next_idx = min(next_idx, len(self._stack) - 1)
-
             self._current_path = self._stack[next_idx]
             self._load_image(self._current_path)
 
