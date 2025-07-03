@@ -352,6 +352,7 @@ class MetadataDialog(QDialog):
                         ids.append(self._id_for_path(path))
 
         # dedupe while preserving order
+        logger.debug(f"Scope of media identified as {ids}")
         return list(dict.fromkeys(ids))
 
     def _on_transform_edited(self, row: int, col: int):
@@ -361,6 +362,7 @@ class MetadataDialog(QDialog):
         :param col:
         :return:
         """
+        logger.debug(f"Transformation values edited for row {row}, col {col}")
         if col != 2:  # column 2 = Properties
             return
 
@@ -384,6 +386,7 @@ class MetadataDialog(QDialog):
         )
 
     def _on_default_toggled(self, group_id: str, media_id: int | None, checked: bool):
+        logger.debug(f"Default toggled to {checked} for group id {group_id}, media id {media_id}")
         # ignore un-check events
         if not checked:
             return
@@ -397,6 +400,7 @@ class MetadataDialog(QDialog):
         )
 
     def _on_hotkey_edited(self, group_id: str, line: QLineEdit):
+        logger.debug("Hotkey edited")
         text = line.text().strip()
         if text and QKeySequence(text).isEmpty():
             QMessageBox.warning(self, "Hotkey", "Invalid key sequence.")
