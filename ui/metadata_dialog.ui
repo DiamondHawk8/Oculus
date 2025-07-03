@@ -109,7 +109,7 @@
           <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
          </property>
          <property name="columnCount">
-          <number>3</number>
+          <number>5</number>
          </property>
          <attribute name="horizontalHeaderStretchLastSection">
           <bool>true</bool>
@@ -130,6 +130,16 @@
          <column>
           <property name="text">
            <string>Properties</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Keybind</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Default</string>
           </property>
          </column>
         </widget>

@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import List
 
 from PySide6.QtCore import QStringListModel, Qt, QPoint
-from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem
+from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem, QLineEdit, \
+    QRadioButton
 from ui.ui_metadata_dialog import Ui_MetadataDialog
 import logging
 
@@ -244,6 +245,24 @@ class MetadataDialog(QDialog):
             #  column 2: Transform string
             transform = f"{r['zoom']:.2f}x, {r['pan_x']}, {r['pan_y']}"
             tbl.setItem(row_idx, 2, QTableWidgetItem(transform))
+
+            #  column 3: Default radio
+            radio = QRadioButton()
+            radio.setChecked(bool(r["is_default"]))
+            radio.toggled.connect(
+                lambda checked, gid=r["group_id"], mid=r["media_id"]:
+                self._on_default_toggled(gid, mid, checked)
+            )
+            tbl.setCellWidget(row_idx, 3, radio)
+
+            #  column 4: Hotkey edit
+            edit = QLineEdit(r["hotkey"] or "")
+            edit.setPlaceholderText("Ctrl+1 ...")
+            edit.setFixedWidth(80)
+            edit.editingFinished.connect(
+                lambda e=edit, gid=r["group_id"]: self._on_hotkey_edited(gid, e)
+            )
+            tbl.setCellWidget(row_idx, 4, edit)
 
             tbl.setRowHeight(row_idx, 20)
 

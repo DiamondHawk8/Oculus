@@ -95,14 +95,18 @@ class Ui_MetadataDialog(object):
         self.verticalLayout_2 = QVBoxLayout(self.PresetsTab)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.tblPresets = QTableWidget(self.PresetsTab)
-        if (self.tblPresets.columnCount() < 3):
-            self.tblPresets.setColumnCount(3)
+        if (self.tblPresets.columnCount() < 5):
+            self.tblPresets.setColumnCount(5)
         __qtablewidgetitem = QTableWidgetItem()
         self.tblPresets.setHorizontalHeaderItem(0, __qtablewidgetitem)
         __qtablewidgetitem1 = QTableWidgetItem()
         self.tblPresets.setHorizontalHeaderItem(1, __qtablewidgetitem1)
         __qtablewidgetitem2 = QTableWidgetItem()
         self.tblPresets.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        __qtablewidgetitem3 = QTableWidgetItem()
+        self.tblPresets.setHorizontalHeaderItem(3, __qtablewidgetitem3)
+        __qtablewidgetitem4 = QTableWidgetItem()
+        self.tblPresets.setHorizontalHeaderItem(4, __qtablewidgetitem4)
         self.tblPresets.setObjectName(u"tblPresets")
         self.tblPresets.setStyleSheet(u"            QTableWidget QLineEdit {\n"
 "                background: palette(base);   /* opaque, matches normal textbox */\n"
@@ -111,7 +115,7 @@ class Ui_MetadataDialog(object):
 "            }")
         self.tblPresets.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked)
         self.tblPresets.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.tblPresets.setColumnCount(3)
+        self.tblPresets.setColumnCount(5)
         self.tblPresets.horizontalHeader().setStretchLastSection(True)
         self.tblPresets.verticalHeader().setStretchLastSection(False)
 
@@ -269,6 +273,10 @@ class Ui_MetadataDialog(object):
         ___qtablewidgetitem1.setText(QCoreApplication.translate("MetadataDialog", u"Scope", None));
         ___qtablewidgetitem2 = self.tblPresets.horizontalHeaderItem(2)
         ___qtablewidgetitem2.setText(QCoreApplication.translate("MetadataDialog", u"Properties", None));
+        ___qtablewidgetitem3 = self.tblPresets.horizontalHeaderItem(3)
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("MetadataDialog", u"Keybind", None));
+        ___qtablewidgetitem4 = self.tblPresets.horizontalHeaderItem(4)
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("MetadataDialog", u"Default", None));
         self.spinZoom.setPrefix(QCoreApplication.translate("MetadataDialog", u"Zoom: ", None))
         self.spinPanX.setPrefix(QCoreApplication.translate("MetadataDialog", u"X: ", None))
         self.spinPanY.setPrefix(QCoreApplication.translate("MetadataDialog", u"Y: ", None))
