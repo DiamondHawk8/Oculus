@@ -125,7 +125,7 @@ class Ui_MetadataDialog(object):
         self.hboxPresetBtns.setObjectName(u"hboxPresetBtns")
         self.editPresetName = QLineEdit(self.PresetsTab)
         self.editPresetName.setObjectName(u"editPresetName")
-        self.editPresetName.setText(u"New preset name...")
+        self.editPresetName.setText(u"")
         self.editPresetName.setReadOnly(False)
         self.editPresetName.setClearButtonEnabled(True)
 
@@ -274,9 +274,10 @@ class Ui_MetadataDialog(object):
         ___qtablewidgetitem2 = self.tblPresets.horizontalHeaderItem(2)
         ___qtablewidgetitem2.setText(QCoreApplication.translate("MetadataDialog", u"Properties", None));
         ___qtablewidgetitem3 = self.tblPresets.horizontalHeaderItem(3)
-        ___qtablewidgetitem3.setText(QCoreApplication.translate("MetadataDialog", u"Keybind", None));
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("MetadataDialog", u"Default", None));
         ___qtablewidgetitem4 = self.tblPresets.horizontalHeaderItem(4)
-        ___qtablewidgetitem4.setText(QCoreApplication.translate("MetadataDialog", u"Default", None));
+        ___qtablewidgetitem4.setText(QCoreApplication.translate("MetadataDialog", u"Keybind", None));
+        self.editPresetName.setPlaceholderText(QCoreApplication.translate("MetadataDialog", u"New preset name...", None))
         self.spinZoom.setPrefix(QCoreApplication.translate("MetadataDialog", u"Zoom: ", None))
         self.spinPanX.setPrefix(QCoreApplication.translate("MetadataDialog", u"X: ", None))
         self.spinPanY.setPrefix(QCoreApplication.translate("MetadataDialog", u"Y: ", None))

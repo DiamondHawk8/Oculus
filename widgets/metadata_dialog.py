@@ -202,7 +202,7 @@ class MetadataDialog(QDialog):
         rows = self._media.fetchall(
             """
             SELECT p.group_id, p.id, p.name, p.media_id,
-                   p.zoom, p.pan_x, p.pan_y, m.path
+                   p.zoom, p.pan_x, p.pan_y, p.is_default, p.hotkey, m.path
               FROM presets p
               LEFT JOIN media m ON p.media_id = m.id
              WHERE p.media_id IS NULL OR p.media_id = ?
@@ -260,6 +260,7 @@ class MetadataDialog(QDialog):
             edit = QLineEdit(r["hotkey"] or "")
             edit.setPlaceholderText("Ctrl+1 ...")
             edit.setFixedWidth(80)
+            edit.setStyleSheet("background-color: black; color: white;")
             edit.editingFinished.connect(
                 lambda e=edit, gid=r["group_id"]: self._on_hotkey_edited(gid, e)
             )

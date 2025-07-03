@@ -134,12 +134,12 @@
          </column>
          <column>
           <property name="text">
-           <string>Keybind</string>
+           <string>Default</string>
           </property>
          </column>
          <column>
           <property name="text">
-           <string>Default</string>
+           <string>Keybind</string>
           </property>
          </column>
         </widget>
@@ -149,10 +149,13 @@
          <item>
           <widget class="QLineEdit" name="editPresetName">
            <property name="text">
-            <string notr="true">New preset name...</string>
+            <string notr="true"/>
            </property>
            <property name="readOnly">
             <bool>false</bool>
+           </property>
+           <property name="placeholderText">
+            <string>New preset name...</string>
            </property>
            <property name="clearButtonEnabled">
             <bool>true</bool>
