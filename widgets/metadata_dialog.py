@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 from PySide6.QtCore import QStringListModel, Qt, QPoint
+from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem, QLineEdit, \
     QRadioButton
 from ui.ui_metadata_dialog import Ui_MetadataDialog
@@ -379,4 +380,29 @@ class MetadataDialog(QDialog):
         self._media.execute(
             "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE group_id=?",
             (zoom, pan_x, pan_y, gid)
+        )
+
+    def _on_default_toggled(self, group_id: str, media_id: int | None, checked: bool):
+        # ignore un-check events
+        if not checked:
+            return
+
+        # One default per media (NULL = folder default group)
+        self._media.execute(
+            "UPDATE presets SET is_default = 0 WHERE media_id IS ?", (media_id,)
+        )
+        self._media.execute(
+            "UPDATE presets SET is_default = 1 WHERE group_id = ?", (group_id,)
+        )
+
+    def _on_hotkey_edited(self, group_id: str, line: QLineEdit):
+        text = line.text().strip()
+        if text and QKeySequence(text).isEmpty():
+            QMessageBox.warning(self, "Hotkey", "Invalid key sequence.")
+            line.setText("")
+            text = ""
+
+        # update every row in the group
+        self._media.execute(
+            "UPDATE presets SET hotkey = ? WHERE group_id = ?", (text or None, group_id)
         )
