@@ -80,6 +80,12 @@ class MetadataDialog(QDialog):
         # Apply tag changes
         self._save_tags()
 
+        # TODO pass viewer instance properly to class
+        # Load any media again to ensure that preset changes are properly reflected
+        viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
+        if viewer:
+            viewer.refresh()
+
         super().accept()
 
     def selected_scope(self) -> str:

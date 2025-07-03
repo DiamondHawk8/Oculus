@@ -9,8 +9,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class ImageViewerDialog(QDialog):
 
+class ImageViewerDialog(QDialog):
     BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
     def __init__(self, paths: list[str], cur_idx: int, media_manager, tag_manager, stack, parent=None):
@@ -104,6 +104,25 @@ class ImageViewerDialog(QDialog):
                 self._update_scaled()
                 self._center_label()
 
+        # Create shortcuts for presets that have defined such
+
+        for sc in getattr(self, "_dyn_presets", []):
+            sc.setParent(None)
+        self._dyn_presets = []
+
+        mid = self._media_manager.fetchone("SELECT id FROM media WHERE path=?", (self._current_path,))["id"]
+        rows = self._media_manager.fetchall(
+            "SELECT zoom, pan_x, pan_y, hotkey FROM presets "
+            "WHERE media_id = ? AND hotkey IS NOT NULL", (mid,)
+        )
+        for r in rows:
+            seq = QKeySequence(r["hotkey"])
+            if seq.isEmpty():
+                continue
+            sc = QShortcut(seq, self)
+            sc.activated.connect(lambda z=r["zoom"], x=r["pan_x"], y=r["pan_y"]:
+                                 self.apply_view_state(z, QPoint(x, y)))
+            self._dyn_presets.append(sc)
 
     def _recompute_fit_scale(self):
         if not self._pix:
@@ -413,3 +432,6 @@ class ImageViewerDialog(QDialog):
         )
         logger.debug(f"New metadata dialog opened with {z, pos.x(), pos.y()} for {self._paths[self._idx]}")
         dlg.exec()
+
+    def refresh(self):
+        self._load_image(self._current_path)
