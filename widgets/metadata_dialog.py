@@ -415,7 +415,22 @@ class MetadataDialog(QDialog):
             line.setText("")
             text = ""
 
-        # update every row in the group
+        # find any other rows *for the same media* with this hotkey
+        mid = self._id_for_path(self._paths[0])  # first file drives media_id
+        clash = self._media.fetchone(
+            """
+            SELECT 1 FROM presets
+            WHERE hotkey = ? AND media_id = ? AND group_id <> ?
+            """,
+            (text, mid, group_id),
+        )
+        if clash:
+            QMessageBox.warning(self, "Hotkey", "That key is already bound for this media.")
+            line.setText("")
+            return
+
+        # update the whole group
         self._media.execute(
-            "UPDATE presets SET hotkey = ? WHERE group_id = ?", (text or None, group_id)
+            "UPDATE presets SET hotkey = ? WHERE group_id = ?",
+            (text or None, group_id),
         )
