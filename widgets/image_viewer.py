@@ -59,6 +59,14 @@ class ImageViewerDialog(QDialog):
         # ---- load & show -----------------------------------------------
         self._load_image(self._paths[self._idx])
 
+        # Temp nudge work around
+        QShortcut(QKeySequence("Alt+A"), self).activated.connect(
+            lambda: self._nudge(Qt.Key_Left)
+        )
+        QShortcut(QKeySequence("Alt+D"), self).activated.connect(
+            lambda: self._nudge(Qt.Key_Right)
+        )
+
         self.showFullScreen()
 
     def _load_image(self, path: str):
