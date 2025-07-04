@@ -13,12 +13,18 @@ logger = logging.getLogger(__name__)
 
 
 class MetadataDialog(QDialog):
-    """
-    Unified dialog for Tags, Attributes, and Presets.
-    """
 
     def __init__(self, media_paths: List[str], media_manager, tag_manager, parent=None,
-                 default_transform: tuple[float, int, int] | None = None):
+                 default_transform: tuple[float, int, int] | None = None, viewer=None, ):
+        """
+        Unified dialog for Tags, Attributes, and Presets.
+        :param media_paths: Path scope of the dialog. Media that is not provided cannot be altered
+        :param media_manager: Used for handling db changes
+        :param tag_manager: Used for handling db changes
+        :param parent:
+        :param default_transform: Optional parameter to autofill data to dialog widgets
+        :param viewer: Optional viewer so that metadata changes can be immediately be applied in current viewer session
+        """
         super().__init__(parent)
         self.ui = Ui_MetadataDialog()
         self.ui.setupUi(self)
@@ -26,6 +32,7 @@ class MetadataDialog(QDialog):
         self._paths = media_paths
         self._media = media_manager
         self._tags = tag_manager
+        self._viewer = viewer
 
         self._copy_buffer: List[str] | None = None
 
@@ -76,16 +83,11 @@ class MetadataDialog(QDialog):
         Apply tag changes to selected scope, then close dialog.
         :return: None
         """
-
         # Apply tag changes
         self._save_tags()
-
-        # TODO pass viewer instance properly to class
         # Load any media again to ensure that preset changes are properly reflected
-        viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
-        if viewer:
-            viewer.refresh()
-
+        if self._viewer:
+            self._viewer.refresh()
         super().accept()
 
     def selected_scope(self) -> str:

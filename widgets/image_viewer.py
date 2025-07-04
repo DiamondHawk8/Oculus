@@ -111,9 +111,10 @@ class ImageViewerDialog(QDialog):
                 self._scale = self._fit_scale
                 self._update_scaled()
                 self._center_label()
+            self._create_shortcuts()
 
+    def _create_shortcuts(self):
         # Create shortcuts for presets that have defined such
-
         for sc in getattr(self, "_dyn_presets", []):
             sc.setParent(None)
         self._dyn_presets = []
@@ -436,10 +437,17 @@ class ImageViewerDialog(QDialog):
             self._media_manager,
             self._tag_manager,
             parent=self.window(),  # modal over main window
-            default_transform=(z, pos.x(), pos.y())  # (zoom, panX, panY)
+            default_transform=(z, pos.x(), pos.y()),  # (zoom, panX, panY)
+            viewer=self
         )
         logger.debug(f"New metadata dialog opened with {z, pos.x(), pos.y()} for {self._paths[self._idx]}")
         dlg.exec()
 
     def refresh(self):
+        """
+        Re-runs the load image method, first saving the state of the currently viewed media
+        :return:
+        """
+        self._save_current_state()
         self._load_image(self._current_path)
+        self._create_shortcuts()
