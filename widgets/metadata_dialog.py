@@ -66,8 +66,9 @@ class MetadataDialog(QDialog):
         self.ui.btnLoadPreset.clicked.connect(self._load_selected_preset)
         self.ui.btnDeletePreset.clicked.connect(self._delete_selected_preset)
 
-        # Preset value inline editing
+        # Value inline editing
         self.ui.tblPresets.cellChanged.connect(self._on_transform_edited)
+        self.ui.tblPresets.cellChanged.connect(self._on_name_edited)
 
         # Preset Values
         if default_transform:
@@ -393,6 +394,35 @@ class MetadataDialog(QDialog):
             (zoom, pan_x, pan_y, gid)
         )
 
+    def _on_name_edited(self, row: int, col: int):
+        if col != 0:  # only Name column
+            return
+        new_name = self.ui.tblPresets.item(row, 0).text().strip()
+        if not new_name:
+            QMessageBox.warning(self, "Rename", "Name cannot be blank.")
+            self._populate_presets(self._id_for_path(self._paths[0]))
+            return
+
+        gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)
+
+        # uniqueness check (per-media)
+        clash = self._media.fetchone(
+            """
+            SELECT 1 FROM presets
+            WHERE name = ? AND group_id <> ? AND media_id IS NOT NULL
+            """,
+            (new_name, gid),
+        )
+        if clash:
+            QMessageBox.warning(self, "Rename", "A preset with that name already exists.")
+            self._populate_presets(self._id_for_path(self._paths[0]))
+            return
+
+        self._media.execute(
+            "UPDATE presets SET name = ? WHERE group_id = ?",
+            (new_name, gid),
+        )
+
     def _on_default_toggled(self, group_id: str, media_id: int | None, checked: bool):
         logger.debug(f"Default toggled to {checked} for group id {group_id}, media id {media_id}")
         # ignore un-check events
@@ -415,7 +445,7 @@ class MetadataDialog(QDialog):
             line.setText("")
             text = ""
 
-        # find any other rows *for the same media* with this hotkey
+        # find any other rows for the same media with this hotkey
         mid = self._id_for_path(self._paths[0])  # first file drives media_id
         clash = self._media.fetchone(
             """
