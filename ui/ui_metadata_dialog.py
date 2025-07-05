@@ -16,17 +16,17 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication, QCheckBox,
-    QDialog, QDialogButtonBox, QDoubleSpinBox, QGroupBox,
-    QHBoxLayout, QHeaderView, QLineEdit, QListWidget,
-    QListWidgetItem, QPushButton, QRadioButton, QSizePolicy,
-    QSpinBox, QTabWidget, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget)
+    QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
+    QGroupBox, QHBoxLayout, QHeaderView, QLineEdit,
+    QListWidget, QListWidgetItem, QPushButton, QRadioButton,
+    QSizePolicy, QSpinBox, QTabWidget, QTableWidget,
+    QTableWidgetItem, QVBoxLayout, QWidget)
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(930, 567)
+        MetadataDialog.resize(930, 415)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -89,6 +89,31 @@ class Ui_MetadataDialog(object):
         self.tabs.addTab(self.TagsTab, "")
         self.AttributesTab = QWidget()
         self.AttributesTab.setObjectName(u"AttributesTab")
+        self.verticalLayout_4 = QVBoxLayout(self.AttributesTab)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.formLayout = QFormLayout()
+        self.formLayout.setObjectName(u"formLayout")
+        self.editArtist = QLineEdit(self.AttributesTab)
+        self.editArtist.setObjectName(u"editArtist")
+
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.LabelRole, self.editArtist)
+
+        self.spinWeight = QDoubleSpinBox(self.AttributesTab)
+        self.spinWeight.setObjectName(u"spinWeight")
+        self.spinWeight.setKeyboardTracking(False)
+        self.spinWeight.setMaximum(1.000000000000000)
+        self.spinWeight.setSingleStep(0.010000000000000)
+
+        self.formLayout.setWidget(2, QFormLayout.ItemRole.LabelRole, self.spinWeight)
+
+        self.chkFavorite = QCheckBox(self.AttributesTab)
+        self.chkFavorite.setObjectName(u"chkFavorite")
+
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.chkFavorite)
+
+
+        self.verticalLayout_4.addLayout(self.formLayout)
+
         self.tabs.addTab(self.AttributesTab, "")
         self.PresetsTab = QWidget()
         self.PresetsTab.setObjectName(u"PresetsTab")
@@ -253,7 +278,7 @@ class Ui_MetadataDialog(object):
         self.buttonBox.accepted.connect(MetadataDialog.accept)
         self.buttonBox.rejected.connect(MetadataDialog.reject)
 
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(MetadataDialog)
@@ -266,6 +291,7 @@ class Ui_MetadataDialog(object):
         self.btnRemoveTag.setText(QCoreApplication.translate("MetadataDialog", u"Remove", None))
         self.btnAddTag.setText(QCoreApplication.translate("MetadataDialog", u"Add", None))
         self.tabs.setTabText(self.tabs.indexOf(self.TagsTab), QCoreApplication.translate("MetadataDialog", u"Tags", None))
+        self.chkFavorite.setText(QCoreApplication.translate("MetadataDialog", u"Favorite \u2605", None))
         self.tabs.setTabText(self.tabs.indexOf(self.AttributesTab), QCoreApplication.translate("MetadataDialog", u"Attributes", None))
         ___qtablewidgetitem = self.tblPresets.horizontalHeaderItem(0)
         ___qtablewidgetitem.setText(QCoreApplication.translate("MetadataDialog", u"Name", None));

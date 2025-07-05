@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>930</width>
-    <height>567</height>
+    <height>415</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,7 +29,7 @@
       </size>
      </property>
      <property name="currentIndex">
-      <number>2</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="TagsTab">
       <attribute name="title">
@@ -87,6 +87,35 @@
       <attribute name="title">
        <string>Attributes</string>
       </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <layout class="QFormLayout" name="formLayout">
+         <item row="1" column="0">
+          <widget class="QLineEdit" name="editArtist"/>
+         </item>
+         <item row="2" column="0">
+          <widget class="QDoubleSpinBox" name="spinWeight">
+           <property name="keyboardTracking">
+            <bool>false</bool>
+           </property>
+           <property name="maximum">
+            <double>1.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="chkFavorite">
+           <property name="text">
+            <string>Favorite ★</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="PresetsTab">
       <attribute name="title">
