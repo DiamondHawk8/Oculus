@@ -111,7 +111,7 @@ class MediaManager(BaseManager, QObject):
         logger.info("Media manager initialized")
 
     # DB helpers (sync)
-    def add_media(self, path: str, *, is_dir: bool, size: int = 0) -> int:
+    def add_media(self, path: str, *, is_dir: bool = False, size: int = 0) -> int:
         """
         Adds the given path with args to database
         :param path: Path to Media

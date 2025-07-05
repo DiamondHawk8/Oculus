@@ -49,12 +49,16 @@ class ImportController:
         """
         logger.info("Attempting to add paths to database")
 
-        # persist paths into DB so SearchManager can find them
-        print(paths)
-        for p in paths:
-            media_id = self.media_manager.add_media(p, is_dir=False)
+        if not paths:
+            self.ui.importStatus.setText("No new files found")
+            return
 
-        self.ui.importStatus.setText(f"Found {len(paths)} files")
+        # persist paths into DB so SearchManager can find them
+        logger.info("Adding %d paths to database", len(paths))
+        for p in paths:
+            self.media_manager.add_media(p)
+
+        self.ui.importStatus.setText(f"Added {len(paths)} files")
 
         if self._import_root:
             # Create path of imported data from selected folder
