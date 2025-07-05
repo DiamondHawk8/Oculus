@@ -49,6 +49,7 @@ class MetadataDialog(QDialog):
 
         self._load_tags_for_row(0)
         self._populate_presets(self._id_for_path(self._paths[0]))
+        self._load_attributes(0)
 
         # Obtain tags for auto-completion
         rows = self._tags.fetchall("SELECT DISTINCT tag FROM tags", ())
@@ -89,6 +90,9 @@ class MetadataDialog(QDialog):
         # Load any media again to ensure that preset changes are properly reflected
         if self._viewer:
             self._viewer.refresh()
+
+        self._save_attributes()
+
         super().accept()
 
     def selected_scope(self) -> str:
@@ -194,6 +198,7 @@ class MetadataDialog(QDialog):
     def _on_file_change(self, row: int):
         self._load_tags_for_row(row)
         self._populate_presets(self._id_for_path(self._paths[row]))
+        self._load_attributes(row)
 
     # -------------------- Presets --------------
 
@@ -363,6 +368,36 @@ class MetadataDialog(QDialog):
         # dedupe while preserving order
         logger.debug(f"Scope of media identified as {ids}")
         return list(dict.fromkeys(ids))
+
+    def _load_attributes(self, row: int):
+        if row < 0 or row >= len(self._paths):
+            return
+        mid = self._id_for_path(self._paths[row])
+        attr = self._media.get_attr(mid)  # favorite, weight, artist
+        self.ui.chkFavorite.setChecked(bool(attr.get("favorite", 0)))
+        self.ui.spinWeight.setValue(attr.get("weight") or 0.0)
+        self.ui.editArtist.setText(attr.get("artist") or "")
+
+    def _save_attributes(self):
+        """Push current widget values to every media_id in the chosen scope."""
+        ids = self._target_media_ids()
+        vals = dict(
+            favorite=int(self.ui.chkFavorite.isChecked()),
+            weight=self.ui.spinWeight.value(),
+            artist=self.ui.editArtist.text().strip() or None
+        )
+        for mid in ids:
+            self._media.set_attr(mid, **vals)
+
+    def _reset_attribute_widgets(self):
+        """Convenience reset when no file is selected."""
+        self.ui.chkFavorite.setChecked(False)
+        self.ui.spinWeight.setValue(0.0)
+        self.ui.editArtist.clear()
+
+
+
+
 
     def _on_transform_edited(self, row: int, col: int):
         """
