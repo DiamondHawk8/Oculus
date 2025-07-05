@@ -1,3 +1,4 @@
+# TODO reorganize this file
 from __future__ import annotations
 
 import json
@@ -118,9 +119,30 @@ class MediaManager(BaseManager, QObject):
         :param size: Byte size of Media
         :return: ID of newly added media
         """
+        p = Path(path)
+        is_dir = int(p.is_dir())
+        size = 0 if is_dir else os.path.getsize(path)
+
+        # File type guess
+        ext = p.suffix.lower()
+        ftype = (
+            "gif" if ext == ".gif" else
+            "video" if ext in (".mp4", ".mkv", ".webm", ".mov") else
+            "image" if not is_dir else
+            "dir"
+        )
+
         self.execute(
-            "INSERT OR IGNORE INTO media(path, is_dir, byte_size) VALUES (?,?,?)",
-            (path, int(is_dir), size),
+            "INSERT INTO media(path, is_dir, byte_size, type) "
+            "VALUES (?,?,?,?)",
+            (str(p), is_dir, size, ftype)
+        )
+
+        # create default attributes row
+        media_id = self.lastrowid
+        self.execute(
+            "INSERT INTO attributes(media_id) VALUES (?)",
+            (media_id,)
         )
         row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
         return row["id"]
@@ -197,6 +219,7 @@ class MediaManager(BaseManager, QObject):
 
         task = _ThumbTask(path, self.thumb_size, decorate, self._on_thumb_complete)
         self.pool.start(task)
+
     # ---------------------------- db backup management methods
 
     def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
@@ -315,6 +338,7 @@ class MediaManager(BaseManager, QObject):
         _thumbnail_cache_set(path, self.thumb_size, pix)
         # Emit is thread-safe; Qt delivers to UI thread
         self.thumb_ready.emit(path, pix)
+
     # ----------------------------- Path Getters
 
     def all_paths(self, *, files_only: bool = True) -> list[str]:
@@ -499,7 +523,7 @@ class MediaManager(BaseManager, QObject):
 
         # map ids -> paths
         rows = self.fetchall(
-            f"SELECT id, path FROM media WHERE id IN ({','.join('?'*len(ids))})",
+            f"SELECT id, path FROM media WHERE id IN ({','.join('?' * len(ids))})",
             tuple(ids)
         )
         id_to_path = {r['id']: r['path'] for r in rows}
@@ -559,6 +583,23 @@ class MediaManager(BaseManager, QObject):
             if not candidate.exists():
                 return candidate
             counter += 1
+
+    def get_attr(self, media_id: int) -> dict:
+        """Return favorite, weight, artist as a dict."""
+        return self.fetchone(
+            "SELECT favorite, weight, artist FROM media WHERE id=?", (media_id,)
+        ) or {}
+
+    def set_attr(self, media_id: int, **kwargs):
+        """
+        Update one or more scalar attributes for the given media_id.
+        Example: set_attr(5, favorite=1, weight=0.8, artist='John')
+        """
+        if not kwargs:
+            return
+        cols = ", ".join(f"{k}=?" for k in kwargs)
+        vals = list(kwargs.values()) + [media_id]
+        self.execute(f"UPDATE media SET {cols} WHERE id=?", vals)
 
 
 # Thread tasks
