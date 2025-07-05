@@ -120,6 +120,7 @@ class MediaManager(BaseManager, QObject):
         :return: ID of newly added media
         """
         p = Path(path)
+        print(f"adding {p}")
         is_dir = int(p.is_dir())
         size = 0 if is_dir else os.path.getsize(path)
 
@@ -133,17 +134,14 @@ class MediaManager(BaseManager, QObject):
         )
 
         self.execute(
-            "INSERT INTO media(path, is_dir, byte_size, type) "
-            "VALUES (?,?,?,?)",
-            (str(p), is_dir, size, ftype)
+            """
+            INSERT INTO media(path, added, is_dir, byte_size, artist, type)
+            VALUES (?,?,?,?,?,?)
+            ON CONFLICT(path) DO NOTHING
+            """,
+            (str(p), int(time.time()), is_dir, size, None, ftype)
         )
 
-        # create default attributes row
-        media_id = self.lastrowid
-        self.execute(
-            "INSERT INTO attributes(media_id) VALUES (?)",
-            (media_id,)
-        )
         row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
         return row["id"]
 
@@ -319,11 +317,7 @@ class MediaManager(BaseManager, QObject):
             return False
 
     # ----------------------------- task callbacks (GUI thread)
-    def _on_scan_complete(self, paths: list[str]) -> None:
-        logger.info("Scan complete")
-        for p in paths:
-            self.add_media(p, is_dir=False)
-        self.scan_finished.emit(paths)
+
 
     def _on_thumb_complete(self, path: str, pix: QPixmap, decorate: bool) -> None:
         """

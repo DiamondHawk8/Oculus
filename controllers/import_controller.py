@@ -50,6 +50,7 @@ class ImportController:
         logger.info("Attempting to add paths to database")
 
         # persist paths into DB so SearchManager can find them
+        print(paths)
         for p in paths:
             media_id = self.media_manager.add_media(p, is_dir=False)
 
