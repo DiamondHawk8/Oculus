@@ -4,6 +4,10 @@ media:  # table of every file known about
   added:       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   is_dir:      BOOLEAN DEFAULT 0
   byte_size:   INTEGER DEFAULT 0
+  favorite:    INTEGER NOT NULL DEFAULT 0
+  weight:      REAL
+  artist:      TEXT
+  type:        TEXT NOT NULL
 
 variants:  # 'stacks' of related images
   base_id:     INTEGER  # ref media.id  (rank == 0)

@@ -35,7 +35,12 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
                 path      TEXT UNIQUE,
                 added     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 is_dir    BOOLEAN DEFAULT 0,
-                byte_size INTEGER DEFAULT 0
+                byte_size INTEGER DEFAULT 0,
+                favorite  INTEGER NOT NULL DEFAULT 0,
+                weight    REAL,
+                artist    TEXT,
+                type      TEXT    NOT NULL
+                            
             );
 
             CREATE TABLE IF NOT EXISTS presets (
