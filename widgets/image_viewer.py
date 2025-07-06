@@ -104,11 +104,8 @@ class ImageViewerDialog(QDialog):
         # Otherwise Apply default if it exists
         else:
             logger.debug("Applying default preset")
-            mid = self._media_manager.fetchone("SELECT id FROM media WHERE path=?", (self._current_path,))["id"]
-            row = self._media_manager.fetchone(
-                "SELECT zoom, pan_x, pan_y FROM presets "
-                "WHERE media_id = ? AND is_default = 1", (mid,)
-            )
+            mid = self._media_manager.get_media_id(self._current_path)
+            row = self._media_manager.default_view_state(mid) if mid else None
             if row:
                 self.apply_view_state(row["zoom"], QPoint(row["pan_x"], row["pan_y"]))
             else:
@@ -125,11 +122,8 @@ class ImageViewerDialog(QDialog):
             sc.setParent(None)
         self._dyn_presets = []
 
-        mid = self._media_manager.fetchone("SELECT id FROM media WHERE path=?", (self._current_path,))["id"]
-        rows = self._media_manager.fetchall(
-            "SELECT zoom, pan_x, pan_y, hotkey FROM presets "
-            "WHERE media_id = ? AND hotkey IS NOT NULL", (mid,)
-        )
+        mid = self._media_manager.get_media_id(self._current_path)
+        rows = self._media_manager.preset_shortcuts(mid) if mid else []
         for r in rows:
             seq = QKeySequence(r["hotkey"])
             if seq.isEmpty():

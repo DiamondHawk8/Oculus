@@ -274,8 +274,9 @@ class GalleryController:
 
         # Variant stack actions
         base_path = self.media_manager.stack_paths(abs_path)[0]
-        base_row = self.media_manager.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
-        if base_row and self.media_manager._is_stacked_base(base_row["id"]):
+        base_id = self.media_manager.get_media_id(base_path)
+
+        if base_id and self.media_manager.is_stacked_base(base_id):
             txt = "Collapse variants" if self.state.is_expanded(base_path) else "Expand variants"
             act_toggle = menu.addAction(txt)
         else:
