@@ -182,16 +182,18 @@ class MediaDAO(BaseManager):
 
         clause = _SORT_SQL.get((sort_key, asc), _SORT_SQL[("name", True)])
 
-        # Build parameter list for SQL IN
-        ph = ", ".join("?" for _ in subset)
-
-        sql = f"""
-            SELECT path FROM media
-            WHERE path IN ({ph})
-            {clause};
-        """
-        self.cur.execute(sql, subset)
-        ordered = [row["path"] for row in self.cur.fetchall()]
+        ordered: list[str] = []
+        CHUNK = 900  # SQLite has a 999 placeholder cap
+        for i in range(0, len(subset), CHUNK):
+            chunk = subset[i:i + CHUNK]
+            ph = ", ".join("?" for _ in chunk)
+            sql = f"""
+                SELECT path FROM media
+                WHERE path IN ({ph})
+                {clause};
+            """
+            self.cur.execute(sql, chunk)
+            ordered.extend(row["path"] for row in self.cur.fetchall())
 
         # Any paths missing from DB or filtered out are appended in original order
         missing = [p for p in subset if p not in ordered]
