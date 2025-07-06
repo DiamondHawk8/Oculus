@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         self.ui.maximizeRestoreAppBtn.clicked.connect(_toggle_max_restore)
 
         # Register global keybinds
-        self.keybinds.register("Ctrl+Z", lambda: self.undo.undo_last(self.media))
+        self.keybinds.register("Ctrl+Z", lambda: self.undo.undo_last())
 
         # Connect page buttons
         self.ui.btn_home.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(GALLERY_PAGE_INDEX))
