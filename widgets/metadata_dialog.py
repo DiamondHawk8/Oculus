@@ -59,6 +59,9 @@ class MetadataDialog(QDialog):
         self.ui.btnRemoveTag.clicked.connect(self._remove_selected)
         self.ui.btnCopyTags.clicked.connect(self._copy_tags)
         self.ui.btnPasteTags.clicked.connect(self._paste_tags)
+        self.ui.radThis.toggled.connect(self._on_scope_changed)
+        self.ui.radSelected.toggled.connect(self._on_scope_changed)
+        self.ui.radFolder.toggled.connect(self._on_scope_changed)
 
         # Preset Buttons
         self.ui.btnSavePreset.clicked.connect(self._save_preset)
@@ -75,6 +78,8 @@ class MetadataDialog(QDialog):
             self.ui.spinZoom.setValue(z)
             self.ui.spinPanX.setValue(px)
             self.ui.spinPanY.setValue(py)
+
+        self._on_scope_changed()
 
     # -------------------- Helpers ------------------
 
@@ -106,6 +111,23 @@ class MetadataDialog(QDialog):
             return "selected"
         return "invalid"
 
+    def _on_scope_changed(self, *_):
+        scope = self.selected_scope()
+
+        if scope == "this":
+            self._load_tags_for_row(0)
+            return
+
+        if scope == "selected":
+            ids = [self._id_for_path(p) for p in self._paths]
+            tag_sets = [set(self._tags.get_tags(mid)) for mid in ids]
+            common = set.intersection(*tag_sets) if tag_sets else set()
+            self._show_tag_list(sorted(common))
+            return
+
+        if scope == "folder":
+            self._show_tag_list([])
+
     def _id_for_path(self, p: str) -> int:
         mid = self._media.get_media_id(p)
         return mid if mid is not None else -1
@@ -117,6 +139,11 @@ class MetadataDialog(QDialog):
         return z, px, py
 
     # -------------------- Tagging ------------------
+
+    def _show_tag_list(self, tags):
+        self.ui.listTags.clear()
+        for t in tags:
+            self.ui.listTags.addItem(t)
 
     def _add_tag(self):
         """
@@ -143,15 +170,19 @@ class MetadataDialog(QDialog):
         if not ids:
             return  # invalid scope already logged
 
-        # gather tags from UI
-        tags = [
-            self.ui.listTags.item(i).text()
-            for i in range(self.ui.listTags.count())
-        ]
+        new_set = {self.ui.listTags.item(i).text().strip().lower()
+                   for i in range(self.ui.listTags.count())}
 
-        # set tags for each media_id
         for mid in ids:
-            self._tags.set_tags(mid, tags, overwrite=False)
+            orig_set = set(self._tags.get_tags(mid))
+
+            to_add = new_set - orig_set
+            to_remove = orig_set - new_set
+
+            if to_add:
+                self._tags.set_tags(mid, to_add, overwrite=False)
+            if to_remove:
+                self._tags.delete_tags(mid, to_remove)
 
     def _ids_with_variants(self, path: str, include: bool) -> list[int]:
         """
@@ -194,9 +225,20 @@ class MetadataDialog(QDialog):
             self.ui.listTags.addItem(t)
 
     def _on_file_change(self, row: int):
-        self._load_tags_for_row(row)
-        self._populate_presets(self._id_for_path(self._paths[row]))
-        self._load_attributes(row)
+        """
+        Invoked when the user clicks a different file in listFiles.
+        Reload tags/presets/attributes only where it makes sense.
+        """
+        scope = self.selected_scope()
+
+        if scope == "this":  # only 'This file' replaces tag list
+            self._load_tags_for_row(row)
+        mid = self._id_for_path(self._paths[row])
+        self._populate_presets(mid)
+        if scope == "this":
+            self._load_attributes(row)
+        else:
+            self._reset_attribute_widgets()
 
     # -------------------- Presets --------------
 

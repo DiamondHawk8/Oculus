@@ -22,6 +22,21 @@ class TagManager(BaseManager):
         rows = self.fetchall("SELECT tag FROM tags WHERE media_id=?", (media_id,))
         return [r["tag"] for r in rows]
 
+    def delete_tags(self, media_id: int, tags: Iterable[str]):
+        """
+        Remove the given tags from a single media row.
+        :param media_id:
+        :param tags:
+        :return:
+        """
+        rows = [(media_id, t.strip().lower()) for t in tags if t.strip()]
+        if not rows:
+            return
+        self.cur.executemany(
+            "DELETE FROM tags WHERE media_id=? AND tag=?", rows
+        )
+        self.conn.commit()
+
     def get_attr(self, media_id: int) -> Dict[str, Any]:
         logger.info(f"Getting attributes for media with id {media_id}")
         row = self.fetchone("SELECT * FROM attributes WHERE media_id=?", (media_id,))

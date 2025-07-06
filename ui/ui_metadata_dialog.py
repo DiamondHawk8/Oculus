@@ -260,6 +260,7 @@ class Ui_MetadataDialog(object):
 
         self.chkVariants = QCheckBox(MetadataDialog)
         self.chkVariants.setObjectName(u"chkVariants")
+        self.chkVariants.setChecked(True)
 
         self.horizontalLayout_2.addWidget(self.chkVariants)
 
@@ -278,7 +279,7 @@ class Ui_MetadataDialog(object):
         self.buttonBox.accepted.connect(MetadataDialog.accept)
         self.buttonBox.rejected.connect(MetadataDialog.reject)
 
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MetadataDialog)
