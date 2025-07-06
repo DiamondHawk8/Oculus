@@ -368,7 +368,7 @@ class MediaManager(BaseManager, QObject):
         :param path:
         :return:
         """
-        self.dao.detect_and_stack()
+        self.dao.detect_and_stack(media_id, path)
 
     def _stack_ids_for_base(self, base_id: int) -> List[int]:
         return self.dao.stack_ids_for_base(base_id)
@@ -388,7 +388,7 @@ class MediaManager(BaseManager, QObject):
         for p, sz in items:
 
             # add (or fetch) media row and capture its id
-            media_id = self.add_media(p, is_dir=False, size=sz)
+            media_id = self.add_media(p)
 
             # auto-detect variant relationship, if any
             self.detect_and_stack(media_id, str(p))
@@ -396,7 +396,7 @@ class MediaManager(BaseManager, QObject):
             # Ensure parent folder exists in DB
             parent = str(Path(p).parent)
             if parent not in seen_dirs:
-                self.add_media(parent, is_dir=True)
+                self.add_media(parent)
                 seen_dirs.add(parent)
 
         self.scan_finished.emit([p for p, _ in items])
