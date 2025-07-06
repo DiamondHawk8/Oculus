@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class ImageViewerDialog(QDialog):
     BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
-    def __init__(self, paths: list[str], cur_idx: int, media_manager, tag_manager, stack, parent=None):
+    def __init__(self, paths, cur_idx, media_manager, tag_manager, stack, selected_path=None, parent=None):
         super().__init__(parent)
 
         self._paths = list(paths)
@@ -57,7 +57,13 @@ class ImageViewerDialog(QDialog):
         self._meta_shortcut.activated.connect(self._open_metadata_dialog)
 
         # ---- load & show -----------------------------------------------
-        self._load_image(self._paths[self._idx])
+        first_path = selected_path or self._paths[self._idx]
+        self._current_path = first_path
+        # If variant, save the position
+        if first_path in stack and first_path != stack[0]:
+            self._variant_pos[stack[0]] = stack.index(first_path)
+
+        self._load_image(first_path)
 
         # Temp nudge work around
         QShortcut(QKeySequence("Alt+A"), self).activated.connect(

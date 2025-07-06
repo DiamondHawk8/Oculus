@@ -33,6 +33,7 @@ class SearchController(QObject):
 
         self.ui = ui
         self.media_manager = media_manager
+        self.tag_manager = tag_manager
         self.search_manager = search_manager
         self.tab_controller = tab_controller
         self.gallery_controller = gallery_controller
@@ -141,13 +142,19 @@ class SearchController(QObject):
     def _open_viewer(self, index: QModelIndex):
         path = self._model.data(index, Qt.UserRole)
         stack = self.media_manager.stack_paths(path)
-        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
-        cur_idx = paths.index(path)
 
+        # navigation list -> skip any file that is a variant
+        paths = [p for p in self._model.get_paths()
+                 if Path(p).is_file() and not self.media_manager.is_variant(p)]
+        cur_idx = paths.index(stack[0])  # base index
+
+        # open viewer at base, but pass full stack so Up/Down still work
         if self.viewer.callback:
-            self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
+            self.viewer.open_via_callback(paths, cur_idx, stack,
+                                          self._host_widget, self.media_manager)
         else:
-            self.viewer.open(self._model, index, self.media_manager, self.tag_manager, self._host_widget)
+            self.viewer.open(self._model, index, self.media_manager,
+                             self.tag_manager, self._host_widget)
 
     def set_viewer_callback(self, fn):
         self.viewer.callback = fn

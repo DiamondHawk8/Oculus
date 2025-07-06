@@ -349,20 +349,44 @@ class GalleryController:
 
     # ---------------------------- Viewer integration & tab helpers ----------------------------
 
-    def _open_viewer(self, index: QModelIndex):
+    def _open_viewer(self, index: QModelIndex) -> None:
         """
+        Open ImageViewerDialog with a navigation list that does not contain variants
         :param index:
         :return:
         """
-        path = self._model.data(index, Qt.UserRole)
-        stack = self.media_manager.stack_paths(path)
-        paths = [p for p in self._model.get_paths() if Path(p).is_file()]
-        cur_idx = paths.index(path)
+        # Path that was double-clicked
+        selected = self._model.data(index, Qt.UserRole)
+        if not selected:
+            return
+
+        # Full stack for that item (base + any variants) used for variant cycling
+        stack = self.media_manager.stack_paths(selected)  # [base, v1, ...]
+        base = stack[0]
+
+        # Navigation list = every visible file that is not a variant
+        nav_paths = [
+            p for p in self._model.get_paths()
+            if Path(p).is_file() and not self.media_manager.is_variant(p)
+        ]
+        cur_idx = nav_paths.index(base)  # viewer index
+
+        # Index of the base inside the navigation list
+        cur_idx = nav_paths.index(base)
 
         if self.viewer.callback:
-            self.viewer.open_via_callback(paths, cur_idx, stack, self._host_widget, self.media_manager)
+            self.viewer.open_via_callback(
+                nav_paths, cur_idx, stack, selected,
+                host_widget=self._host_widget,
+                media_manager=self.media_manager
+            )
         else:
-            self.viewer.open(self._model, index, self.media_manager, self.tag_manager, self._host_widget)
+            self.viewer.open_paths(
+                nav_paths, cur_idx, stack, selected,
+                media_manager=self.media_manager,
+                tag_manager=self.tag_manager,
+                host_widget=self._host_widget
+            )
 
     def set_viewer_callback(self, fn):
         self.viewer.callback = fn

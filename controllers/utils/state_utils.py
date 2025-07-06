@@ -45,12 +45,23 @@ class ViewerState:
         self.is_open = False
         self.dialog = None
 
-    def open_via_callback(self, paths, cur_idx, stack, host_widget, media_manager):
+    def open_via_callback(self, nav_paths, cur_idx, stack, selected,
+                          host_widget, media_manager):
         if callable(self.callback):
-            logger.debug(f"Creating viewer state for host widget {host_widget}, with callable {self.callback}")
-            dlg = ImageViewerDialog(paths, cur_idx, media_manager, stack, parent=host_widget)
+            dlg = ImageViewerDialog(
+                nav_paths, cur_idx, media_manager, None,
+                stack, selected_path=selected, parent=host_widget
+            )
             dlg.destroyed.connect(self._on_closed)
             self.dialog = dlg
             self.is_open = True
-        else:
-            self.open(paths, cur_idx, media_manager, host_widget)
+
+    def open_paths(self, nav_paths, cur_idx, stack, selected,
+                   media_manager, tag_manager, host_widget):
+        dlg = ImageViewerDialog(
+            nav_paths, cur_idx, media_manager, tag_manager,
+            stack, selected_path=selected, parent=host_widget
+        )
+        self.dialog = dlg
+        self.is_open = True
+        dlg.finished.connect(self._on_closed)
