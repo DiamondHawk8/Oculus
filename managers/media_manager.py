@@ -1,51 +1,26 @@
-# TODO reorganize this file
 from __future__ import annotations
 
-import json
 import logging
-import time
-import uuid
-from collections import deque, OrderedDict
+from collections import deque
 from pathlib import Path
 from typing import List
 
-from PySide6.QtCore import QObject, Signal, QThreadPool, Qt, Slot
+from PySide6.QtCore import QObject, Signal, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 
 from services.rename_service import RenameService
 from services.variant_service import VariantService
 from services.import_service import ImportService
 
-from workers.scan_worker import ScanResult
 from workers.thumb_worker import ThumbWorker
 from .base import BaseManager
 
 from .dao import MediaDAO
-from .undo_manager import UndoManager
 from .utils.thumb_cache import ThumbCache
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 
-_BACKUP_DIR = Path.home() / "OculusBackups"
-_BACKUP_DIR.mkdir(exist_ok=True)
-
 logger = logging.getLogger(__name__)
-
-
-def _log_rename(old_path: str, new_path: str):
-    log_file = _BACKUP_DIR / "rename_log.json"
-    entry = {
-        "timestamp": time.time(),
-        "old": old_path,
-        "new": new_path,
-    }
-    try:
-        data = json.loads(log_file.read_text()) if log_file.exists() else []
-    except json.JSONDecodeError:
-        logger.error("Error decoding file name log file")
-        data = []
-    data.append(entry)
-    log_file.write_text(json.dumps(data, indent=2))
 
 
 def decorate_stack_badge(base: QPixmap) -> QPixmap:
@@ -107,7 +82,6 @@ class MediaManager(BaseManager, QObject):
         self.rename_service.renamed.connect(self.renamed)
 
         self.thumb_size = thumb_size
-        self.pool = QThreadPool.globalInstance()
         self.cache = ThumbCache(capacity=512)
 
         logger.info("Media manager initialized")
@@ -126,13 +100,6 @@ class MediaManager(BaseManager, QObject):
         :return:
         """
         self.importer.scan(Path(folder))
-
-    # ---------------------------- db backup management methods
-
-    def _backup_path(self, original: Path) -> Path:
-        bk_dir = Path.home() / "OculusBackups" / "overwritten"
-        bk_dir.mkdir(parents=True, exist_ok=True)
-        return bk_dir / f"{uuid.uuid4()}{original.suffix}"
 
     # ----------------------------- Path Getters
 
@@ -230,27 +197,6 @@ class MediaManager(BaseManager, QObject):
     def overwrite_media(self, old_abs: str, new_abs: str) -> bool:
         return self.rename_service.overwrite(old_abs, new_abs)
 
-    # ----------------------------- Misc
-    @Slot(object)
-    def _process_scan_result(self, items):
-        logger.info("Processing scan result")
-        seen_dirs = set()
-        for p, sz in items:
-
-            # add (or fetch) media row and capture its id
-            media_id = self.add_media(p)
-
-            # auto-detect variant relationship, if any
-            self.detect_and_stack(media_id, str(p))
-
-            # Ensure parent folder exists in DB
-            parent = str(Path(p).parent)
-            if parent not in seen_dirs:
-                self.add_media(parent)
-                seen_dirs.add(parent)
-
-        self.scan_finished.emit([p for p, _ in items])
-
     def walk_tree(self, root: str | Path) -> dict[str, tuple[list[str], list[str]]]:
         logger.info("Walking tree")
         root = Path(root).expanduser().resolve()
@@ -288,10 +234,8 @@ class MediaManager(BaseManager, QObject):
             self.thumb_ready.emit(path, cached)
             return
 
-        row = self.dao.fetchone(
-            "SELECT id FROM media WHERE path=?", (path,)
-        )
-        decorate = bool(row and self.dao.is_stacked_base(row["id"]))
+        row = self.dao.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        decorate = bool(row and self.variants.is_stacked_base(row["id"]))
 
         # worker callback does NO DB access
         def _emit(p: str, pix: QPixmap):
@@ -301,28 +245,3 @@ class MediaManager(BaseManager, QObject):
             self.thumb_ready.emit(p, pix)  # Qt queues to GUI thread
 
         self.pool.start(ThumbWorker(path, self.thumb_size, _emit))
-
-    def _on_thumb_complete(self, path: str, pix: QPixmap, decorate: bool) -> None:
-        """
-        Receive raw pixmap from worker, decorate if stacked, then cache and emit.
-        :param path: Path to media
-        :param pix: pixmap representing the media's thumbnail
-        :return: None
-        """
-        if decorate:
-            pix = decorate_stack_badge(pix)
-
-        self.cache.set(path, self.thumb_size, pix)
-        # Emit is thread-safe; Qt delivers to UI thread
-        self.thumb_ready.emit(path, pix)
-
-
-
-# Thread tasks
-@Slot(object)
-def _on_scan_completed(self, result: ScanResult):
-    logger.info("Scan finished: added %d, skipped %d (%.1fs)",
-                result.added, result.skipped, result.duration)
-    self.scan_finished.emit(result)
-
-
