@@ -234,18 +234,18 @@ class ImageViewerDialog(QDialog):
 
         # ---------- Variant cycling ----------
         if key == Qt.Key_Down:
-            self._cycle_variant(+1);
+            self._cycle_variant(-1)
             return
         if key == Qt.Key_Up:
-            self._cycle_variant(-1);
+            self._cycle_variant(+1)
             return
 
         # ---------- Gallery navigation ----------
         if key == Qt.Key_Right:
-            self._step(+1);
+            self._step(+1)
             return
         if key == Qt.Key_Left:
-            self._step(-1);
+            self._step(-1)
             return
 
         # Fallback: default handling
