@@ -22,10 +22,9 @@ from .base import BaseManager
 
 from .dao import MediaDAO
 from .undo_manager import UndoManager
+from .utils.thumb_cache import ThumbCache
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
-_CACHE_CAPACITY = 512
-_THUMB_CACHE: "OrderedDict[tuple[str, int], QPixmap]" = OrderedDict()
 
 _BACKUP_DIR = Path.home() / "OculusBackups"
 _BACKUP_DIR.mkdir(exist_ok=True)
@@ -109,6 +108,7 @@ class MediaManager(BaseManager, QObject):
 
         self.thumb_size = thumb_size
         self.pool = QThreadPool.globalInstance()
+        self.cache = ThumbCache(capacity=512)
 
         logger.info("Media manager initialized")
 
@@ -127,52 +127,12 @@ class MediaManager(BaseManager, QObject):
         """
         self.importer.scan(Path(folder))
 
-    def thumb(self, path: str | Path) -> None:
-        path = str(path)
-
-        # cache hit
-        cached = _thumbnail_cache_get(path, self.thumb_size)
-        if cached is not None:
-            self.thumb_ready.emit(path, cached)
-            return
-
-        # decide badge in the GUI thread
-        row = self.dao.fetchone(
-            "SELECT id FROM media WHERE path=?", (path,)
-        )
-        decorate = bool(row and self.dao.is_stacked_base(row["id"]))
-
-        # worker callback does NO DB access
-        def _emit(p: str, pix: QPixmap):
-            if decorate:
-                pix = decorate_stack_badge(pix)
-            _thumbnail_cache_set(p, self.thumb_size, pix)
-            self.thumb_ready.emit(p, pix)  # Qt queues to GUI thread
-
-        self.pool.start(ThumbWorker(path, self.thumb_size, _emit))
-
     # ---------------------------- db backup management methods
 
     def _backup_path(self, original: Path) -> Path:
         bk_dir = Path.home() / "OculusBackups" / "overwritten"
         bk_dir.mkdir(parents=True, exist_ok=True)
         return bk_dir / f"{uuid.uuid4()}{original.suffix}"
-
-    # ----------------------------- task callbacks (GUI thread)
-
-    def _on_thumb_complete(self, path: str, pix: QPixmap, decorate: bool) -> None:
-        """
-        Receive raw pixmap from worker, decorate if stacked, then cache and emit.
-        :param path: Path to media
-        :param pix: pixmap representing the media's thumbnail
-        :return: None
-        """
-        if decorate:
-            pix = decorate_stack_badge(pix)
-
-        _thumbnail_cache_set(path, self.thumb_size, pix)
-        # Emit is thread-safe; Qt delivers to UI thread
-        self.thumb_ready.emit(path, pix)
 
     # ----------------------------- Path Getters
 
@@ -321,6 +281,42 @@ class MediaManager(BaseManager, QObject):
         """
         self.dao.set_attr(media_id, **kwargs)
 
+    def thumb(self, path: str | Path) -> None:
+        path = str(path)
+        cached = self.cache.get(path, self.thumb_size)
+        if cached is not None:
+            self.thumb_ready.emit(path, cached)
+            return
+
+        row = self.dao.fetchone(
+            "SELECT id FROM media WHERE path=?", (path,)
+        )
+        decorate = bool(row and self.dao.is_stacked_base(row["id"]))
+
+        # worker callback does NO DB access
+        def _emit(p: str, pix: QPixmap):
+            if decorate:
+                pix = decorate_stack_badge(pix)
+            self.cache.set(p, self.thumb_size, pix)
+            self.thumb_ready.emit(p, pix)  # Qt queues to GUI thread
+
+        self.pool.start(ThumbWorker(path, self.thumb_size, _emit))
+
+    def _on_thumb_complete(self, path: str, pix: QPixmap, decorate: bool) -> None:
+        """
+        Receive raw pixmap from worker, decorate if stacked, then cache and emit.
+        :param path: Path to media
+        :param pix: pixmap representing the media's thumbnail
+        :return: None
+        """
+        if decorate:
+            pix = decorate_stack_badge(pix)
+
+        self.cache.set(path, self.thumb_size, pix)
+        # Emit is thread-safe; Qt delivers to UI thread
+        self.thumb_ready.emit(path, pix)
+
+
 
 # Thread tasks
 @Slot(object)
@@ -330,17 +326,3 @@ def _on_scan_completed(self, result: ScanResult):
     self.scan_finished.emit(result)
 
 
-def _thumbnail_cache_get(p: str, s: int) -> QPixmap | None:
-    key = (p, s)
-    pix = _THUMB_CACHE.get(key)
-    if pix:
-        _THUMB_CACHE.move_to_end(key)
-    return pix
-
-
-def _thumbnail_cache_set(p: str, s: int, pix: QPixmap):
-    key = (p, s)
-    _THUMB_CACHE[key] = pix
-    _THUMB_CACHE.move_to_end(key)
-    if len(_THUMB_CACHE) > _CACHE_CAPACITY:
-        _THUMB_CACHE.popitem(last=False)
