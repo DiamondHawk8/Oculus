@@ -12,15 +12,16 @@ from typing import List
 from PySide6.QtCore import QObject, Signal, QThreadPool, Qt, Slot
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 
+from services.rename_service import RenameService
 from services.variant_service import VariantService
 from services.import_service import ImportService
 
-from workers.scan_worker import ScanWorker, ScanResult
+from workers.scan_worker import ScanResult
 from workers.thumb_worker import ThumbWorker
 from .base import BaseManager
 
-from widgets.collision_dialog import CollisionDialog
 from .dao import MediaDAO
+from .undo_manager import UndoManager
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 _CACHE_CAPACITY = 512
@@ -93,12 +94,18 @@ class MediaManager(BaseManager, QObject):
         QObject.__init__(self, parent)
 
         self.dao = MediaDAO(conn)
-        self.undo_manager = undo_manager
         self.variants = VariantService(self.dao)
         self.pool = QThreadPool.globalInstance()
+
         self.importer = ImportService(self.dao, self.variants, self.pool)
+        self.rename_service = RenameService(self.dao)
+        undo_manager.set_rename_service(self.rename_service)
+        self.rename_service.attach_undo_manager(undo_manager)
+
+        self.undo_manager = undo_manager
 
         self.importer.import_completed.connect(self.import_finished)
+        self.rename_service.renamed.connect(self.renamed)
 
         self.thumb_size = thumb_size
         self.pool = QThreadPool.globalInstance()
@@ -111,51 +118,6 @@ class MediaManager(BaseManager, QObject):
         Adds the given path to database
         """
         return self.dao.insert_media(path)
-
-    def rename_media(self, old_abs: str, new_abs: str) -> bool:
-        """
-        Rename on disk and update DB. Returns False if the destination already exists or any error occurs.
-        :param old_abs: Old absolute path of media
-        :param new_abs: New absolute path of media
-        :return: True if operation was successful, False otherwise
-        """
-        logger.info(f"Attempting to rename {old_abs} to {new_abs}")
-
-        old_path = Path(old_abs).expanduser().resolve()
-        new_path = Path(new_abs).expanduser().resolve()
-
-        # collision check
-        if new_path.exists():
-            choice = CollisionDialog.ask(str(old_path), str(new_path))
-            if choice in ("cancel", "skip"):
-                return False
-            if choice == "auto":
-                new_path = self._unique_path(new_path)
-            elif choice == "overwrite":
-                return self._safe_overwrite(old_path, new_path)
-
-        row = self.fetchone("SELECT 1 FROM media WHERE path=?", (str(new_path),))
-        if row:
-            return False
-
-        # perform rename on disk
-        try:
-            old_path.rename(new_path)
-        except OSError as exc:
-            logger.error(f"Rename failed on disk: {exc}")
-            return False
-
-        # update DB row
-        self.execute("UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path)))
-
-        _log_rename(str(old_path), str(new_path))
-
-        if self.undo_manager:
-            self.undo_manager.push(str(old_path), str(new_path))
-
-        self.renamed.emit(str(old_path), str(new_path))
-
-        return True
 
     def scan_folder(self, folder: str | Path) -> None:
         """
@@ -191,101 +153,10 @@ class MediaManager(BaseManager, QObject):
 
     # ---------------------------- db backup management methods
 
-    def _safe_overwrite(self, old_path: Path, new_path: Path) -> bool:
-        """
-        1. Move destination file -> backup.
-        2. Move source file -> destination.
-        3. Update DB rows inside ONE transaction.
-        4. Push UndoEntry with backup so it can be fully restored.
-        Signals emitted for both moves so all views update instantly.
-        """
-        logger = logging.getLogger(__name__)
-        backup_path = self._backup_path(new_path)
-
-        try:
-            # -- A: FILE SYSTEM
-            # move dest -> backup  (may not exist ; catch FileNotFound)
-            if new_path.exists():
-                new_path.replace(backup_path)
-                # UI: dest has disappeared (new -> backup)
-                self.renamed.emit(str(new_path), str(backup_path))
-
-            # move src -> dest
-            old_path.replace(new_path)
-            # UI: src now at dest
-            self.renamed.emit(str(old_path), str(new_path))
-
-            # -- B: DATABASE (single atomic scope)
-            with self.conn:
-                # If dest record existed, migrate it to backup_path
-                self.execute(
-                    "UPDATE media SET path=? WHERE path=?",
-                    (str(backup_path), str(new_path))
-                )
-                # Update source record to new_path
-                self.execute(
-                    "UPDATE media SET path=? WHERE path=?",
-                    (str(new_path), str(old_path))
-                )
-
-            # -- C: Logging & undo
-            _log_rename(str(old_path), str(new_path))
-            if self.undo_manager:
-                self.undo_manager.push(str(old_path), str(new_path),
-                                       backup=str(backup_path))
-            return True
-
-        except Exception as exc:
-            logger.error("Safe overwrite failed: %s", exc)
-            # Best-effort roll-back (TODO add more elaborate recovery)
-            return False
-
     def _backup_path(self, original: Path) -> Path:
         bk_dir = Path.home() / "OculusBackups" / "overwritten"
         bk_dir.mkdir(parents=True, exist_ok=True)
         return bk_dir / f"{uuid.uuid4()}{original.suffix}"
-
-    def restore_overwrite(self, entry) -> bool:
-        """
-        Revert a safe overwrite recorded in UndoEntry:
-            new_path -> old_path
-            backup -> new_path
-            DB rows adjusted
-        :param entry:
-        :return:
-        """
-        old_path = Path(entry.old)
-        new_path = Path(entry.new)
-        backup = Path(entry.backup)
-
-        try:
-            # -- A: FILE SYSTEM
-            # Move current file back to old_path
-            new_path.replace(old_path)
-            self.renamed.emit(str(new_path), str(old_path))
-
-            # Restore backup -> new_path
-            backup.replace(new_path)
-            self.renamed.emit(str(backup), str(new_path))
-
-            # B: DATABASE
-            with self.conn:
-                # Row that represents current file -> old_path
-                self.execute(
-                    "UPDATE media SET path=? WHERE path=?",
-                    (str(old_path), str(new_path))
-                )
-                # Row for backup file -> new_path
-                self.execute(
-                    "UPDATE media SET path=? WHERE path=?",
-                    (str(new_path), str(backup))
-                )
-
-            return True
-
-        except Exception as exc:
-            logger.error("Undo overwrite failed: %s", exc)
-            return False
 
     # ----------------------------- task callbacks (GUI thread)
 
@@ -391,6 +262,14 @@ class MediaManager(BaseManager, QObject):
         """
         return self.variants.stack_paths(path)
 
+    # Renaming logic
+
+    def rename_media(self, old_abs: str, new_abs: str) -> bool:
+        return self.rename_service.rename(old_abs, new_abs)
+
+    def overwrite_media(self, old_abs: str, new_abs: str) -> bool:
+        return self.rename_service.overwrite(old_abs, new_abs)
+
     # ----------------------------- Misc
     @Slot(object)
     def _process_scan_result(self, items):
@@ -428,23 +307,6 @@ class MediaManager(BaseManager, QObject):
                     imgs.append(str(child))
             tree[str(folder)] = (sub, imgs)
         return tree
-
-    def _unique_path(self, base: Path) -> Path:
-        """
-        Return a non-existent path by appending _1, _2 etc.
-        e.g. pics/cat.png  ->  pics/cat_1.png
-        :param base:
-        :return:
-        """
-        stem, suffix = base.stem, base.suffix
-        parent = base.parent
-
-        counter = 1
-        while True:
-            candidate = parent / f"{stem}_{counter}{suffix}"
-            if not candidate.exists():
-                return candidate
-            counter += 1
 
     def get_attr(self, media_id: int) -> dict:
         """

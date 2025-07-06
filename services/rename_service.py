@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
@@ -14,8 +15,8 @@ _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class RenameEntry:
-
     def __init__(self, old: str, new: str, backup: str | None = None):
         self.old, self.new, self.backup = old, new, backup
 
@@ -23,10 +24,13 @@ class RenameEntry:
 class RenameService(QObject):
     renamed = Signal(str, str)  # emits (oldPath, newPath)
 
-    def __init__(self, dao, undo_manager, parent=None):
+    def __init__(self, dao, parent=None):
         super().__init__(parent)
         self.dao = dao
-        self.undo_manager = undo_manager
+        self.undo_manager = None
+
+    def attach_undo_manager(self, undo_mgr):
+        self.undo_manager = undo_mgr
 
     # ------------------------------------------------------------------
     def rename(self, old_abs: str, new_abs: str) -> bool:
