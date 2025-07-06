@@ -192,7 +192,7 @@ class MediaManager(BaseManager, QObject):
         """
         return self.variants.stack_paths(path)
 
-    # Renaming logic
+    # ----------------------------- Renaming logic -----------------------------
 
     def rename_media(self, old_abs: str, new_abs: str) -> bool:
         return self.rename_service.rename(old_abs, new_abs)
@@ -216,6 +216,52 @@ class MediaManager(BaseManager, QObject):
                     imgs.append(str(child))
             tree[str(folder)] = (sub, imgs)
         return tree
+
+    # ----------------------------- Preset Management -----------------------------
+    def list_presets_for_media(self, media_id: int):
+        return self.dao.fetchall(
+            """SELECT p.*, m.path
+                 FROM presets p LEFT JOIN media m ON p.media_id = m.id
+                WHERE p.media_id IS NULL OR p.media_id = ?""",
+            (media_id,)
+        )
+
+    def list_presets_in_group(self, group_id: str):
+        return self.dao.fetchall(
+            "SELECT * FROM presets WHERE group_id=?", (group_id,)
+        )
+
+    def update_preset_transform(self, group_id: str, zoom: float, pan_x: int, pan_y: int):
+        self.dao.execute(
+            "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE group_id=?",
+            (zoom, pan_x, pan_y, group_id)
+        )
+
+    def rename_preset_group(self, group_id: str, new_name: str):
+        self.dao.execute(
+            "UPDATE presets SET name=? WHERE group_id=?", (new_name, group_id)
+        )
+
+    def preset_name_exists(self, media_id: int, new_name: str, exclude_gid: str):
+        return self.dao.fetchone(
+            """SELECT 1 FROM presets
+               WHERE name=? AND group_id<>? AND media_id IS NOT NULL""",
+            (new_name, exclude_gid)
+        ) is not None
+
+    def set_default_preset(self, media_id: int | None, group_id: str):
+        self.dao.execute("UPDATE presets SET is_default=0 WHERE media_id IS ?", (media_id,))
+        self.dao.execute("UPDATE presets SET is_default=1 WHERE group_id=?", (group_id,))
+
+    def update_hotkey(self, group_id: str, hotkey: str | None):
+        self.dao.execute("UPDATE presets SET hotkey=? WHERE group_id=?", (hotkey, group_id))
+
+    def hotkey_clash(self, media_id: int, group_id: str, hotkey: str):
+        return self.dao.fetchone(
+            """SELECT 1 FROM presets
+               WHERE hotkey=? AND media_id=? AND group_id<>?""",
+            (hotkey, media_id, group_id)
+        ) is not None
 
     # ----------------------------- Other metadata logic -----------------------------
 
