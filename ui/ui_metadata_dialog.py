@@ -17,16 +17,16 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication, QCheckBox,
     QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
-    QGroupBox, QHBoxLayout, QHeaderView, QLineEdit,
-    QListWidget, QListWidgetItem, QPushButton, QRadioButton,
-    QSizePolicy, QSpinBox, QTabWidget, QTableWidget,
-    QTableWidgetItem, QVBoxLayout, QWidget)
+    QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+    QLineEdit, QListWidget, QListWidgetItem, QPushButton,
+    QRadioButton, QSizePolicy, QSpinBox, QTabWidget,
+    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
         if not MetadataDialog.objectName():
             MetadataDialog.setObjectName(u"MetadataDialog")
-        MetadataDialog.resize(930, 415)
+        MetadataDialog.resize(927, 627)
         self.verticalLayout = QVBoxLayout(MetadataDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.tabs = QTabWidget(MetadataDialog)
@@ -43,18 +43,63 @@ class Ui_MetadataDialog(object):
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.horizontalLayout_3 = QHBoxLayout()
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.verticalLayout_7 = QVBoxLayout()
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.verticalLayout_7.setContentsMargins(-1, -1, 0, -1)
+        self.label = QLabel(self.TagsTab)
+        self.label.setObjectName(u"label")
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.verticalLayout_7.addWidget(self.label)
+
         self.listTags = QListWidget(self.TagsTab)
         self.listTags.setObjectName(u"listTags")
 
-        self.horizontalLayout_3.addWidget(self.listTags)
+        self.verticalLayout_7.addWidget(self.listTags)
+
+
+        self.horizontalLayout_3.addLayout(self.verticalLayout_7)
+
+        self.verticalLayout_9 = QVBoxLayout()
+        self.verticalLayout_9.setObjectName(u"verticalLayout_9")
+        self.verticalLayout_9.setContentsMargins(-1, -1, 0, -1)
+        self.label_2 = QLabel(self.TagsTab)
+        self.label_2.setObjectName(u"label_2")
+        self.label_2.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.verticalLayout_9.addWidget(self.label_2)
 
         self.listFiles = QListWidget(self.TagsTab)
         self.listFiles.setObjectName(u"listFiles")
 
-        self.horizontalLayout_3.addWidget(self.listFiles)
+        self.verticalLayout_9.addWidget(self.listFiles)
+
+
+        self.horizontalLayout_3.addLayout(self.verticalLayout_9)
 
 
         self.verticalLayout_3.addLayout(self.horizontalLayout_3)
+
+        self.label_3 = QLabel(self.TagsTab)
+        self.label_3.setObjectName(u"label_3")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.label_3.sizePolicy().hasHeightForWidth())
+        self.label_3.setSizePolicy(sizePolicy1)
+        self.label_3.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.verticalLayout_3.addWidget(self.label_3)
+
+        self.listPending = QListWidget(self.TagsTab)
+        self.listPending.setObjectName(u"listPending")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.listPending.sizePolicy().hasHeightForWidth())
+        self.listPending.setSizePolicy(sizePolicy2)
+
+        self.verticalLayout_3.addWidget(self.listPending)
 
         self.hboxTagEdit = QHBoxLayout()
         self.hboxTagEdit.setObjectName(u"hboxTagEdit")
@@ -221,18 +266,15 @@ class Ui_MetadataDialog(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.grpScope = QGroupBox(MetadataDialog)
         self.grpScope.setObjectName(u"grpScope")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.grpScope.sizePolicy().hasHeightForWidth())
-        self.grpScope.setSizePolicy(sizePolicy1)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.grpScope.sizePolicy().hasHeightForWidth())
+        self.grpScope.setSizePolicy(sizePolicy3)
         self.horizontalLayout = QHBoxLayout(self.grpScope)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.radSelected = QRadioButton(self.grpScope)
         self.radSelected.setObjectName(u"radSelected")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.radSelected.sizePolicy().hasHeightForWidth())
         self.radSelected.setSizePolicy(sizePolicy2)
         self.radSelected.setChecked(True)
@@ -287,6 +329,9 @@ class Ui_MetadataDialog(object):
 
     def retranslateUi(self, MetadataDialog):
         MetadataDialog.setWindowTitle(QCoreApplication.translate("MetadataDialog", u"Edit Metadata", None))
+        self.label.setText(QCoreApplication.translate("MetadataDialog", u"Current Tags", None))
+        self.label_2.setText(QCoreApplication.translate("MetadataDialog", u"Files", None))
+        self.label_3.setText(QCoreApplication.translate("MetadataDialog", u"Tags to be Added", None))
         self.btnCopyTags.setText(QCoreApplication.translate("MetadataDialog", u"Copy", None))
         self.btnPasteTags.setText(QCoreApplication.translate("MetadataDialog", u"Paste", None))
         self.btnRemoveTag.setText(QCoreApplication.translate("MetadataDialog", u"Remove", None))
