@@ -219,7 +219,7 @@ class GalleryController:
         for p in paths:
             if self.media_manager.is_variant(p):
                 base = self.media_manager.stack_paths(p)[0]
-                if self.state.expanded_bases:
+                if base not in self.state.expanded_bases:
                     continue  # collapsed -> hide
             shown.append(p)
 
@@ -276,7 +276,7 @@ class GalleryController:
         base_path = self.media_manager.stack_paths(abs_path)[0]
         base_row = self.media_manager.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
         if base_row and self.media_manager._is_stacked_base(base_row["id"]):
-            txt = "Expand variants" if self.state.is_expanded(base_path) else "Collapse variants"
+            txt = "Collapse variants" if self.state.is_expanded(base_path) else "Expand variants"
             act_toggle = menu.addAction(txt)
         else:
             act_toggle = None
