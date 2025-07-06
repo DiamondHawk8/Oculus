@@ -285,6 +285,9 @@ class GalleryController:
         rename_act = menu.addAction("Rename")
         edit_act = menu.addAction("Edit metadata")
 
+        # Ensure gallery is always properly rendered
+        menu.aboutToHide.connect(self._reload_gallery)
+
         chosen = menu.exec(self.ui.galleryList.mapToGlobal(pos))
 
         if chosen == act_toggle:
