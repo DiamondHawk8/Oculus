@@ -42,13 +42,20 @@ class ImportService(QObject):
         :return:
         """
         added = skipped = 0
+        parents: set[Path] = set()
+
         for p in result.files:
-            mid = self.dao.insert_media(p)
+            mid = self.dao.insert_media(p)  # inserts file
             if mid:
                 added += 1
                 self.variants.detect_and_stack(mid, p)
             else:
                 skipped += 1
+            parents.add(Path(p).parent)  # collect the folder
+
+        # one insert per unique folder
+        for folder in parents:
+            self.dao.insert_media(str(folder))
 
         self.import_completed.emit(
             ImportSummary(result.root, added, skipped, result.duration)
