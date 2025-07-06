@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import time
 import uuid
 from collections import deque, OrderedDict
@@ -17,26 +16,14 @@ from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 from .base import BaseManager
 
 from widgets.collision_dialog import CollisionDialog
+from .dao import MediaDAO
 
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 _CACHE_CAPACITY = 512
 _THUMB_CACHE: "OrderedDict[tuple[str, int], QPixmap]" = OrderedDict()
 
-_SORT_SQL = {
-    ("name", True): "ORDER BY LOWER(path)         ASC",
-    ("name", False): "ORDER BY LOWER(path)         DESC",
-    ("date", True): "ORDER BY added               ASC",
-    ("date", False): "ORDER BY added               DESC",
-    ("size", True): "ORDER BY byte_size           ASC",
-    ("size", False): "ORDER BY byte_size           DESC",
-    ("weight", True): "ORDER BY COALESCE(weight,1) ASC",
-    ("weight", False): "ORDER BY COALESCE(weight,1) DESC",
-}
-
 _BACKUP_DIR = Path.home() / "OculusBackups"
 _BACKUP_DIR.mkdir(exist_ok=True)
-
-_VARIANT_RE = re.compile(r"^(.*)_v(\d+)$", re.I)  # captures (stem, index)
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +88,7 @@ class MediaManager(BaseManager, QObject):
         BaseManager.__init__(self, conn)
         QObject.__init__(self, parent)
 
+        self.dao = MediaDAO(conn)
         self.undo_manager = undo_manager
 
         self.thumb_size = thumb_size
@@ -111,39 +99,11 @@ class MediaManager(BaseManager, QObject):
         logger.info("Media manager initialized")
 
     # DB helpers (sync)
-    def add_media(self, path: str, *, is_dir: bool = False, size: int = 0) -> int:
+    def add_media(self, path: str) -> int:
         """
-        Adds the given path with args to database
-        :param path: Path to Media
-        :param is_dir: Specifies if the given path is a directory or not
-        :param size: Byte size of Media
-        :return: ID of newly added media
+        Adds the given path to database
         """
-        p = Path(path)
-        print(f"adding {p}")
-        is_dir = int(p.is_dir())
-        size = 0 if is_dir else os.path.getsize(path)
-
-        # File type guess
-        ext = p.suffix.lower()
-        ftype = (
-            "gif" if ext == ".gif" else
-            "video" if ext in (".mp4", ".mkv", ".webm", ".mov") else
-            "image" if not is_dir else
-            "dir"
-        )
-
-        self.execute(
-            """
-            INSERT INTO media(path, added, is_dir, byte_size, artist, type)
-            VALUES (?,?,?,?,?,?)
-            ON CONFLICT(path) DO NOTHING
-            """,
-            (str(p), int(time.time()), is_dir, size, None, ftype)
-        )
-
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        return row["id"]
+        return self.dao.insert_media(path)
 
     def rename_media(self, old_abs: str, new_abs: str) -> bool:
         """
@@ -318,7 +278,6 @@ class MediaManager(BaseManager, QObject):
 
     # ----------------------------- task callbacks (GUI thread)
 
-
     def _on_thumb_complete(self, path: str, pix: QPixmap, decorate: bool) -> None:
         """
         Receive raw pixmap from worker, decorate if stacked, then cache and emit.
@@ -341,28 +300,17 @@ class MediaManager(BaseManager, QObject):
         :param files_only: If false, function will also return directory paths
         :return:
         """
-        logger.debug(f"Obtaining all paths, files_only: {files_only}")
-        if files_only:
-            self.cur.execute("SELECT path FROM media WHERE is_dir = 0")
-        else:
-            self.cur.execute("SELECT path FROM media")
-        return [row["path"] for row in self.cur.fetchall()]
+        return self.dao.all_paths(files_only=files_only)
 
     def folder_paths(self) -> list[str]:
-        logger.info("Obtaining folder paths")
-        self.cur.execute("SELECT path FROM media WHERE is_dir = 1")
-        return [r["path"] for r in self.cur.fetchall()]
+        return self.dao.folder_paths()
 
     def root_folders(self) -> list[str]:
-        """Folders whose parent directory is NOT itself recorded"""
-        self.cur.execute("SELECT path FROM media WHERE is_dir=1")
-        all_folders = [row["path"] for row in self.cur.fetchall()]
-        folder_set = set(all_folders)
-        roots = [
-            p for p in all_folders
-            if str(Path(p).parent) not in folder_set
-        ]
-        return sorted(roots)
+        """
+        Folders whose parent directory is NOT itself recorded
+        :return:
+        """
+        return self.dao.root_folders()
 
     # ----------------------------- Sorting
 
@@ -372,55 +320,22 @@ class MediaManager(BaseManager, QObject):
         :param ascending: Return sort in ascending order
         :return:
         """
-        logger.debug(f"Obtaining sorted paths with args: sort_key: {sort_key}, ascending: {ascending}")
-        clause = _SORT_SQL.get((sort_key, ascending))
-        if clause is None:
-            clause = _SORT_SQL[("name", True)]
-
-        sql = f"SELECT path FROM media WHERE is_dir=0 {clause};"
-        self.cur.execute(sql)
-        return [r["path"] for r in self.cur.fetchall()]
+        return self.dao.get_sorted_paths(sort_key, ascending)
 
     def order_subset(self, subset: list[str], sort_key: str, asc: bool) -> list[str]:
         """
         Return subset of paths ordered by the same criteria
         used in get_sorted_paths(). Items not found in the DB are appended unchanged
         """
-        if not subset:
-            return []
-
-        clause = _SORT_SQL.get((sort_key, asc), _SORT_SQL[("name", True)])
-
-        # Build parameter list for SQL IN
-        ph = ", ".join("?" for _ in subset)
-
-        sql = f"""
-            SELECT path FROM media
-            WHERE path IN ({ph})
-            {clause};
-        """
-        self.cur.execute(sql, subset)
-        ordered = [row["path"] for row in self.cur.fetchall()]
-
-        # Any paths missing from DB or filtered out are appended in original order
-        missing = [p for p in subset if p not in ordered]
-        return ordered + missing
+        return self.dao.order_subset(subset, sort_key, asc)
 
     # ----------------------------- Variant Management
 
     def add_variant(self, base_id: int, variant_id: int, rank: int) -> None:
         """
         Insert variant with explicit rank (_vN suffix), if the rank exists, skip (prevents duplicates).
-        :param base_id:
-        :param variant_id:
-        :param rank:
-        :return:
         """
-        self.execute(
-            "INSERT OR IGNORE INTO variants(base_id, variant_id, rank) "
-            "VALUES (?, ?, ?)",
-            (base_id, variant_id, rank)
-        )
+        self.dao.add_variant(base_id, variant_id, rank)
 
     def is_variant(self, path: str) -> bool:
         """
@@ -428,14 +343,7 @@ class MediaManager(BaseManager, QObject):
         :param path:
         :return:
         """
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        if not row:
-            return False
-        media_id = row["id"]
-        # variant if it appears in variants.variant_id and NOT as base_id
-        return bool(self.fetchone(
-            "SELECT 1 FROM variants WHERE variant_id=? LIMIT 1", (media_id,))
-        )
+        return self.dao.is_variant(path)
 
     def _is_stacked(self, media_id: int) -> bool:
         """
@@ -443,11 +351,7 @@ class MediaManager(BaseManager, QObject):
         :param media_id: media to check
         :return: boolean representing if this media_id has at least one variant.
         """
-        row = self.fetchone(
-            "SELECT 1 FROM variants WHERE base_id=? OR variant_id=? LIMIT 1",
-            (media_id, media_id)
-        )
-        return row is not None
+        return self.dao.is_stacked(media_id)
 
     def _is_stacked_base(self, media_id: int) -> bool:
         """
@@ -455,8 +359,7 @@ class MediaManager(BaseManager, QObject):
         :param media_id:
         :return:
         """
-        row = self.fetchone("SELECT 1 FROM variants WHERE base_id=? LIMIT 1", (media_id,))
-        return row is not None
+        return self.dao.is_stacked_base(media_id)
 
     def detect_and_stack(self, media_id: int, path: str) -> None:
         """
@@ -465,63 +368,17 @@ class MediaManager(BaseManager, QObject):
         :param path:
         :return:
         """
-        p = Path(path)
-        m = _VARIANT_RE.match(p.stem)
-
-        # add variant file first
-        if m:
-            base_stem, idx = m.groups()
-            base_path = str(p.with_name(base_stem + p.suffix))
-            row = self.fetchone("SELECT id FROM media WHERE path=?", (base_path,))
-            if row:
-                self.add_variant(row["id"], media_id, int(idx))
-            return
-
-        # look for any _vN already in DB
-        base_stem = p.stem
-        like_pattern = f"{base_stem}_v%{p.suffix}"
-        rows = self.fetchall("SELECT id, path FROM media WHERE path LIKE ?", (like_pattern,))
-        for v_id, v_path in rows:
-            m2 = _VARIANT_RE.match(Path(v_path).stem)
-            if m2:
-                _, idx2 = m2.groups()
-                self.add_variant(media_id, v_id, int(idx2))
+        self.dao.detect_and_stack()
 
     def _stack_ids_for_base(self, base_id: int) -> List[int]:
-        rows = self.fetchall(
-            "SELECT variant_id, rank FROM variants WHERE base_id=? ORDER BY rank",
-            (base_id,)
-        )
-        return [base_id] + [vid for vid, _ in rows]
+        return self.dao.stack_ids_for_base(base_id)
 
     def stack_paths(self, path: str) -> List[str]:
         """
         :param path: Media to check
         :return: An ordered list [base, v1, v2, ...] for any path. If the file isn’t stacked, returns [path].
         """
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        if not row:
-            return [path]
-
-        media_id = row["id"]
-
-        # Is this the base?
-        if self.fetchone("SELECT 1 FROM variants WHERE base_id=? LIMIT 1", (media_id,)):
-            ids = self._stack_ids_for_base(media_id)
-        else:
-            # it might be a variant -> find its base
-            row2 = self.fetchone("SELECT base_id FROM variants WHERE variant_id=?", (media_id,))
-            if not row2:
-                return [path]  # not stacked
-            ids = self._stack_ids_for_base(row2["base_id"])
-
-        # map ids -> paths
-        rows = self.fetchall(
-            f"SELECT id, path FROM media WHERE id IN ({','.join('?' * len(ids))})",
-            tuple(ids)
-        )
-        id_to_path = {r['id']: r['path'] for r in rows}
-        return [id_to_path[i] for i in ids if i in id_to_path]
+        return self.dao.stack_paths(path)
 
     # ----------------------------- Misc
     @Slot(object)
@@ -579,21 +436,17 @@ class MediaManager(BaseManager, QObject):
             counter += 1
 
     def get_attr(self, media_id: int) -> dict:
-        """Return favorite, weight, artist as a dict."""
-        return self.fetchone(
-            "SELECT favorite, weight, artist FROM media WHERE id=?", (media_id,)
-        ) or {}
+        """
+        Return favorite, weight, artist as a dict.
+        """
+        return self.dao.get_attr(media_id)
 
     def set_attr(self, media_id: int, **kwargs):
         """
         Update one or more scalar attributes for the given media_id.
         Example: set_attr(5, favorite=1, weight=0.8, artist='John')
         """
-        if not kwargs:
-            return
-        cols = ", ".join(f"{k}=?" for k in kwargs)
-        vals = list(kwargs.values()) + [media_id]
-        self.execute(f"UPDATE media SET {cols} WHERE id=?", vals)
+        self.dao.set_attr(media_id, **kwargs)
 
 
 # Thread tasks
