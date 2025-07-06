@@ -86,12 +86,15 @@ class MediaManager(BaseManager, QObject):
 
         logger.info("Media manager initialized")
 
-    # DB helpers (sync)
     def add_media(self, path: str) -> int:
         """
         Adds the given path to database
         """
         return self.dao.insert_media(path)
+
+    def get_media_id(self, path: str) -> int | None:
+        row = self.dao.fetchone("SELECT id FROM media WHERE path=?", (path,))
+        return row["id"] if row else None
 
     def scan_folder(self, folder: str | Path) -> None:
         """
@@ -101,7 +104,7 @@ class MediaManager(BaseManager, QObject):
         """
         self.importer.scan(Path(folder))
 
-    # ----------------------------- Path Getters
+    # ----------------------------- Path Getters -----------------------------
 
     def all_paths(self, *, files_only: bool = True) -> list[str]:
         """
@@ -121,7 +124,7 @@ class MediaManager(BaseManager, QObject):
         """
         return self.dao.root_folders()
 
-    # ----------------------------- Sorting
+    # ----------------------------- Sorting -----------------------------
 
     def get_sorted_paths(self, sort_key: str, ascending: bool = True) -> list[str]:
         """
@@ -138,7 +141,7 @@ class MediaManager(BaseManager, QObject):
         """
         return self.dao.order_subset(subset, sort_key, asc)
 
-    # ----------------------------- Variant Management
+    # ----------------------------- Variant Management -----------------------------
 
     def add_variant(self, base_id: int, variant_id: int, rank: int) -> None:
         """
@@ -154,7 +157,7 @@ class MediaManager(BaseManager, QObject):
         """
         return self.dao.is_variant(path)
 
-    def _is_stacked(self, media_id: int) -> bool:
+    def is_stacked(self, media_id: int) -> bool:
         """
         Return True if this media_id has at least one variant.
         :param media_id: media to check
@@ -162,7 +165,7 @@ class MediaManager(BaseManager, QObject):
         """
         return self.dao.is_stacked(media_id)
 
-    def _is_stacked_base(self, media_id: int) -> bool:
+    def is_stacked_base(self, media_id: int) -> bool:
         """
         True if this media_id is the base (rank 0) of a stack.
         :param media_id:
@@ -214,6 +217,20 @@ class MediaManager(BaseManager, QObject):
             tree[str(folder)] = (sub, imgs)
         return tree
 
+    # ----------------------------- Other metadata logic -----------------------------
+
+    def default_view_state(self, media_id: int):
+        return self.dao.fetchone(
+            "SELECT zoom, pan_x, pan_y FROM presets "
+            "WHERE media_id=? AND is_default=1", (media_id,)
+        )
+
+    def preset_shortcuts(self, media_id: int):
+        return self.dao.fetchall(
+            "SELECT zoom, pan_x, pan_y, hotkey FROM presets "
+            "WHERE media_id=? AND hotkey IS NOT NULL", (media_id,)
+        )
+
     def get_attr(self, media_id: int) -> dict:
         """
         Return favorite, weight, artist as a dict.
@@ -235,7 +252,7 @@ class MediaManager(BaseManager, QObject):
             return
 
         row = self.dao.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        decorate = bool(row and self.variants.is_stacked_base(row["id"]))
+        decorate = bool(row and self.is_stacked_base(row["id"]))
 
         # worker callback does NO DB access
         def _emit(p: str, pix: QPixmap):
