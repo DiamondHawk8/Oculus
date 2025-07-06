@@ -9,10 +9,23 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
+from widgets.collision_dialog import CollisionDialog
+
 _BACKUP_DIR = Path.home() / "OculusBackups" / "overwritten"
 _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
+
+
+def unique_path(base: Path) -> Path:
+    stem, suffix = base.stem, base.suffix
+    parent = base.parent
+    counter = 1
+    while True:
+        candidate = parent / f"{stem}_{counter}{suffix}"
+        if not candidate.exists():
+            return candidate
+        counter += 1
 
 
 @dataclass
@@ -38,8 +51,13 @@ class RenameService(QObject):
         new_path = Path(new_abs).expanduser().resolve()
 
         if new_path.exists():
-            logger.warning("Destination exists; use overwrite() instead.")
-            return False
+            choice = CollisionDialog.ask(str(old_path), str(new_path))
+            if choice in ("cancel", "skip"):
+                return False
+            if choice == "auto":
+                new_path = unique_path(new_path)
+            elif choice == "overwrite":
+                return self.overwrite(str(old_path), str(new_path))
 
         try:
             old_path.rename(new_path)
