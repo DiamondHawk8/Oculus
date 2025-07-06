@@ -3,6 +3,7 @@ import logging
 
 from PySide6.QtWidgets import QFileDialog
 
+from services.import_service import ImportSummary
 from widgets.folder_tree_widget import FolderTreeWidget
 
 logger = logging.getLogger(__name__)
@@ -24,13 +25,15 @@ class ImportController:
 
         # Connect Import page
         self.ui.chooseBtn.clicked.connect(self._choose_folder)
-        self.media_manager.scan_finished.connect(self.handle_scan_finished)
+        media_manager.import_finished.connect(self.handle_scan_finished)
 
         tree = FolderTreeWidget(ui.import_page)
         parent_layout = ui.debugFolderTree.parentWidget().layout()  # ← fixed line
         parent_layout.replaceWidget(ui.debugFolderTree, tree)
         ui.debugFolderTree.deleteLater()
         ui.debugFolderTree = tree
+
+        media_manager.import_finished.connect(self.handle_scan_finished)
 
         logger.info("Import setup complete")
 
@@ -39,35 +42,17 @@ class ImportController:
         if folder:
             self._import_root = folder
             # TODO allow for more advanced scanning text
-            self.ui.importStatus.setText("Scanning…")
+            self.ui.importStatus.setText("Scanning...")
             self.media_manager.scan_folder(folder)
 
-    def handle_scan_finished(self, paths):
-        """
-        Receives scanned paths from MediaManager. Updates DB.
-        Then calls _on_scan_complete() to allow the caller to handle UI updates.
-        """
-        logger.info("Attempting to add paths to database")
-
-        if not paths:
-            self.ui.importStatus.setText("No new files found")
-            return
-
-        # persist paths into DB so SearchManager can find them
-        logger.info("Adding %d paths to database", len(paths))
-        for p in paths:
-            self.media_manager.add_media(p)
-
-        self.ui.importStatus.setText(f"Added {len(paths)} files")
+    def handle_scan_finished(self, summary: ImportSummary):
+        self.ui.importStatus.setText(
+            f"Added {summary.added} · Skipped {summary.skipped} "
+            f"in {summary.duration:.1f}s"
+        )
 
         if self._import_root:
-            # Create path of imported data from selected folder
-            root_path = str(Path(self._import_root).expanduser().resolve())
-
-            # Create debug tree from rootpath
+            root_path = str(summary.root)
             tree_data = self.media_manager.walk_tree(root_path)
             self.ui.debugFolderTree.load_tree(tree_data, root_path)
-
-            # TODO Streamline process
             self.gallery_controller.open_folder(root_path)
-

@@ -3,15 +3,17 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 import uuid
 from collections import deque, OrderedDict
 from pathlib import Path
-from typing import Callable, List
+from typing import List
 
-from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, Slot
+from PySide6.QtCore import QObject, Signal, QThreadPool, Qt, Slot
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
+
+from services.variant_service import VariantService
+from services.import_service import ImportService
 
 from workers.scan_worker import ScanWorker, ScanResult
 from workers.thumb_worker import ThumbWorker
@@ -84,6 +86,7 @@ class MediaManager(BaseManager, QObject):
     scan_finished = Signal(list)
     thumb_ready = Signal(str, object)
     renamed = Signal(str, str)
+    import_finished = Signal(object)
 
     def __init__(self, conn, undo_manager, thumb_size: int = 256, parent=None):
         BaseManager.__init__(self, conn)
@@ -91,6 +94,11 @@ class MediaManager(BaseManager, QObject):
 
         self.dao = MediaDAO(conn)
         self.undo_manager = undo_manager
+        self.variants = VariantService(self.dao)
+        self.pool = QThreadPool.globalInstance()
+        self.importer = ImportService(self.dao, self.variants, self.pool)
+
+        self.importer.import_completed.connect(self.import_finished)
 
         self.thumb_size = thumb_size
         self.pool = QThreadPool.globalInstance()
@@ -155,12 +163,7 @@ class MediaManager(BaseManager, QObject):
         :param folder:
         :return:
         """
-        root = Path(folder).expanduser().resolve()
-        logger.info("Scanning folder %s", root)
-
-        worker = ScanWorker(root, self.dao)  # dao does the inserts
-        worker.finished.connect(self._on_scan_completed)
-        self.pool.start(worker)
+        self.importer.scan(Path(folder))
 
     def thumb(self, path: str | Path) -> None:
         path = str(path)
@@ -386,7 +389,7 @@ class MediaManager(BaseManager, QObject):
         :param path: Media to check
         :return: An ordered list [base, v1, v2, ...] for any path. If the file isn’t stacked, returns [path].
         """
-        return self.dao.stack_paths(path)
+        return self.variants.stack_paths(path)
 
     # ----------------------------- Misc
     @Slot(object)
