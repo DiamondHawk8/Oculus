@@ -30,7 +30,6 @@ class TagManager(BaseManager):
     def set_attr(self, media_id: int, **kwargs):
         logger.info(f"Setting attributes for media with id {media_id}")
         cols = ", ".join(kwargs)
-        marks = ", ".join("?" * len(kwargs))
         sql = (
                 f"INSERT INTO attributes(media_id, {cols}) VALUES ({','.join(['?'] * (len(kwargs) + 1))}) "
                 f"ON CONFLICT(media_id) DO UPDATE SET " +
@@ -50,3 +49,7 @@ class TagManager(BaseManager):
         logger.info(f"Listing presets for media with id {media_id}")
         rows = self.fetchall("SELECT * FROM presets WHERE media_id=?", (media_id,))
         return [dict(r) for r in rows]
+
+    def distinct_tags(self):
+        rows = self.fetchall("SELECT DISTINCT tag FROM tags", ())
+        return [r["tag"] for r in rows]

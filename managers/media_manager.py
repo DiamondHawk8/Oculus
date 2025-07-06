@@ -13,7 +13,6 @@ from services.variant_service import VariantService
 from services.import_service import ImportService
 
 from workers.thumb_worker import ThumbWorker
-from .base import BaseManager
 
 from .dao import MediaDAO
 from .utils.thumb_cache import ThumbCache
@@ -53,7 +52,7 @@ def decorate_stack_badge(base: QPixmap) -> QPixmap:
     return result
 
 
-class MediaManager(BaseManager, QObject):
+class MediaManager(QObject):
     """
     Thread-aware loader for image assets, currently only processes images
     """
@@ -64,7 +63,6 @@ class MediaManager(BaseManager, QObject):
     import_finished = Signal(object)
 
     def __init__(self, conn, undo_manager, thumb_size: int = 256, parent=None):
-        BaseManager.__init__(self, conn)
         QObject.__init__(self, parent)
 
         self.dao = MediaDAO(conn)

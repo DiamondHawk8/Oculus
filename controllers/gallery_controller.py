@@ -266,6 +266,9 @@ class GalleryController:
             return
 
         abs_path = self._model.data(idx, Qt.UserRole)  # absolute path of given row
+
+        sel = self.get_selected_paths()
+
         menu = QMenu(self.ui.galleryList)
         menu.setStyleSheet("""
             QMenu { background:#2b2b2b; color:white; border:1px solid #444; }
@@ -298,7 +301,6 @@ class GalleryController:
         elif chosen == rename_act:
             self._on_rename_triggered()
         elif chosen == edit_act:
-            sel = self.get_selected_paths()
             MetadataDialog(sel, self.media_manager, self.tag_manager, self._host_widget).exec()
 
     def _on_rename_triggered(self):

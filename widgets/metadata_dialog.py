@@ -51,9 +51,7 @@ class MetadataDialog(QDialog):
         self._populate_presets(self._id_for_path(self._paths[0]))
         self._load_attributes(0)
 
-        # Obtain tags for auto-completion
-        rows = self._tags.fetchall("SELECT DISTINCT tag FROM tags", ())
-        model = QStringListModel([r["tag"] for r in rows])
+        model = QStringListModel(self._tags.distinct_tags())
         self.ui.editTag.setCompleter(QCompleter(model, self))
 
         # Tagging buttons
@@ -109,8 +107,8 @@ class MetadataDialog(QDialog):
         return "invalid"
 
     def _id_for_path(self, p: str) -> int:
-        row = self._media.fetchone("SELECT id FROM media WHERE path=?", (p,))
-        return row["id"] if row else -1
+        mid = self._media.get_media_id(p)
+        return mid if mid is not None else -1
 
     def _current_view_state(self):
         z = self.ui.spinZoom.value()
@@ -153,7 +151,7 @@ class MetadataDialog(QDialog):
 
         # set tags for each media_id
         for mid in ids:
-            self._tags.set_tags(mid, tags, overwrite=True)
+            self._tags.set_tags(mid, tags, overwrite=False)
 
     def _ids_with_variants(self, path: str, include: bool) -> list[int]:
         """
@@ -213,16 +211,7 @@ class MetadataDialog(QDialog):
         tbl.setRowCount(0)
 
         folder = Path(self._paths[0]).parent
-        rows = self._media.fetchall(
-            """
-            SELECT p.group_id, p.id, p.name, p.media_id,
-                   p.zoom, p.pan_x, p.pan_y, p.is_default, p.hotkey, m.path
-              FROM presets p
-              LEFT JOIN media m ON p.media_id = m.id
-             WHERE p.media_id IS NULL OR p.media_id = ?
-            """,
-            (media_id,),
-        )
+        rows = self._media.list_presets_for_media(media_id)
 
         for r in rows:
             row_idx = tbl.rowCount()
@@ -236,17 +225,12 @@ class MetadataDialog(QDialog):
 
             #  column 1: Scope listing
             if r["media_id"] is None:  # folder-default: all files in folder
-                folder_rows = self._media.fetchall(
-                    "SELECT path FROM media WHERE path LIKE ?",
-                    (f"{str(folder)}%",),
+                folder_rows = self._media.dao.fetchall(
+                    "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%/",)
                 )
                 all_names = [Path(fr["path"]).name for fr in folder_rows]
             else:  # file-specific: every row in group
-                linked_rows = self._media.fetchall(
-                    "SELECT m.path FROM presets p "
-                    "JOIN media m ON p.media_id = m.id "
-                    "WHERE p.group_id = ?", (r["group_id"],)
-                )
+                linked_rows = self._media.list_presets_in_group(r["group_id"])
                 all_names = [Path(lr["path"]).name for lr in linked_rows]
 
             display = ", ".join(all_names[:5])
@@ -313,8 +297,9 @@ class MetadataDialog(QDialog):
         if not items:
             return
         preset_id = items[0].data(Qt.UserRole)
-        p = self._media.fetchone(
-            "SELECT zoom, pan_x, pan_y FROM presets WHERE id=?", (preset_id,))
+        p = self._media.dao.fetchone(
+            "SELECT zoom, pan_x, pan_y FROM presets WHERE id=?", (preset_id,)
+        )
         viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
         if viewer and p:
             viewer.apply_view_state(p["zoom"], QPoint(p["pan_x"], p["pan_y"]))
@@ -354,7 +339,7 @@ class MetadataDialog(QDialog):
         # 'Folder'
         elif scope == "folder":
             folder = str(Path(self._paths[0]).parent)
-            rows = self._media.fetchall(
+            rows = self._media.dao.fetchall(
                 "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
             )
             for r in rows:
@@ -395,10 +380,6 @@ class MetadataDialog(QDialog):
         self.ui.spinWeight.setValue(0.0)
         self.ui.editArtist.clear()
 
-
-
-
-
     def _on_transform_edited(self, row: int, col: int):
         """
         Helper function for allowing user editing of the transformations column
@@ -424,39 +405,31 @@ class MetadataDialog(QDialog):
         # Find related rows
         gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)
 
-        self._media.execute(
-            "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE group_id=?",
-            (zoom, pan_x, pan_y, gid)
-        )
+        self._media.update_preset_transform(gid, zoom, pan_x, pan_y)
 
-    def _on_name_edited(self, row: int, col: int):
-        if col != 0:  # only Name column
+    def _on_name_edited(self, row: int, col: int) -> None:
+        if col != 0:  # only column 0 is Name
             return
+
         new_name = self.ui.tblPresets.item(row, 0).text().strip()
         if not new_name:
             QMessageBox.warning(self, "Rename", "Name cannot be blank.")
             self._populate_presets(self._id_for_path(self._paths[0]))
             return
 
-        gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)
+        gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)  # group_id
+        first_mid = self._id_for_path(self._paths[0])  # media scope
 
-        # uniqueness check (per-media)
-        clash = self._media.fetchone(
-            """
-            SELECT 1 FROM presets
-            WHERE name = ? AND group_id <> ? AND media_id IS NOT NULL
-            """,
-            (new_name, gid),
-        )
-        if clash:
-            QMessageBox.warning(self, "Rename", "A preset with that name already exists.")
-            self._populate_presets(self._id_for_path(self._paths[0]))
+        # uniqueness check
+        if self._media.preset_name_exists(first_mid, new_name, gid):
+            QMessageBox.warning(
+                self, "Rename", "A preset with that name already exists."
+            )
+            self._populate_presets(first_mid)
             return
 
-        self._media.execute(
-            "UPDATE presets SET name = ? WHERE group_id = ?",
-            (new_name, gid),
-        )
+        # rename entire preset group
+        self._media.rename_preset_group(gid, new_name)
 
     def _on_default_toggled(self, group_id: str, media_id: int | None, checked: bool):
         logger.debug(f"Default toggled to {checked} for group id {group_id}, media id {media_id}")
@@ -465,37 +438,25 @@ class MetadataDialog(QDialog):
             return
 
         # One default per media (NULL = folder default group)
-        self._media.execute(
-            "UPDATE presets SET is_default = 0 WHERE media_id IS ?", (media_id,)
-        )
-        self._media.execute(
-            "UPDATE presets SET is_default = 1 WHERE group_id = ?", (group_id,)
-        )
+        self._media.set_default_preset(media_id, group_id)
 
-    def _on_hotkey_edited(self, group_id: str, line: QLineEdit):
+    def _on_hotkey_edited(self, group_id: str, line: QLineEdit) -> None:
         logger.debug("Hotkey edited")
         text = line.text().strip()
+
+        # validate key sequence
         if text and QKeySequence(text).isEmpty():
             QMessageBox.warning(self, "Hotkey", "Invalid key sequence.")
             line.setText("")
             text = ""
 
-        # find any other rows for the same media with this hotkey
-        mid = self._id_for_path(self._paths[0])  # first file drives media_id
-        clash = self._media.fetchone(
-            """
-            SELECT 1 FROM presets
-            WHERE hotkey = ? AND media_id = ? AND group_id <> ?
-            """,
-            (text, mid, group_id),
-        )
-        if clash:
-            QMessageBox.warning(self, "Hotkey", "That key is already bound for this media.")
+        first_mid = self._id_for_path(self._paths[0])  # media scope
+
+        # clash check
+        if text and self._media.hotkey_clash(first_mid, group_id, text):
+            QMessageBox.warning(
+                self, "Hotkey", "That key is already bound for this media."
+            )
             line.setText("")
             return
-
-        # update the whole group
-        self._media.execute(
-            "UPDATE presets SET hotkey = ? WHERE group_id = ?",
-            (text or None, group_id),
-        )
+        self._media.update_hotkey(group_id, text or None)
