@@ -13,6 +13,8 @@ from typing import Callable, List
 from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool, Qt, Slot
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 
+from workers.scan_worker import ScanWorker, ScanResult
+from workers.thumb_worker import ThumbWorker
 from .base import BaseManager
 
 from widgets.collision_dialog import CollisionDialog
@@ -81,7 +83,6 @@ class MediaManager(BaseManager, QObject):
 
     scan_finished = Signal(list)
     thumb_ready = Signal(str, object)
-    _scan_done = Signal(object)
     renamed = Signal(str, str)
 
     def __init__(self, conn, undo_manager, thumb_size: int = 256, parent=None):
@@ -93,8 +94,6 @@ class MediaManager(BaseManager, QObject):
 
         self.thumb_size = thumb_size
         self.pool = QThreadPool.globalInstance()
-
-        self._scan_done.connect(self._process_scan_result)
 
         logger.info("Media manager initialized")
 
@@ -152,31 +151,40 @@ class MediaManager(BaseManager, QObject):
 
     def scan_folder(self, folder: str | Path) -> None:
         """
-        This method returns immediately; results are delivered via scan_finished
+        Begin an async scan; results arrive in _on_scan_completed().
+        :param folder:
+        :return:
         """
+        root = Path(folder).expanduser().resolve()
+        logger.info("Scanning folder %s", root)
 
-        logger.info(f"Attempting to scan folder {folder}")
-
-        folder = Path(folder).expanduser().resolve()
-        task = _ScanTask(folder, self)
-        self.pool.start(task)
+        worker = ScanWorker(root, self.dao)  # dao does the inserts
+        worker.finished.connect(self._on_scan_completed)
+        self.pool.start(worker)
 
     def thumb(self, path: str | Path) -> None:
-        """
-        Ensure a thumbnail for path is available and emit thumb_ready.
-        """
         path = str(path)
+
+        # cache hit
         cached = _thumbnail_cache_get(path, self.thumb_size)
         if cached is not None:
             self.thumb_ready.emit(path, cached)
             return
 
-        # Decide badge in GUI thread (safe for DB access)
-        row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
-        decorate = bool(row and self._is_stacked_base(row["id"]))
+        # decide badge in the GUI thread
+        row = self.dao.fetchone(
+            "SELECT id FROM media WHERE path=?", (path,)
+        )
+        decorate = bool(row and self.dao.is_stacked_base(row["id"]))
 
-        task = _ThumbTask(path, self.thumb_size, decorate, self._on_thumb_complete)
-        self.pool.start(task)
+        # worker callback does NO DB access
+        def _emit(p: str, pix: QPixmap):
+            if decorate:
+                pix = decorate_stack_badge(pix)
+            _thumbnail_cache_set(p, self.thumb_size, pix)
+            self.thumb_ready.emit(p, pix)  # Qt queues to GUI thread
+
+        self.pool.start(ThumbWorker(path, self.thumb_size, _emit))
 
     # ---------------------------- db backup management methods
 
@@ -450,43 +458,11 @@ class MediaManager(BaseManager, QObject):
 
 
 # Thread tasks
-class _ScanTask(QRunnable):
-    def __init__(self, folder: Path, mgr: "MediaManager"):
-        super().__init__()
-        self.folder = folder
-        self.mgr = mgr
-        self.setAutoDelete(True)
-
-    def run(self):
-        out = []
-        for root, _, files in os.walk(self.folder):
-            for fn in files:
-                if Path(fn).suffix.lower() in IMAGE_EXT:
-                    p = Path(root) / fn
-                    out.append((str(p), p.stat().st_size))
-        self.mgr._scan_done.emit(out)  # queued to GUI thread
-
-
-class _ThumbTask(QRunnable):
-    def __init__(self, path: str, size: int,
-                 decorate: bool,
-                 cb: Callable[[str, QPixmap, bool], None]):
-        super().__init__()
-        self.p = path
-        self.s = size
-        self.decorate = decorate
-        self.cb = cb
-        self.setAutoDelete(True)
-
-    def run(self):
-        pix = _generate_thumb(self.p, self.s)
-        if not pix.isNull():
-            self.cb(self.p, pix, self.decorate)
-
-
-def _generate_thumb(path: str, size: int) -> QPixmap:
-    pix = QPixmap(path)
-    return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation) if not pix.isNull() else QPixmap()
+@Slot(object)
+def _on_scan_completed(self, result: ScanResult):
+    logger.info("Scan finished: added %d, skipped %d (%.1fs)",
+                result.added, result.skipped, result.duration)
+    self.scan_finished.emit(result)
 
 
 def _thumbnail_cache_get(p: str, s: int) -> QPixmap | None:
