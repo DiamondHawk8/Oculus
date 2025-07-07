@@ -57,6 +57,8 @@ class ImageViewerDialog(QDialog):
         self._meta_shortcut.activated.connect(self._open_metadata_dialog)
 
         # ---- load & show -----------------------------------------------
+        self.showFullScreen()
+
         first_path = selected_path or self._paths[self._idx]
         self._current_path = first_path
         # If variant, save the position
@@ -73,7 +75,6 @@ class ImageViewerDialog(QDialog):
             lambda: self._nudge(Qt.Key_Right)
         )
 
-        self.showFullScreen()
 
     def _load_image(self, path: str):
         """
@@ -409,6 +410,7 @@ class ImageViewerDialog(QDialog):
                          (self.height() - self._label.height()) // 2)
 
     def apply_view_state(self, scale: float, pos: QPoint):
+        logger.debug(f"Applying view state with {scale}, and {str(pos.x()), str(pos.y())}")
         self._fit_to_win = False
         self._scale = max(0.05, min(scale, 16.0))
         self._update_scaled()
