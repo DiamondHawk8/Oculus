@@ -55,13 +55,10 @@ class MetadataDialog(QDialog):
         self.ui.editTag.setCompleter(QCompleter(model, self))
 
         # Tagging buttons
-        self.ui.btnAddTag.clicked.connect(self._add_tag)
-        self.ui.btnRemoveTag.clicked.connect(self._remove_selected)
         self.ui.btnCopyTags.clicked.connect(self._copy_tags)
         self.ui.btnPasteTags.clicked.connect(self._paste_tags)
-        self.ui.radThis.toggled.connect(self._on_scope_changed)
-        self.ui.radSelected.toggled.connect(self._on_scope_changed)
-        self.ui.radFolder.toggled.connect(self._on_scope_changed)
+        self.ui.btnAddTag.clicked.connect(self._add_pending)
+        self.ui.btnRemoveTag.clicked.connect(self._remove_pending)
 
         # Preset Buttons
         self.ui.btnSavePreset.clicked.connect(self._save_preset)
@@ -78,8 +75,6 @@ class MetadataDialog(QDialog):
             self.ui.spinZoom.setValue(z)
             self.ui.spinPanX.setValue(px)
             self.ui.spinPanY.setValue(py)
-
-        self._on_scope_changed()
 
     # -------------------- Helpers ------------------
 
@@ -111,22 +106,6 @@ class MetadataDialog(QDialog):
             return "selected"
         return "invalid"
 
-    def _on_scope_changed(self, *_):
-        scope = self.selected_scope()
-
-        if scope == "this":
-            self._load_tags_for_row(0)
-            return
-
-        if scope == "selected":
-            ids = [self._id_for_path(p) for p in self._paths]
-            tag_sets = [set(self._tags.get_tags(mid)) for mid in ids]
-            common = set.intersection(*tag_sets) if tag_sets else set()
-            self._show_tag_list(sorted(common))
-            return
-
-        if scope == "folder":
-            self._show_tag_list([])
 
     def _id_for_path(self, p: str) -> int:
         mid = self._media.get_media_id(p)
@@ -168,21 +147,26 @@ class MetadataDialog(QDialog):
     def _save_tags(self):
         ids = self._target_media_ids()
         if not ids:
-            return  # invalid scope already logged
+            return
 
-        new_set = {self.ui.listTags.item(i).text().strip().lower()
-                   for i in range(self.ui.listTags.count())}
+        pending_set = {self.ui.listPending.item(i).text().strip().lower()
+                       for i in range(self.ui.listPending.count())}
+
+        replace_mode = self.ui.chkReplace.isChecked()
 
         for mid in ids:
-            orig_set = set(self._tags.get_tags(mid))
+            current = set(self._tags.get_tags(mid))
 
-            to_add = new_set - orig_set
-            to_remove = orig_set - new_set
-
-            if to_add:
-                self._tags.set_tags(mid, to_add, overwrite=False)
-            if to_remove:
-                self._tags.delete_tags(mid, to_remove)
+            if replace_mode:
+                # REMOVE every tag listed in Pending
+                to_remove = pending_set & current
+                if to_remove:
+                    self._tags.delete_tags(mid, to_remove)
+            else:
+                # ADD (merge) every tag listed in Pending
+                to_add = pending_set - current
+                if to_add:
+                    self._tags.set_tags(mid, to_add, overwrite=False)
 
     def _ids_with_variants(self, path: str, include: bool) -> list[int]:
         """
@@ -195,21 +179,19 @@ class MetadataDialog(QDialog):
         return [self._id_for_path(p) for p in base_and_variants]
 
     def _copy_tags(self):
-        self._copy_buffer = [
-            self.ui.listTags.item(i).text()
-            for i in range(self.ui.listTags.count())
-        ]
+        src = (self.ui.listPending if self.ui.listPending.hasFocus()
+               else self.ui.listTags)
+        self._copy_buffer = [src.item(i).text() for i in range(src.count())]
 
     def _paste_tags(self):
         if not self._copy_buffer:
-            QMessageBox.information(
-                self, "Nothing copied", "Copy a tag list first.")
+            QMessageBox.information(self, "Nothing copied", "Copy a tag list first.")
             return
-        existing = {self.ui.listTags.item(i).text()
-                    for i in range(self.ui.listTags.count())}
+        existing = {self.ui.listPending.item(i).text()
+                    for i in range(self.ui.listPending.count())}
         for t in self._copy_buffer:
             if t not in existing:
-                self.ui.listTags.addItem(t)
+                self.ui.listPending.addItem(t)
 
     def _load_tags_for_row(self, row: int):
         """
@@ -226,19 +208,32 @@ class MetadataDialog(QDialog):
 
     def _on_file_change(self, row: int):
         """
-        Invoked when the user clicks a different file in listFiles.
-        Reload tags/presets/attributes only where it makes sense.
+        Refresh per-file panels whenever the selection in listFiles changes.
+        :param row:
+        :return:
         """
-        scope = self.selected_scope()
+        self._load_tags_for_row(row)  # ← always, all scopes
 
-        if scope == "this":  # only 'This file' replaces tag list
-            self._load_tags_for_row(row)
         mid = self._id_for_path(self._paths[row])
         self._populate_presets(mid)
-        if scope == "this":
+
+        if self.selected_scope() == "this":
             self._load_attributes(row)
         else:
             self._reset_attribute_widgets()
+
+    def _add_pending(self):
+
+        tag = self.ui.editTag.text().strip().lower()
+        if not tag:
+            return
+        if not self.ui.listPending.findItems(tag, Qt.MatchFixedString):
+            self.ui.listPending.addItem(tag)
+            self.ui.editTag.clear()
+
+    def _remove_pending(self):
+        for itm in self.ui.listPending.selectedItems():
+            self.ui.listPending.takeItem(self.ui.listPending.row(itm))
 
     # -------------------- Presets --------------
 

@@ -103,6 +103,11 @@ class Ui_MetadataDialog(object):
 
         self.hboxTagEdit = QHBoxLayout()
         self.hboxTagEdit.setObjectName(u"hboxTagEdit")
+        self.chkReplace = QCheckBox(self.TagsTab)
+        self.chkReplace.setObjectName(u"chkReplace")
+
+        self.hboxTagEdit.addWidget(self.chkReplace)
+
         self.editTag = QLineEdit(self.TagsTab)
         self.editTag.setObjectName(u"editTag")
 
@@ -331,7 +336,8 @@ class Ui_MetadataDialog(object):
         MetadataDialog.setWindowTitle(QCoreApplication.translate("MetadataDialog", u"Edit Metadata", None))
         self.label.setText(QCoreApplication.translate("MetadataDialog", u"Current Tags", None))
         self.label_2.setText(QCoreApplication.translate("MetadataDialog", u"Files", None))
-        self.label_3.setText(QCoreApplication.translate("MetadataDialog", u"Tags to be Added", None))
+        self.label_3.setText(QCoreApplication.translate("MetadataDialog", u"Pending Tags", None))
+        self.chkReplace.setText(QCoreApplication.translate("MetadataDialog", u"Remove Tags", None))
         self.btnCopyTags.setText(QCoreApplication.translate("MetadataDialog", u"Copy", None))
         self.btnPasteTags.setText(QCoreApplication.translate("MetadataDialog", u"Paste", None))
         self.btnRemoveTag.setText(QCoreApplication.translate("MetadataDialog", u"Remove", None))

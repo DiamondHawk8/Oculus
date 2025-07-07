@@ -89,7 +89,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Tags to be Added</string>
+          <string>Pending Tags</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -108,6 +108,13 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="hboxTagEdit">
+         <item>
+          <widget class="QCheckBox" name="chkReplace">
+           <property name="text">
+            <string>Remove Tags</string>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QLineEdit" name="editTag"/>
          </item>
