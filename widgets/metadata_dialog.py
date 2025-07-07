@@ -268,7 +268,7 @@ class MetadataDialog(QDialog):
                 all_names = [Path(fr["path"]).name for fr in folder_rows]
             else:  # file-specific: every row in group
                 linked_rows = self._media.list_presets_in_group(r["group_id"])
-                all_names = [Path(lr["path"]).name for lr in linked_rows]
+                all_names = [Path(lr["path"]).name for lr in linked_rows if "path" in lr]
 
             display = ", ".join(all_names[:5])
             if len(all_names) > 5:
@@ -346,7 +346,7 @@ class MetadataDialog(QDialog):
         if not items:
             return
         preset_id = items[0].data(Qt.UserRole)
-        self._media.execute("DELETE FROM presets WHERE id=?", (preset_id,))
+        self._media.dao.execute("DELETE FROM presets WHERE id=?", (preset_id,))
         self._populate_presets(self._id_for_path(self._paths[0]))
 
     def _target_media_ids(self) -> list[int]:

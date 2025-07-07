@@ -225,9 +225,7 @@ class MediaManager(QObject):
         )
 
     def list_presets_in_group(self, group_id: str):
-        return self.dao.fetchall(
-            "SELECT * FROM presets WHERE group_id=?", (group_id,)
-        )
+        return self.dao.list_presets_in_group(group_id)
 
     def update_preset_transform(self, group_id: str, zoom: float, pan_x: int, pan_y: int):
         self.dao.execute(

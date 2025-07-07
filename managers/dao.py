@@ -222,3 +222,14 @@ class MediaDAO(BaseManager):
             if str(Path(p).parent) not in folder_set
         ]
         return sorted(roots)
+
+    def list_presets_in_group(self, group_id: str):
+        return self.cur.execute(
+            """
+            SELECT p.*, m.path
+              FROM presets p
+              LEFT JOIN media m ON p.media_id = m.id
+             WHERE p.group_id = ?
+            """,
+            (group_id,),
+        ).fetchall()
