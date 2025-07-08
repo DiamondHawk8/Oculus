@@ -224,12 +224,29 @@ class MediaDAO(BaseManager):
         return sorted(roots)
 
     def list_presets_in_group(self, group_id: str):
-        return self.cur.execute(
+        print(group_id)
+        return self.fetchall(
             """
-            SELECT p.*, m.path
-              FROM presets p
-              LEFT JOIN media m ON p.media_id = m.id
-             WHERE p.group_id = ?
+            SELECT p.*, m.path                   -- ← NEW
+            FROM   presets p
+            LEFT   JOIN media m ON m.id = p.media_id
+            WHERE  p.group_id = ?
             """,
             (group_id,),
-        ).fetchall()
+        )
+
+    def list_presets_for_media(self, media_id: int) -> list[dict]:
+        print(media_id)
+        return self.fetchall(
+            """
+            SELECT p.id, p.group_id, p.name, p.media_id,
+                   p.zoom, p.pan_x, p.pan_y,
+                   p.is_default, p.hotkey,
+                   m.path                         -- ← NEW
+            FROM   presets p
+            LEFT   JOIN media m ON m.id = p.media_id
+            WHERE  p.media_id = ?
+               OR  (p.media_id IS NULL AND m.id = ?)
+            """,
+            (media_id, media_id),
+        )

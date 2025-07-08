@@ -217,12 +217,7 @@ class MediaManager(QObject):
 
     # ----------------------------- Preset Management -----------------------------
     def list_presets_for_media(self, media_id: int):
-        return self.dao.fetchall(
-            """SELECT p.*, m.path
-                 FROM presets p LEFT JOIN media m ON p.media_id = m.id
-                WHERE p.media_id IS NULL OR p.media_id = ?""",
-            (media_id,)
-        )
+        return self.dao.list_presets_for_media(media_id)
 
     def list_presets_in_group(self, group_id: str):
         return self.dao.list_presets_in_group(group_id)

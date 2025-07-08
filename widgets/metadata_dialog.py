@@ -263,13 +263,12 @@ class MetadataDialog(QDialog):
             #  column 1: Scope listing
             if r["media_id"] is None:  # folder-default: all files in folder
                 folder_rows = self._media.dao.fetchall(
-                    "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%/",)
+                    "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
                 )
                 all_names = [Path(fr["path"]).name for fr in folder_rows]
             else:  # file-specific: every row in group
                 linked_rows = self._media.list_presets_in_group(r["group_id"])
-                all_names = [Path(lr["path"]).name for lr in linked_rows if "path" in lr]
-
+                all_names = [Path(lr["path"]).name for lr in linked_rows]
             display = ", ".join(all_names[:5])
             if len(all_names) > 5:
                 display += f", … ({len(all_names)} total)"
