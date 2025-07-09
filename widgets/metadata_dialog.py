@@ -7,9 +7,14 @@ from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem, QLineEdit, \
     QRadioButton
 
+from controllers.metadata_presenter import MetadataPresenter
 from managers.metadata_backend import MetadataBackend
 from ui.ui_metadata_dialog import Ui_MetadataDialog
 import logging
+
+from widgets.metadata_panes.attr_pane import AttrPane
+from widgets.metadata_panes.preset_pane import PresetPane
+from widgets.metadata_panes.tag_pane import TagPane
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +36,28 @@ class MetadataDialog(QDialog):
         self.ui = Ui_MetadataDialog()
         self.ui.setupUi(self)
 
+        # ----- backend & presenter ----- #
         self.backend = MetadataBackend(media_manager)
+        self.presenter = MetadataPresenter(self.backend, self)
 
+        # ----- references ----- #
         self._paths = media_paths
         self._media = media_manager
         self._tags = tag_manager
         self._viewer = viewer
+
+        # ----- inject panes ----- #
+        self.tagPane = TagPane(self)
+        self.attrPane = AttrPane(self)
+        self.presetPane = PresetPane(self)
+
+        self.ui.TagsTab.layout().addWidget(self.tagPane)
+        self.ui.AttributesTab.layout().addWidget(self.attrPane)
+        self.ui.PresetsTab.layout().addWidget(self.presetPane)
+
+        self.tagPane.tagsChanged.connect(self.presenter.save_tags)
+        self.presenter.tagsChanged.connect(self._load_tags_for_row)
+
 
         self._copy_buffer: List[str] | None = None
 
@@ -110,10 +131,8 @@ class MetadataDialog(QDialog):
             return "selected"
         return "invalid"
 
-
     def _id_for_path(self, p: str) -> int:
-        mid = self._media.get_media_id(p)
-        return mid if mid is not None else -1
+        return self.presenter.id_for_path(p)
 
     def _current_view_state(self):
         z = self.ui.spinZoom.value()
@@ -353,46 +372,10 @@ class MetadataDialog(QDialog):
         self._populate_presets(self._id_for_path(self._paths[0]))
 
     def _target_media_ids(self) -> list[int]:
-        """
-        Return the list of media_ids to operate on, based on the selected scope
-        radio button and the 'apply to variants' checkbox.
-        :return:
-        """
-        scope = self.selected_scope()
-        include_variants = self.ui.chkVariants.isChecked()
-
-        if scope == "invalid":
-            logger.error("invalid scope")
-            return []
-
-        ids: list[int] = []
-
-        # 'This file'
-        if scope == "this":
-            ids.extend(self._ids_with_variants(self._paths[0], include_variants))
-
-        # 'Selected files'
-        elif scope == "selected":
-            for p in self._paths:
-                ids.extend(self._ids_with_variants(p, include_variants))
-
-        # 'Folder'
-        elif scope == "folder":
-            folder = str(Path(self._paths[0]).parent)
-            rows = self._media.dao.fetchall(
-                "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
-            )
-            for r in rows:
-                path = r["path"]
-                if include_variants:
-                    ids.extend(self._ids_with_variants(path, True))
-                else:
-                    if not self._media.is_variant(path):
-                        ids.append(self._id_for_path(path))
-
-        # dedupe while preserving order
-        logger.debug(f"Scope of media identified as {ids}")
-        return list(dict.fromkeys(ids))
+        include = self.ui.chkVariants.isChecked()
+        return self.presenter.target_media_ids(
+            self._paths, self.selected_scope(), include
+        )
 
     def _load_attributes(self, row: int):
         if row < 0 or row >= len(self._paths):
