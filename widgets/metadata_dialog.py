@@ -47,19 +47,23 @@ class MetadataDialog(QDialog):
         self._viewer = viewer
 
         # ----- inject panes ----- #
-        self.tagPane = TagPane(self)
-        self.attrPane = AttrPane(self)
-        self.presetPane = PresetPane(self)
-
-        self.ui.TagsTab.layout().addWidget(self.tagPane)
-        self.ui.AttributesTab.layout().addWidget(self.attrPane)
-        self.ui.PresetsTab.layout().addWidget(self.presetPane)
-
-        self.tagPane.tagsChanged.connect(self.presenter.save_tags)
-        self.presenter.tagsChanged.connect(self._load_tags_for_row)
-
-
         self._copy_buffer: List[str] | None = None
+
+        self.tagPane = TagPane(
+            list_tags=self.ui.listTags,
+            list_pending=self.ui.listPending,
+            edit_tag=self.ui.editTag,
+            btn_add=self.ui.btnAddTag,
+            btn_remove=self.ui.btnRemoveTag,
+            btn_copy=self.ui.btnCopyTags,
+            btn_paste=self.ui.btnPasteTags,
+            tag_manager=tag_manager,
+            copy_buffer=self._copy_buffer,
+            parent=self
+        )
+        self.tagPane.tagsChanged.connect(
+            lambda: self.tagPane.load(self._id_for_path(self._paths[0]))
+        )
 
         # Default
         self.ui.radSelected.setChecked(True)
@@ -72,18 +76,14 @@ class MetadataDialog(QDialog):
         self.ui.listFiles.setCurrentRow(0)
         self.ui.listFiles.currentRowChanged.connect(self._on_file_change)
 
-        self._load_tags_for_row(0)
-        self._populate_presets(self._id_for_path(self._paths[0]))
+        self.ui.listFiles.setCurrentRow(0)
+        self._on_file_change(0)
         self._load_attributes(0)
 
         model = QStringListModel(self._tags.distinct_tags())
         self.ui.editTag.setCompleter(QCompleter(model, self))
 
-        # Tagging buttons
-        self.ui.btnCopyTags.clicked.connect(self._copy_tags)
-        self.ui.btnPasteTags.clicked.connect(self._paste_tags)
-        self.ui.btnAddTag.clicked.connect(self._add_pending)
-        self.ui.btnRemoveTag.clicked.connect(self._remove_pending)
+
 
         # Preset Buttons
         self.ui.btnSavePreset.clicked.connect(self._save_preset)
@@ -108,8 +108,11 @@ class MetadataDialog(QDialog):
         Apply tag changes to selected scope, then close dialog.
         :return: None
         """
+        ids = self._target_media_ids()
+
         # Apply tag changes
-        self._save_tags()
+        self.tagPane.save(ids, replace_mode=self.ui.chkReplace.isChecked())
+
         # Load any media again to ensure that preset changes are properly reflected
         if self._viewer:
             self._viewer.refresh()
@@ -147,50 +150,6 @@ class MetadataDialog(QDialog):
         for t in tags:
             self.ui.listTags.addItem(t)
 
-    def _add_tag(self):
-        """
-        Add given tags
-        :return:
-        """
-        tag = self.ui.editTag.text().strip().lower()
-        if not tag:
-            return
-        if not self.ui.listTags.findItems(tag, Qt.MatchFixedString):
-            self.ui.listTags.addItem(tag)
-            self.ui.editTag.clear()
-
-    def _remove_selected(self):
-        """
-        Remove selected tags
-        :return: None
-        """
-        for item in self.ui.listTags.selectedItems():
-            self.ui.listTags.takeItem(self.ui.listTags.row(item))
-
-    def _save_tags(self):
-        ids = self._target_media_ids()
-        if not ids:
-            return
-
-        pending_set = {self.ui.listPending.item(i).text().strip().lower()
-                       for i in range(self.ui.listPending.count())}
-
-        replace_mode = self.ui.chkReplace.isChecked()
-
-        for mid in ids:
-            current = set(self._tags.get_tags(mid))
-
-            if replace_mode:
-                # REMOVE every tag listed in Pending
-                to_remove = pending_set & current
-                if to_remove:
-                    self._tags.delete_tags(mid, to_remove)
-            else:
-                # ADD (merge) every tag listed in Pending
-                to_add = pending_set - current
-                if to_add:
-                    self._tags.set_tags(mid, to_add, overwrite=False)
-
     def _ids_with_variants(self, path: str, include: bool) -> list[int]:
         """
         Return media IDs for path (and its variants if include=True)
@@ -201,41 +160,13 @@ class MetadataDialog(QDialog):
         base_and_variants = (self._media.stack_paths(path) if include else [path])
         return [self._id_for_path(p) for p in base_and_variants]
 
-    def _copy_tags(self):
-        src = (self.ui.listPending if self.ui.listPending.hasFocus()
-               else self.ui.listTags)
-        self._copy_buffer = [src.item(i).text() for i in range(src.count())]
-
-    def _paste_tags(self):
-        if not self._copy_buffer:
-            QMessageBox.information(self, "Nothing copied", "Copy a tag list first.")
-            return
-        existing = {self.ui.listPending.item(i).text()
-                    for i in range(self.ui.listPending.count())}
-        for t in self._copy_buffer:
-            if t not in existing:
-                self.ui.listPending.addItem(t)
-
-    def _load_tags_for_row(self, row: int):
-        """
-        Fill listTags with tags for file at row
-        :param row:
-        :return:
-        """
-        self.ui.listTags.clear()
-        if row < 0 or row >= len(self._paths):
-            return
-        mid = self._id_for_path(self._paths[row])
-        for t in self._tags.get_tags(mid):
-            self.ui.listTags.addItem(t)
-
     def _on_file_change(self, row: int):
         """
         Refresh per-file panels whenever the selection in listFiles changes.
         :param row:
         :return:
         """
-        self._load_tags_for_row(row)  # ← always, all scopes
+        self.tagPane.load(self._id_for_path(self._paths[row]))
 
         mid = self._id_for_path(self._paths[row])
         self._populate_presets(mid)
@@ -244,19 +175,6 @@ class MetadataDialog(QDialog):
             self._load_attributes(row)
         else:
             self._reset_attribute_widgets()
-
-    def _add_pending(self):
-
-        tag = self.ui.editTag.text().strip().lower()
-        if not tag:
-            return
-        if not self.ui.listPending.findItems(tag, Qt.MatchFixedString):
-            self.ui.listPending.addItem(tag)
-            self.ui.editTag.clear()
-
-    def _remove_pending(self):
-        for itm in self.ui.listPending.selectedItems():
-            self.ui.listPending.takeItem(self.ui.listPending.row(itm))
 
     # -------------------- Presets --------------
 
