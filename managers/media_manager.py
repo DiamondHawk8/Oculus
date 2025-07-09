@@ -8,6 +8,7 @@ from typing import List
 from PySide6.QtCore import QObject, Signal, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 
+from services.comment_service import CommentService
 from services.rename_service import RenameService
 from services.variant_service import VariantService
 from services.import_service import ImportService
@@ -67,6 +68,7 @@ class MediaManager(QObject):
 
         self.dao = MediaDAO(conn)
         self.variants = VariantService(self.dao)
+        self.comments = CommentService(self.dao)
         self.pool = QThreadPool.globalInstance()
 
         self.importer = ImportService(self.dao, self.variants, self.pool)
