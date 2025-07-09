@@ -44,25 +44,10 @@
     </widget>
    </item>
    <item>
-    <widget class="FloatingPane" name="frame">
-     <property name="frameShape">
-      <enum>QFrame::Shape::StyledPanel</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
-     </property>
-    </widget>
+    <widget class="QListWidget" name="body"/>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>FloatingPane</class>
-   <extends>QFrame</extends>
-   <header>floatingpane.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../resources/resources.qrc"/>
  </resources>

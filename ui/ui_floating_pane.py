@@ -15,10 +15,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QSizePolicy, QToolButton,
-    QVBoxLayout, QWidget)
-
-from floatingpane import FloatingPane
+from PySide6.QtWidgets import (QApplication, QFrame, QListWidget, QListWidgetItem,
+    QSizePolicy, QToolButton, QVBoxLayout, QWidget)
 from resources import resources_rc
 
 class Ui_FloatingPane(object):
@@ -39,12 +37,10 @@ class Ui_FloatingPane(object):
 
         self.verticalLayout.addWidget(self.btnToggle)
 
-        self.frame = FloatingPane(FloatingPane)
-        self.frame.setObjectName(u"frame")
-        self.frame.setFrameShape(QFrame.Shape.StyledPanel)
-        self.frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.body = QListWidget(FloatingPane)
+        self.body.setObjectName(u"body")
 
-        self.verticalLayout.addWidget(self.frame)
+        self.verticalLayout.addWidget(self.body)
 
 
         self.retranslateUi(FloatingPane)
