@@ -36,3 +36,9 @@ tags:  # free-form keywords
   tag:        TEXT
   UNIQUE:     [media_id, tag]
   INDEX:      tag
+
+comments:
+  id:         INTEGER PRIMARY KEY
+  media_id:   INTEGER NOT NULL
+  created:    TIMESTAMP DEFAULT
+  text:       TEXT NOT NULL

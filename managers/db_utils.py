@@ -75,7 +75,17 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             );
 
             CREATE INDEX idx_tags_tag ON tags(tag);
+            
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                media_id  INTEGER NOT NULL,
+                created   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                text      TEXT NOT NULL,
+                FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_comments_media ON comments(media_id);
             """
+
         )
         conn.commit()
         logger.debug("Core schema created")
