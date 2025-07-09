@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QAbstractButton, QAbstractItemView, QApplication,
     QLineEdit, QListWidget, QListWidgetItem, QPushButton,
     QRadioButton, QSizePolicy, QSpinBox, QTabWidget,
     QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
-import resources.resources_rc
+from resources import resources_rc
 
 class Ui_MetadataDialog(object):
     def setupUi(self, MetadataDialog):
