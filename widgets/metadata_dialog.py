@@ -132,7 +132,7 @@ class MetadataDialog(QDialog):
         return "invalid"
 
     def _id_for_path(self, p: str) -> int:
-        return self.presenter.id_for_path(p)
+        return self.backend.id_for_path(p)
 
     def _current_view_state(self):
         z = self.ui.spinZoom.value()
@@ -373,9 +373,7 @@ class MetadataDialog(QDialog):
 
     def _target_media_ids(self) -> list[int]:
         include = self.ui.chkVariants.isChecked()
-        return self.presenter.target_media_ids(
-            self._paths, self.selected_scope(), include
-        )
+        return self.backend.target_media_ids(self._paths, self.selected_scope(), include)
 
     def _load_attributes(self, row: int):
         if row < 0 or row >= len(self._paths):
