@@ -240,7 +240,6 @@ class MediaDAO(BaseManager):
     # ------------------------------ Presets ------------------------------
 
     def list_presets_in_group(self, group_id: str):
-        print(group_id)
         return self.fetchall(
             """
             SELECT p.*, m.path
@@ -252,7 +251,6 @@ class MediaDAO(BaseManager):
         )
 
     def list_presets_for_media(self, media_id: int) -> list[dict]:
-        print(media_id)
         return self.fetchall(
             """
             SELECT p.id, p.group_id, p.name, p.media_id,

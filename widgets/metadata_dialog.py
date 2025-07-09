@@ -124,7 +124,6 @@ class MetadataDialog(QDialog):
 
         # Apply tag and attr changes
         self.tagPane.save(ids, replace_mode=self.ui.chkReplace.isChecked())
-        print(ids)
         self.attrPane.save(ids)
 
         # Load any media again to ensure that preset changes are properly reflected

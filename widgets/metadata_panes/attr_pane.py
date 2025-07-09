@@ -36,7 +36,6 @@ class AttrPane(QObject):
             weight=self.spinWeight.value(),
             artist=self.editArtist.text().strip() or None,
         )
-        print(vals)
         for mid in media_ids:
             self._media.set_attr(mid, **vals)
         if media_ids:
