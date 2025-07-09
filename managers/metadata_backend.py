@@ -18,7 +18,6 @@ class MetadataBackend:
         paths = (self._media.stack_paths(path) if include else [path])
         return [self.id_for_path(p) for p in paths]
 
-    # TODO presenter will call this helper passing scope + vars rather than embedding UI.
     def target_media_ids(self, paths: list[str], scope: str, include_variants: bool) -> list[int]:
         """
         Return the list of media_ids to operate on, based on the selected scope

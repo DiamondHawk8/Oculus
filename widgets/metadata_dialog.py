@@ -4,7 +4,6 @@ from typing import List
 from PySide6.QtCore import QStringListModel
 from PySide6.QtWidgets import QDialog, QCompleter, QAbstractItemView
 
-from controllers.metadata_presenter import MetadataPresenter
 from managers.metadata_backend import MetadataBackend
 from ui.ui_metadata_dialog import Ui_MetadataDialog
 import logging
@@ -33,9 +32,8 @@ class MetadataDialog(QDialog):
         self.ui = Ui_MetadataDialog()
         self.ui.setupUi(self)
 
-        # ----- backend & presenter ----- #
+        # ----- backend ----- #
         self.backend = MetadataBackend(media_manager)
-        self.presenter = MetadataPresenter(self.backend, self)
 
         # ----- references ----- #
         self._paths = media_paths
@@ -156,22 +154,6 @@ class MetadataDialog(QDialog):
         px = self.ui.spinPanX.value()
         py = self.ui.spinPanY.value()
         return z, px, py
-
-    # -------------------- Tagging ------------------
-    def _show_tag_list(self, tags):
-        self.ui.listTags.clear()
-        for t in tags:
-            self.ui.listTags.addItem(t)
-
-    def _ids_with_variants(self, path: str, include: bool) -> list[int]:
-        """
-        Return media IDs for path (and its variants if include=True)
-        :param path:
-        :param include:
-        :return:
-        """
-        base_and_variants = (self._media.stack_paths(path) if include else [path])
-        return [self._id_for_path(p) for p in base_and_variants]
 
     def _on_file_change(self, row: int):
         """
