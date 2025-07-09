@@ -199,7 +199,7 @@ class MediaDAO(BaseManager):
         missing = [p for p in subset if p not in ordered]
         return ordered + missing
 
-    # Universal Helpers
+    # ------------------------------ Universal Helpers ------------------------------
     def all_paths(self, *, files_only: bool = True) -> list[str]:
         logger.debug(f"Obtaining all paths, files_only: {files_only}")
         if files_only:
@@ -223,11 +223,13 @@ class MediaDAO(BaseManager):
         ]
         return sorted(roots)
 
+# ------------------------------ Presets ------------------------------
+
     def list_presets_in_group(self, group_id: str):
         print(group_id)
         return self.fetchall(
             """
-            SELECT p.*, m.path                   -- ← NEW
+            SELECT p.*, m.path
             FROM   presets p
             LEFT   JOIN media m ON m.id = p.media_id
             WHERE  p.group_id = ?
@@ -250,3 +252,22 @@ class MediaDAO(BaseManager):
             """,
             (media_id, media_id),
         )
+# ------------------------------ Comments ------------------------------
+
+    def add_comment(self, media_id: int, text: str) -> int:
+        self.cur.execute(
+            "INSERT INTO comments(media_id, text) VALUES (?,?)",
+            (media_id, text.strip())
+        )
+        return self.cur.lastrowid
+
+    def list_comments(self, media_id: int) -> list[dict]:
+        self.cur.execute(
+            "SELECT id, created, text FROM comments "
+            "WHERE media_id=? ORDER BY created DESC",
+            (media_id,)
+        )
+        return [dict(r) for r in self.cur.fetchall()]
+
+    def delete_comment(self, comment_id: int) -> None:
+        self.cur.execute("DELETE FROM comments WHERE id=?", (comment_id,))
