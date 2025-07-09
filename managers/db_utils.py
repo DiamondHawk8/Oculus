@@ -76,6 +76,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
 
             CREATE INDEX idx_tags_tag ON tags(tag);
             
+            CREATE TABLE comments (
                 id        INTEGER PRIMARY KEY AUTOINCREMENT,
                 media_id  INTEGER NOT NULL,
                 created   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
