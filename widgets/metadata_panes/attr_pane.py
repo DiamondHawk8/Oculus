@@ -2,8 +2,11 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 
-class TagsPane(QWidget):
-    tagsChanged = Signal(list, list, list)
+class AttrPane(QWidget):
+    attributesChanged = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
     def load(self, media_ids: list[int]):
         pass

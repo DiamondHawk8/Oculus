@@ -2,8 +2,11 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 
 
-class AttributesPane(QWidget):
-    presetsChanged = Signal(list, list, list)
+class PresetPane(QWidget):
+    presetsChanged = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
     def load(self, media_ids: list[int]):
         pass
