@@ -4,8 +4,6 @@ from PySide6.QtCore import Qt, QSize, QPoint, QEvent
 from PySide6.QtGui import QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import QDialog, QLabel, QWidget
 
-from widgets.comment_panel import CommentPanel
-from widgets.floating_pane import FloatingPane
 from widgets.metadata_dialog import MetadataDialog
 import logging
 
@@ -35,9 +33,6 @@ class ImageViewerDialog(QDialog):
 
         self._drag_start_cursor = QPoint()
         self._drag_start_label = QPoint()
-
-        self._commentPane: FloatingPane | None = None
-        QShortcut(QKeySequence("Ctrl+M"), self, activated=self._toggle_comments)
 
         # Window setup
         self.setWindowFlag(Qt.FramelessWindowHint, True)
@@ -273,10 +268,6 @@ class ImageViewerDialog(QDialog):
             self._current_path = self._stack[next_idx]
             self._load_image(self._current_path)
 
-        if self._commentPane and self._commentPane.isVisible():
-            self._toggle_comments()
-            self._toggle_comments()
-
     def _cycle_variant(self, delta: int):
         """
         Swap to another variant of the current media.
@@ -462,22 +453,3 @@ class ImageViewerDialog(QDialog):
         self._save_current_state()
         self._load_image(self._current_path)
         self._create_shortcuts()
-
-    def _toggle_comments(self):
-        mid = self._media_manager.get_media_id(self._current_path)
-        if mid is None:
-            return
-
-        if self._commentPane is None:
-
-            pane = FloatingPane(self)
-            panel = CommentPanel(self._media_manager.comments, mid, pane.body)
-            pane.setContent(panel)
-            pane.move(60, 60)
-            pane.show()
-            self._commentPane = pane
-        else:
-            # reuse existing pane
-            panel: CommentPanel = self._commentPane.body.findChild(CommentPanel)
-            panel.setMedia(mid)
-            self._commentPane.setVisible(not self._commentPane.isVisible())
