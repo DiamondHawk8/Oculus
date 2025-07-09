@@ -26,11 +26,6 @@ presets: # saved zoom / pan rectangles
   is_default:  INTEGER
   hotkey:      TEXT
 
-attributes: # fixed K/V booleans & numbers
-  media_id:    INTEGER PRIMARY KEY  # ref media.id
-  favorite:    BOOLEAN DEFAULT 0
-  weight:      REAL    DEFAULT 1.0
-
 tags:  # free-form keywords
   media_id:   INTEGER  # media.id
   tag:        TEXT

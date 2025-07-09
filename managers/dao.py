@@ -71,7 +71,8 @@ class MediaDAO(BaseManager):
         if not kwargs:
             return
         cols = ", ".join(f"{k}=?" for k in kwargs)
-        self.cur.execute(f"UPDATE media SET {cols} WHERE id=?", (*kwargs.values(), media_id))
+        with self.conn:
+            self.cur.execute(f"UPDATE media SET {cols} WHERE id=?", (*kwargs.values(), media_id))
 
     def get_attr(self, media_id: int) -> Dict[str, Any]:
         logger.debug(f"Getting attributes for {media_id}")

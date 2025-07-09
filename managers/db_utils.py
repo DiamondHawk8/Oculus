@@ -60,13 +60,6 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_presets_group ON presets(group_id);
 
-            CREATE TABLE attributes (
-                media_id  INTEGER PRIMARY KEY,
-                favorite  BOOLEAN DEFAULT 0,
-                weight    REAL    DEFAULT 1.0,
-                FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE
-            );
-
             CREATE TABLE tags (
                 media_id  INTEGER,
                 tag       TEXT,
