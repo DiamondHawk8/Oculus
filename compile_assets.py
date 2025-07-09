@@ -11,8 +11,6 @@ WIDGETS_PATHS = {
     "ui/gallery_tab.ui": "ui/ui_gallery_tab.py",
     "ui/collision_dialog.ui": "ui/ui_collision_dialog.py",
     "ui/metadata_dialog.ui": "ui/ui_metadata_dialog.py",
-    "ui/comment_panel.ui": "ui/ui_comment_panel.py",
-    "ui/floating_pane.ui": "ui/ui_floating_pane.py",
 }
 
 
