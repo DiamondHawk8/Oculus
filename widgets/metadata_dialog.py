@@ -1,4 +1,3 @@
-import uuid
 from pathlib import Path
 from typing import List
 
@@ -84,6 +83,13 @@ class MetadataDialog(QDialog):
                 Path(self._paths[0]).parent
             )
         )
+        self.attrPane = AttrPane(
+            chk_favorite=self.ui.chkFavorite,
+            spin_weight=self.ui.spinWeight,
+            edit_artist=self.ui.editArtist,
+            media_manager=media_manager,
+            parent=self
+        )
 
         # Default
         self.ui.radSelected.setChecked(True)
@@ -98,7 +104,6 @@ class MetadataDialog(QDialog):
 
         self.ui.listFiles.setCurrentRow(0)
         self._on_file_change(0)
-        self._load_attributes(0)
 
         model = QStringListModel(self._tags.distinct_tags())
         self.ui.editTag.setCompleter(QCompleter(model, self))
@@ -119,14 +124,14 @@ class MetadataDialog(QDialog):
         """
         ids = self._target_media_ids()
 
-        # Apply tag changes
+        # Apply tag and attr changes
         self.tagPane.save(ids, replace_mode=self.ui.chkReplace.isChecked())
+        print(ids)
+        self.attrPane.save(ids)
 
         # Load any media again to ensure that preset changes are properly reflected
         if self._viewer:
             self._viewer.refresh()
-
-        self._save_attributes()
 
         super().accept()
 
@@ -153,7 +158,6 @@ class MetadataDialog(QDialog):
         return z, px, py
 
     # -------------------- Tagging ------------------
-
     def _show_tag_list(self, tags):
         self.ui.listTags.clear()
         for t in tags:
@@ -181,37 +185,10 @@ class MetadataDialog(QDialog):
         self.presetPane.load(mid, Path(self._paths[0]).parent)
 
         if self.selected_scope() == "this":
-            self._load_attributes(row)
+            self.attrPane.load(mid)
         else:
-            self._reset_attribute_widgets()
+            self.attrPane.reset()
 
-    # -------------------- Presets --------------
     def _target_media_ids(self) -> list[int]:
         include = self.ui.chkVariants.isChecked()
         return self.backend.target_media_ids(self._paths, self.selected_scope(), include)
-
-    def _load_attributes(self, row: int):
-        if row < 0 or row >= len(self._paths):
-            return
-        mid = self._id_for_path(self._paths[row])
-        attr = self._media.get_attr(mid)  # favorite, weight, artist
-        self.ui.chkFavorite.setChecked(bool(attr.get("favorite", 0)))
-        self.ui.spinWeight.setValue(attr.get("weight") or 0.0)
-        self.ui.editArtist.setText(attr.get("artist") or "")
-
-    def _save_attributes(self):
-        """Push current widget values to every media_id in the chosen scope."""
-        ids = self._target_media_ids()
-        vals = dict(
-            favorite=int(self.ui.chkFavorite.isChecked()),
-            weight=self.ui.spinWeight.value(),
-            artist=self.ui.editArtist.text().strip() or None
-        )
-        for mid in ids:
-            self._media.set_attr(mid, **vals)
-
-    def _reset_attribute_widgets(self):
-        """Convenience reset when no file is selected."""
-        self.ui.chkFavorite.setChecked(False)
-        self.ui.spinWeight.setValue(0.0)
-        self.ui.editArtist.clear()
