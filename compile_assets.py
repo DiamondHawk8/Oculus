@@ -11,6 +11,8 @@ WIDGETS_PATHS = {
     "ui/gallery_tab.ui": "ui/ui_gallery_tab.py",
     "ui/collision_dialog.ui": "ui/ui_collision_dialog.py",
     "ui/metadata_dialog.ui": "ui/ui_metadata_dialog.py",
+    "ui/comment_panel.ui": "ui/ui_comment_panel.py",
+    "ui/floating_pane.ui": "ui/ui_floating_pane.py",
 }
 
 
@@ -43,7 +45,7 @@ def compile_qrc():
 
 
 def patch_import():
-    file_paths = ["ui/ui_main.py", "ui/ui_gallery_tab.py"]
+    file_paths = ["ui/ui_main.py", "ui/ui_gallery_tab.py", "ui/ui_floating_pane.py"]
     for file_path in file_paths:
         with open(file_path, "r+", encoding="utf-8") as f:
             lines = f.readlines()
