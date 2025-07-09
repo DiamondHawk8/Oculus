@@ -2,10 +2,8 @@ import uuid
 from pathlib import Path
 from typing import List
 
-from PySide6.QtCore import QStringListModel, Qt, QPoint
-from PySide6.QtGui import QKeySequence
-from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem, QLineEdit, \
-    QRadioButton
+from PySide6.QtCore import QStringListModel
+from PySide6.QtWidgets import QDialog, QCompleter, QAbstractItemView
 
 from controllers.metadata_presenter import MetadataPresenter
 from managers.metadata_backend import MetadataBackend
@@ -65,6 +63,28 @@ class MetadataDialog(QDialog):
             lambda: self.tagPane.load(self._id_for_path(self._paths[0]))
         )
 
+        self.presetPane = PresetPane(
+            tbl_presets=self.ui.tblPresets,
+            edit_name=self.ui.editPresetName,
+            btn_save=self.ui.btnSavePreset,
+            btn_load=self.ui.btnLoadPreset,
+            btn_delete=self.ui.btnDeletePreset,
+            spin_zoom=self.ui.spinZoom,
+            spin_px=self.ui.spinPanX,
+            spin_py=self.ui.spinPanY,
+            media_manager=media_manager,
+            tag_manager=tag_manager,
+            target_ids_fn=self._target_media_ids,
+            current_scope_fn=self.selected_scope,
+            parent=self
+        )
+        self.presetPane.presetsChanged.connect(
+            lambda: self.presetPane.load(
+                self._id_for_path(self._paths[0]),
+                Path(self._paths[0]).parent
+            )
+        )
+
         # Default
         self.ui.radSelected.setChecked(True)
 
@@ -82,17 +102,6 @@ class MetadataDialog(QDialog):
 
         model = QStringListModel(self._tags.distinct_tags())
         self.ui.editTag.setCompleter(QCompleter(model, self))
-
-
-
-        # Preset Buttons
-        self.ui.btnSavePreset.clicked.connect(self._save_preset)
-        self.ui.btnLoadPreset.clicked.connect(self._load_selected_preset)
-        self.ui.btnDeletePreset.clicked.connect(self._delete_selected_preset)
-
-        # Value inline editing
-        self.ui.tblPresets.cellChanged.connect(self._on_transform_edited)
-        self.ui.tblPresets.cellChanged.connect(self._on_name_edited)
 
         # Preset Values
         if default_transform:
@@ -166,10 +175,10 @@ class MetadataDialog(QDialog):
         :param row:
         :return:
         """
-        self.tagPane.load(self._id_for_path(self._paths[row]))
-
         mid = self._id_for_path(self._paths[row])
-        self._populate_presets(mid)
+        self.tagPane.load(mid)
+
+        self.presetPane.load(mid, Path(self._paths[0]).parent)
 
         if self.selected_scope() == "this":
             self._load_attributes(row)
@@ -177,118 +186,6 @@ class MetadataDialog(QDialog):
             self._reset_attribute_widgets()
 
     # -------------------- Presets --------------
-
-    def _populate_presets(self, media_id: int):
-        """
-        Refresh the presets table for the given media_id,
-        :param media_id:
-        :return:
-        """
-        tbl = self.ui.tblPresets
-        tbl.blockSignals(True)  # suppress cellChanged during fill
-        tbl.setRowCount(0)
-
-        folder = Path(self._paths[0]).parent
-        rows = self._media.list_presets_for_media(media_id)
-
-        for r in rows:
-            row_idx = tbl.rowCount()
-            tbl.insertRow(row_idx)
-
-            #  column 0: Name (+ hidden data)
-            name_item = QTableWidgetItem(r["name"])
-            name_item.setData(Qt.UserRole, r["id"])  # preset id
-            name_item.setData(Qt.UserRole + 1, r["group_id"])  # group id
-            tbl.setItem(row_idx, 0, name_item)
-
-            #  column 1: Scope listing
-            if r["media_id"] is None:  # folder-default: all files in folder
-                folder_rows = self._media.dao.fetchall(
-                    "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
-                )
-                all_names = [Path(fr["path"]).name for fr in folder_rows]
-            else:  # file-specific: every row in group
-                linked_rows = self._media.list_presets_in_group(r["group_id"])
-                all_names = [Path(lr["path"]).name for lr in linked_rows]
-            display = ", ".join(all_names[:5])
-            if len(all_names) > 5:
-                display += f", … ({len(all_names)} total)"
-            scope_item = QTableWidgetItem(display)
-            scope_item.setToolTip("\n".join(all_names))
-            scope_item.setFlags(scope_item.flags() & ~Qt.ItemIsEditable)
-            tbl.setItem(row_idx, 1, scope_item)
-
-            #  column 2: Transform string
-            transform = f"{r['zoom']:.2f}x, {r['pan_x']}, {r['pan_y']}"
-            tbl.setItem(row_idx, 2, QTableWidgetItem(transform))
-
-            #  column 3: Default radio
-            radio = QRadioButton()
-            radio.setChecked(bool(r["is_default"]))
-            radio.toggled.connect(
-                lambda checked, gid=r["group_id"], mid=r["media_id"]:
-                self._on_default_toggled(gid, mid, checked)
-            )
-            tbl.setCellWidget(row_idx, 3, radio)
-
-            #  column 4: Hotkey edit
-            edit = QLineEdit(r["hotkey"] or "")
-            edit.setPlaceholderText("Ctrl+1 ...")
-            edit.setFixedWidth(80)
-            edit.setStyleSheet("background-color: black; color: white;")
-            edit.editingFinished.connect(
-                lambda e=edit, gid=r["group_id"]: self._on_hotkey_edited(gid, e)
-            )
-            tbl.setCellWidget(row_idx, 4, edit)
-
-            tbl.setRowHeight(row_idx, 20)
-
-        tbl.blockSignals(False)  # re-enable after table is filled
-
-    def _save_preset(self) -> None:
-        """
-        Save the current view-state as a preset for all target media_ids.
-        """
-        name = self.ui.editPresetName.text().strip()
-        if not name:
-            QMessageBox.warning(self, "Preset name", "Enter a preset name.")
-            return
-
-        scale, px, py = self._current_view_state()
-        ids = self._target_media_ids()
-        if not ids:
-            QMessageBox.warning(self, "Scope", "No files selected to save preset.")
-            return
-
-        gid = str(uuid.uuid4())
-
-        for mid in ids:
-            self._tags.save_preset(gid, mid, name, scale, px, py)
-
-        # refresh UI for the first target
-        self.ui.editPresetName.clear()
-        self._populate_presets(ids[0])
-
-    def _load_selected_preset(self):
-        items = self.ui.tblPresets.selectedItems()
-        if not items:
-            return
-        preset_id = items[0].data(Qt.UserRole)
-        p = self._media.dao.fetchone(
-            "SELECT zoom, pan_x, pan_y FROM presets WHERE id=?", (preset_id,)
-        )
-        viewer = self.parent()._viewer if hasattr(self.parent(), "_viewer") else None
-        if viewer and p:
-            viewer.apply_view_state(p["zoom"], QPoint(p["pan_x"], p["pan_y"]))
-
-    def _delete_selected_preset(self):
-        items = self.ui.tblPresets.selectedItems()
-        if not items:
-            return
-        preset_id = items[0].data(Qt.UserRole)
-        self._media.dao.execute("DELETE FROM presets WHERE id=?", (preset_id,))
-        self._populate_presets(self._id_for_path(self._paths[0]))
-
     def _target_media_ids(self) -> list[int]:
         include = self.ui.chkVariants.isChecked()
         return self.backend.target_media_ids(self._paths, self.selected_scope(), include)
@@ -318,84 +215,3 @@ class MetadataDialog(QDialog):
         self.ui.chkFavorite.setChecked(False)
         self.ui.spinWeight.setValue(0.0)
         self.ui.editArtist.clear()
-
-    def _on_transform_edited(self, row: int, col: int):
-        """
-        Helper function for allowing user editing of the transformations column
-        :param row:
-        :param col:
-        :return:
-        """
-        logger.debug(f"Transformation values edited for row {row}, col {col}")
-        if col != 2:  # column 2 = Properties
-            return
-
-        txt = self.ui.tblPresets.item(row, 2).text()
-        name = self.ui.tblPresets.item(row, 0).text()
-        try:
-            zoom_s, pan_x_s, pan_y_s = [s.strip(" x") for s in txt.split(",")]
-            zoom = float(zoom_s)
-            pan_x = int(pan_x_s)
-            pan_y = int(pan_y_s)
-        except (ValueError, IndexError):
-            QMessageBox.warning(self, "Invalid format", "Use format like: 1.25x, 20, -15")
-            return
-
-        # Find related rows
-        gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)
-
-        self._media.update_preset_transform(gid, zoom, pan_x, pan_y)
-
-    def _on_name_edited(self, row: int, col: int) -> None:
-        if col != 0:  # only column 0 is Name
-            return
-
-        new_name = self.ui.tblPresets.item(row, 0).text().strip()
-        if not new_name:
-            QMessageBox.warning(self, "Rename", "Name cannot be blank.")
-            self._populate_presets(self._id_for_path(self._paths[0]))
-            return
-
-        gid = self.ui.tblPresets.item(row, 0).data(Qt.UserRole + 1)  # group_id
-        first_mid = self._id_for_path(self._paths[0])  # media scope
-
-        # uniqueness check
-        if self._media.preset_name_exists(first_mid, new_name, gid):
-            QMessageBox.warning(
-                self, "Rename", "A preset with that name already exists."
-            )
-            self._populate_presets(first_mid)
-            return
-
-        # rename entire preset group
-        self._media.rename_preset_group(gid, new_name)
-
-    def _on_default_toggled(self, group_id: str, media_id: int | None, checked: bool):
-        logger.debug(f"Default toggled to {checked} for group id {group_id}, media id {media_id}")
-        # ignore un-check events
-        if not checked:
-            return
-
-        # One default per media (NULL = folder default group)
-        self._media.set_default_preset(media_id, group_id)
-
-    def _on_hotkey_edited(self, group_id: str, line: QLineEdit) -> None:
-        logger.debug("Hotkey edited")
-        text = line.text().strip()
-
-        # validate key sequence
-        if text and QKeySequence(text).isEmpty():
-            QMessageBox.warning(self, "Hotkey", "Invalid key sequence.")
-            line.setText("")
-            text = ""
-
-        first_mid = self._id_for_path(self._paths[0])  # media scope
-
-        # clash check
-        if text and self._media.hotkey_clash(first_mid, group_id, text):
-            QMessageBox.warning(
-                self, "Hotkey", "That key is already bound for this media."
-            )
-            line.setText("")
-            return
-        self._media.update_hotkey(group_id, text or None)
