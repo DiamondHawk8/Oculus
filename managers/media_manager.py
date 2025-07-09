@@ -124,6 +124,11 @@ class MediaManager(QObject):
         """
         return self.dao.root_folders()
 
+    def path_for_id(self, media_id: int) -> str | None:
+        return self.dao.path_for_id(media_id)
+    def folder_for_id(self, media_id: int) -> Path | None:
+        return self.dao.folder_for_id(media_id)
+
     # ----------------------------- Sorting -----------------------------
 
     def get_sorted_paths(self, sort_key: str, ascending: bool = True) -> list[str]:

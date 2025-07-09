@@ -223,7 +223,20 @@ class MediaDAO(BaseManager):
         ]
         return sorted(roots)
 
-# ------------------------------ Presets ------------------------------
+    def path_for_id(self, media_id: int) -> str | None:
+        """
+        Return absolute path string for a given media_id (or None if missing).
+        :param media_id:
+        :return:
+        """
+        row = self.fetchone("SELECT path FROM media WHERE id=?", (media_id,))
+        return row["path"] if row else None
+
+    def folder_for_id(self, media_id: int) -> Path | None:
+        p = self.path_for_id(media_id)
+        return Path(p).parent if p else None
+
+    # ------------------------------ Presets ------------------------------
 
     def list_presets_in_group(self, group_id: str):
         print(group_id)
@@ -252,7 +265,8 @@ class MediaDAO(BaseManager):
             """,
             (media_id, media_id),
         )
-# ------------------------------ Comments ------------------------------
+
+    # ------------------------------ Comments ------------------------------
 
     def add_comment(self, media_id: int, text: str) -> int:
         self.cur.execute(
