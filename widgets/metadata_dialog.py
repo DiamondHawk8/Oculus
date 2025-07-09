@@ -6,6 +6,8 @@ from PySide6.QtCore import QStringListModel, Qt, QPoint
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QDialog, QMessageBox, QCompleter, QAbstractItemView, QTableWidgetItem, QLineEdit, \
     QRadioButton
+
+from managers.metadata_backend import MetadataBackend
 from ui.ui_metadata_dialog import Ui_MetadataDialog
 import logging
 
@@ -28,6 +30,8 @@ class MetadataDialog(QDialog):
         super().__init__(parent)
         self.ui = Ui_MetadataDialog()
         self.ui.setupUi(self)
+
+        self.backend = MetadataBackend(media_manager)
 
         self._paths = media_paths
         self._media = media_manager
