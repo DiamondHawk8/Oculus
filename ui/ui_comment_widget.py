@@ -17,6 +17,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QSizePolicy,
     QSpacerItem, QToolButton, QVBoxLayout, QWidget)
+from resources import resources_rc
 
 class Ui_CommentWidget(object):
     def setupUi(self, CommentWidget):
@@ -58,8 +59,20 @@ class Ui_CommentWidget(object):
 
         self.topLayout.addWidget(self.labelTime)
 
+        self.btnEdit = QToolButton(CommentWidget)
+        self.btnEdit.setObjectName(u"btnEdit")
+        icon = QIcon()
+        icon.addFile(u":/icons/cil-pencil.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.btnEdit.setIcon(icon)
+        self.btnEdit.setAutoRaise(True)
+
+        self.topLayout.addWidget(self.btnEdit)
+
         self.btnDelete = QToolButton(CommentWidget)
         self.btnDelete.setObjectName(u"btnDelete")
+        icon1 = QIcon()
+        icon1.addFile(u":/icons/icon_close.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.btnDelete.setIcon(icon1)
 
         self.topLayout.addWidget(self.btnDelete)
 
@@ -93,7 +106,11 @@ class Ui_CommentWidget(object):
         CommentWidget.setWindowTitle(QCoreApplication.translate("CommentWidget", u"Form", None))
         self.labelAuthor.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
         self.labelTime.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
-        self.btnDelete.setText(QCoreApplication.translate("CommentWidget", u"X", None))
+#if QT_CONFIG(tooltip)
+        self.btnEdit.setToolTip(QCoreApplication.translate("CommentWidget", u"btnEdit", None))
+#endif // QT_CONFIG(tooltip)
+        self.btnEdit.setText(QCoreApplication.translate("CommentWidget", u"...", None))
+        self.btnDelete.setText("")
         self.labelText.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
     # retranslateUi
 
