@@ -6,6 +6,8 @@ from widgets.comment_widget import CommentWidget
 
 class CommentsPanel(QWidget):
     panelClosed = Signal()
+    editingBegan = Signal()
+    editingEnded = Signal()
 
     def __init__(self, comment_service, parent=None):
         super().__init__(parent)
@@ -59,6 +61,7 @@ class CommentsPanel(QWidget):
         w = CommentWidget(row["id"], "Me", row["text"], row["created"])
         w.deleteClicked.connect(self._svc.delete_comment)
         w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        w.editSaved.connect(self._on_local_edit)
         self.ui.commentsContainer.layout().addWidget(w, 0, Qt.AlignTop)
 
     def _clear_thread(self):
@@ -82,21 +85,30 @@ class CommentsPanel(QWidget):
         self._svc.add_comment(self._media_id, txt)
         clear_fn()
 
+    def _on_local_edit(self, cid: int, new_text: str):
+        # TODO fill out
+        print(f"(Preview) comment {cid} changed to: {new_text}")
+
     def set_input_visible(self, visible: bool):
         self.ui.editComment.setVisible(visible)
         self.ui.btnPost.setVisible(visible)
 
     def toggle_input(self):
+        self.editingEnded.emit()
         self.set_input_visible(not self.ui.editComment.isVisible())
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
             self.hide()
             e.accept()
+            self.editingEnded.emit()
             return
         super().keyPressEvent(e)
 
     def eventFilter(self, obj, ev):
+        if obj is getattr(self, "_editor", None):
+            if ev.type() == QEvent.FocusOut:
+                self.editingEnded.emit()
         if obj is self.ui.editComment and ev.type() == QEvent.KeyPress:
             if ev.key() in (Qt.Key_Return, Qt.Key_Enter) and ev.modifiers() & Qt.ControlModifier:
                 self._post_comment()

@@ -60,6 +60,8 @@ class ImageViewerDialog(QDialog):
         # ---- comments --------------------------------------------------
         self.comments_panel = CommentsPanel(media_manager.comments, self)
         self.comments_panel.hide()
+        self.comments_panel.editingBegan.connect(lambda: None)
+        self.comments_panel.editingEnded.connect(self.setFocus)
 
         # ---- load & show -----------------------------------------------
         self.showFullScreen()
