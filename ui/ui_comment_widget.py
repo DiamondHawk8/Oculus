@@ -49,6 +49,7 @@ class Ui_CommentWidget(object):
         font.setPointSize(10)
         font.setBold(True)
         self.labelAuthor.setFont(font)
+        self.labelAuthor.setStyleSheet(u"color:#f6f6f6;")
 
         self.topLayout.addWidget(self.labelAuthor)
 
@@ -76,6 +77,7 @@ class Ui_CommentWidget(object):
         sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.labelText.sizePolicy().hasHeightForWidth())
         self.labelText.setSizePolicy(sizePolicy2)
+        self.labelText.setStyleSheet(u"border:1px solid #444; border-radius:6px; background:#333; margin:2px;")
         self.labelText.setWordWrap(True)
         self.labelText.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByKeyboard|Qt.TextInteractionFlag.TextSelectableByKeyboard|Qt.TextInteractionFlag.TextSelectableByMouse)
 

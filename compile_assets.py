@@ -45,7 +45,7 @@ def compile_qrc():
 
 
 def patch_import():
-    file_paths = WIDGETS_PATHS.values()
+    file_paths = list(WIDGETS_PATHS.values()) + [UI_OUTPUT]
     for file_path in file_paths:
         with open(file_path, "r+", encoding="utf-8") as f:
             lines = f.readlines()

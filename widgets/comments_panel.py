@@ -1,5 +1,5 @@
 from PySide6.QtCore import Signal, Qt, QEvent
-from PySide6.QtWidgets import QWidget, QMessageBox
+from PySide6.QtWidgets import QWidget, QMessageBox, QSizePolicy
 from ui.ui_comments_panel import Ui_CommentsPanel
 from widgets.comment_widget import CommentWidget
 
@@ -58,7 +58,8 @@ class CommentsPanel(QWidget):
     def _add_comment_widget(self, row: dict):
         w = CommentWidget(row["id"], "Me", row["text"], row["created"])
         w.deleteClicked.connect(self._svc.delete_comment)
-        self.ui.commentsContainer.layout().insertWidget(0, w)
+        w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.ui.commentsContainer.layout().insertWidget(0, w, 0, Qt.AlignTop)
 
     def _clear_thread(self):
         lay = self.ui.commentsContainer.layout()
@@ -80,6 +81,10 @@ class CommentsPanel(QWidget):
 
         self._svc.add_comment(self._media_id, txt)
         clear_fn()
+
+    def set_input_visible(self, visible: bool):
+        self.ui.editComment.setVisible(visible)
+        self.ui.btnPost.setVisible(visible)
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:

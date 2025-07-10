@@ -15,9 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QSizePolicy, QSpacerItem, QTextEdit,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QHBoxLayout, QPushButton, QScrollArea,
+    QSizePolicy, QSpacerItem, QTextEdit, QVBoxLayout,
+    QWidget)
 
 class Ui_CommentsPanel(object):
     def setupUi(self, CommentsPanel):
@@ -26,17 +26,13 @@ class Ui_CommentsPanel(object):
         CommentsPanel.resize(526, 326)
         self.verticalLayout = QVBoxLayout(CommentsPanel)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.labelHeader = QLabel(CommentsPanel)
-        self.labelHeader.setObjectName(u"labelHeader")
-
-        self.verticalLayout.addWidget(self.labelHeader)
-
         self.scrollArea = QScrollArea(CommentsPanel)
         self.scrollArea.setObjectName(u"scrollArea")
+        self.scrollArea.setStyleSheet(u"background: transparent; border: none;")
         self.scrollArea.setWidgetResizable(True)
         self.commentsContainer = QWidget()
         self.commentsContainer.setObjectName(u"commentsContainer")
-        self.commentsContainer.setGeometry(QRect(0, 0, 506, 54))
+        self.commentsContainer.setGeometry(QRect(0, 0, 508, 78))
         self.verticalLayout_2 = QVBoxLayout(self.commentsContainer)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.scrollArea.setWidget(self.commentsContainer)
@@ -76,7 +72,6 @@ class Ui_CommentsPanel(object):
 
     def retranslateUi(self, CommentsPanel):
         CommentsPanel.setWindowTitle(QCoreApplication.translate("CommentsPanel", u"Form", None))
-        self.labelHeader.setText(QCoreApplication.translate("CommentsPanel", u"<b>Comments<b>", None))
         self.editComment.setPlaceholderText(QCoreApplication.translate("CommentsPanel", u"Add a comment...", None))
         self.btnPost.setText(QCoreApplication.translate("CommentsPanel", u"Post", None))
     # retranslateUi
