@@ -22,7 +22,7 @@ class Ui_CommentWidget(object):
     def setupUi(self, CommentWidget):
         if not CommentWidget.objectName():
             CommentWidget.setObjectName(u"CommentWidget")
-        CommentWidget.resize(577, 416)
+        CommentWidget.resize(577, 354)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -38,19 +38,19 @@ class Ui_CommentWidget(object):
 
         self.topLayout.addItem(self.horizontalSpacer)
 
-        self.label = QLabel(CommentWidget)
-        self.label.setObjectName(u"label")
+        self.labelAuthor = QLabel(CommentWidget)
+        self.labelAuthor.setObjectName(u"labelAuthor")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
-        self.label.setSizePolicy(sizePolicy1)
+        sizePolicy1.setHeightForWidth(self.labelAuthor.sizePolicy().hasHeightForWidth())
+        self.labelAuthor.setSizePolicy(sizePolicy1)
         font = QFont()
         font.setPointSize(10)
         font.setBold(True)
-        self.label.setFont(font)
+        self.labelAuthor.setFont(font)
 
-        self.topLayout.addWidget(self.label)
+        self.topLayout.addWidget(self.labelAuthor)
 
         self.labelTime = QLabel(CommentWidget)
         self.labelTime.setObjectName(u"labelTime")
@@ -89,7 +89,7 @@ class Ui_CommentWidget(object):
 
     def retranslateUi(self, CommentWidget):
         CommentWidget.setWindowTitle(QCoreApplication.translate("CommentWidget", u"Form", None))
-        self.label.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
+        self.labelAuthor.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
         self.labelTime.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
         self.btnDelete.setText(QCoreApplication.translate("CommentWidget", u"X", None))
         self.labelText.setText(QCoreApplication.translate("CommentWidget", u"TextLabel", None))
