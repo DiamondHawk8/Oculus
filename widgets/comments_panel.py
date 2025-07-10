@@ -1,4 +1,4 @@
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QEvent
 from PySide6.QtWidgets import QWidget, QMessageBox
 from ui.ui_comments_panel import Ui_CommentsPanel
 from widgets.comment_widget import CommentWidget
@@ -20,7 +20,7 @@ class CommentsPanel(QWidget):
 
         # Post button / Return key
         self.ui.btnPost.clicked.connect(self._post_comment)
-        self.ui.editComment.returnPressed.connect(self._post_comment)
+        self.ui.editComment.installEventFilter(self)
 
     def load_comments(self, media_id: int):
         """
@@ -79,3 +79,10 @@ class CommentsPanel(QWidget):
             self.panelClosed.emit()
         else:
             super().keyPressEvent(e)
+
+    def eventFilter(self, obj, ev):
+        if obj is self.ui.editComment and ev.type() == QEvent.KeyPress:
+            if ev.key() in (Qt.Key_Return, Qt.Key_Enter) and ev.modifiers() & Qt.ControlModifier:
+                self._post_comment()
+                return True
+        return super().eventFilter(obj, ev)
