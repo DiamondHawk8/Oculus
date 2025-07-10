@@ -475,11 +475,15 @@ class ImageViewerDialog(QDialog):
         self._create_shortcuts()
 
     def _toggle_comments(self):
-        print("test")
-        if self.comments_panel.isVisible():
-            self.comments_panel.hide()
-        else:
-            mid = self.current_media_id()
-            if mid is not None:
-                self.comments_panel.load_comments(mid)
-            self.comments_panel.show()
+        # For some reason, QtextEdit fails to return control to the imageViewer properly when comments are typed into it
+        # In order for key control to be returned, it requires that the QtextEdit be hidden, then shown again.
+        # That is the reason this method fire 3 times.
+        for i in range(3):
+            if self.comments_panel.isVisible():
+                self.comments_panel.hide()
+            else:
+                mid = self.current_media_id()
+                if mid:
+                    self.comments_panel.load_comments(mid)
+                self.comments_panel.show()
+                self.setFocus()

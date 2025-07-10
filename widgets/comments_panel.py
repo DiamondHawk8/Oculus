@@ -92,9 +92,9 @@ class CommentsPanel(QWidget):
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
             self.hide()
-            self.panelClosed.emit()
-        else:
-            super().keyPressEvent(e)
+            e.accept()
+            return
+        super().keyPressEvent(e)
 
     def eventFilter(self, obj, ev):
         if obj is self.ui.editComment and ev.type() == QEvent.KeyPress:
