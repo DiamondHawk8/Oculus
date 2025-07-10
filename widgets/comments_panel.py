@@ -11,6 +11,10 @@ class CommentsPanel(QWidget):
         super().__init__(parent)
         self.ui = Ui_CommentsPanel()
         self.ui.setupUi(self)
+
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("background:#222; color:#eee;")
+
         self._svc = comment_service
         self._media_id = None
 
@@ -64,14 +68,18 @@ class CommentsPanel(QWidget):
                 child.setParent(None)
 
     def _post_comment(self):
-        txt = self.ui.editComment.text().strip()
+
+        txt = self.ui.editComment.toPlainText().strip()
+        clear_fn = self.ui.editComment.clear
+
         if not txt:
             return
         if self._media_id is None:
             QMessageBox.warning(self, "No media", "No file selected.")
             return
+
         self._svc.add_comment(self._media_id, txt)
-        self.ui.editComment.clear()
+        clear_fn()
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
