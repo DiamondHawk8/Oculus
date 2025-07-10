@@ -34,10 +34,6 @@ class Ui_CommentWidget(object):
         self.topLayout = QHBoxLayout()
         self.topLayout.setObjectName(u"topLayout")
         self.topLayout.setContentsMargins(0, 0, 0, -1)
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.topLayout.addItem(self.horizontalSpacer)
-
         self.labelAuthor = QLabel(CommentWidget)
         self.labelAuthor.setObjectName(u"labelAuthor")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
@@ -66,6 +62,10 @@ class Ui_CommentWidget(object):
         self.btnDelete.setObjectName(u"btnDelete")
 
         self.topLayout.addWidget(self.btnDelete)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.topLayout.addItem(self.horizontalSpacer)
 
 
         self.verticalLayout.addLayout(self.topLayout)

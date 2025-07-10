@@ -59,7 +59,7 @@ class CommentsPanel(QWidget):
         w = CommentWidget(row["id"], "Me", row["text"], row["created"])
         w.deleteClicked.connect(self._svc.delete_comment)
         w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.ui.commentsContainer.layout().insertWidget(0, w, 0, Qt.AlignTop)
+        self.ui.commentsContainer.layout().addWidget(w, 0, Qt.AlignTop)
 
     def _clear_thread(self):
         lay = self.ui.commentsContainer.layout()
@@ -85,6 +85,9 @@ class CommentsPanel(QWidget):
     def set_input_visible(self, visible: bool):
         self.ui.editComment.setVisible(visible)
         self.ui.btnPost.setVisible(visible)
+
+    def toggle_input(self):
+        self.set_input_visible(not self.ui.editComment.isVisible())
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:

@@ -82,6 +82,9 @@ class ImageViewerDialog(QDialog):
         QShortcut(QKeySequence("Ctrl+/"), self).activated.connect(
             lambda: self._toggle_comments()
         )
+        QShortcut(QKeySequence("Ctrl+Shift+/"), self).activated.connect(
+            lambda: self.comments_panel.toggle_input()
+        )
 
     def current_media_id(self) -> int | None:
         """
