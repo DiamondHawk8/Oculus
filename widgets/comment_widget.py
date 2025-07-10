@@ -46,7 +46,6 @@ class CommentWidget(QWidget):
         row.addStretch()
 
         v = self.layout()  # root QVBoxLayout from .ui
-        v.removeWidget(self.ui.labelText)
         self.ui.labelText.hide()
         v.addWidget(self._editor)
         v.addLayout(row)

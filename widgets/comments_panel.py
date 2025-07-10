@@ -1,5 +1,5 @@
-from PySide6.QtCore import Signal, Qt, QEvent
-from PySide6.QtWidgets import QWidget, QMessageBox, QSizePolicy
+from PySide6.QtCore import Signal, Qt, QEvent, QSettings
+from PySide6.QtWidgets import QWidget, QMessageBox, QSizePolicy, QCheckBox
 from ui.ui_comments_panel import Ui_CommentsPanel
 from widgets.comment_widget import CommentWidget
 
@@ -13,6 +13,7 @@ class CommentsPanel(QWidget):
         super().__init__(parent)
         self.ui = Ui_CommentsPanel()
         self.ui.setupUi(self)
+        self._settings = QSettings("Oculus", "ImageViewer")
 
         self.setAutoFillBackground(True)
         self.setStyleSheet("background:#222; color:#eee;")
@@ -59,10 +60,28 @@ class CommentsPanel(QWidget):
     # ---------- local helpers ---------- #
     def _add_comment_widget(self, row: dict):
         w = CommentWidget(row["id"], "Me", row["text"], row["created"])
-        w.deleteClicked.connect(self._svc.delete_comment)
+        w.deleteClicked.connect(self._confirm_delete)
         w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         w.editSaved.connect(self._on_local_edit)
         self.ui.commentsContainer.layout().addWidget(w, 0, Qt.AlignTop)
+
+    def _confirm_delete(self, cid: int):
+        if self._settings.value("skipDeleteConfirm", False, bool):
+            self._svc.delete_comment(cid)
+            return
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Delete comment")
+        box.setText("Delete this comment?")
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        chk = QCheckBox("Don't ask again", box)
+        box.setCheckBox(chk)
+
+        if box.exec() == QMessageBox.Yes:
+            if chk.isChecked():
+                self._settings.setValue("skipDeleteConfirm", True)
+            self._svc.delete_comment(cid)
 
     def _clear_thread(self):
         lay = self.ui.commentsContainer.layout()
