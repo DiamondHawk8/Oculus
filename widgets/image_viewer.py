@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, QSize, QPoint, QEvent
 from PySide6.QtGui import QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import QDialog, QLabel, QWidget
 
+from widgets.comments_panel import CommentsPanel
 from widgets.metadata_dialog import MetadataDialog
 import logging
 
@@ -56,6 +57,10 @@ class ImageViewerDialog(QDialog):
         self._meta_shortcut = QShortcut(QKeySequence("Ctrl+P"), self._label)
         self._meta_shortcut.activated.connect(self._open_metadata_dialog)
 
+        # ---- comments --------------------------------------------------
+        self.comments_panel = CommentsPanel(media_manager.comments, self)
+        self.comments_panel.hide()
+
         # ---- load & show -----------------------------------------------
         self.showFullScreen()
 
@@ -74,7 +79,16 @@ class ImageViewerDialog(QDialog):
         QShortcut(QKeySequence("Alt+D"), self).activated.connect(
             lambda: self._nudge(Qt.Key_Right)
         )
+        QShortcut(QKeySequence("Ctrl+/"), self).activated.connect(
+            lambda: self._toggle_comments()
+        )
 
+    def current_media_id(self) -> int | None:
+        """
+        Return DB id of the image currently displayed.
+        :return:
+        """
+        return self._media_manager.get_media_id(self._current_path)
 
     def _load_image(self, path: str):
         """
@@ -171,6 +185,9 @@ class ImageViewerDialog(QDialog):
         self._backdrop.setGeometry(self.rect())
         self._recompute_fit_scale()
         self._update_scaled()
+        panel_w = self.comments_panel.width()
+        self.comments_panel.setFixedHeight(self.height())
+        self.comments_panel.move(self.width() - panel_w, 0)
         super().resizeEvent(ev)
 
     def mouseDoubleClickEvent(self, event):
@@ -453,3 +470,13 @@ class ImageViewerDialog(QDialog):
         self._save_current_state()
         self._load_image(self._current_path)
         self._create_shortcuts()
+
+    def _toggle_comments(self):
+        print("test")
+        if self.comments_panel.isVisible():
+            self.comments_panel.hide()
+        else:
+            mid = self.current_media_id()
+            if mid is not None:
+                self.comments_panel.load_comments(mid)
+            self.comments_panel.show()
