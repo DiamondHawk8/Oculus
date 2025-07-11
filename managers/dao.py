@@ -274,8 +274,6 @@ class MediaDAO(BaseManager):
                 "INSERT INTO comments(media_id, text) VALUES (?,?)",
                 (media_id, text.strip())
             )
-        print("INSERT INTO comments(media_id, text) VALUES (?,?)",
-              (media_id, text.strip()))
         return self.cur.lastrowid
 
     def list_comments(self, media_id: int) -> list[dict]:
