@@ -96,8 +96,10 @@ class TabController(QObject):
             if viewer is None:  # first time in this tab
                 viewer = ImageViewerDialog(
                     paths, cur_idx,
-                    self.media_manager, stack,
-                    parent=self._tabs  # keep it within the tab widget
+                    self.media_manager,
+                    self.tag_manager,
+                    stack,
+                    parent=self._tabs
                 )
                 viewer.destroyed.connect(
                     lambda: self._viewers.pop(tab_page, None))

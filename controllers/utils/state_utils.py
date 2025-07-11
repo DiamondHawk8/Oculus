@@ -46,13 +46,23 @@ class ViewerState:
         self.dialog = None
 
     def open_via_callback(self, nav_paths, cur_idx, stack, selected,
-                          host_widget, media_manager):
+                          host_widget, media_manager, tag_manager):
+        """
+        Route the request to the callback injected by TabController,
+        so each tab owns one persistent viewer managed by TabController.
+        """
+        print("open_via_callback called in state_utils")
         if callable(self.callback):
+            print("function is callable")
+            self.callback(nav_paths, cur_idx, stack)
+        else:
             dlg = ImageViewerDialog(
-                nav_paths, cur_idx, media_manager, None,
-                stack, selected_path=selected, parent=host_widget
+                nav_paths, cur_idx,
+                media_manager, tag_manager,
+                stack, selected_path=selected,
+                parent=host_widget
             )
-            dlg.destroyed.connect(self._on_closed)
+            dlg.finished.connect(self._on_closed)
             self.dialog = dlg
             self.is_open = True
 

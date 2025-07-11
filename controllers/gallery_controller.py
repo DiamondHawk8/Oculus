@@ -45,7 +45,6 @@ class GalleryController:
         self.state = GalleryState()
         self.history = GalleryHistory()
         self.viewer = ViewerState()
-
         # ---------- gallery defaults ----------
         self._gallery_grid = True
         self._gallery_preset = "Medium"
@@ -381,9 +380,10 @@ class GalleryController:
             self.viewer.open_via_callback(
                 nav_paths, cur_idx, stack, selected,
                 host_widget=self._host_widget,
-                media_manager=self.media_manager
+                media_manager=self.media_manager, tag_manager=self.tag_manager
             )
         else:
+            print('VIEWER POSSESSES NO CALLBACK')
             self.viewer.open_paths(
                 nav_paths, cur_idx, stack, selected,
                 media_manager=self.media_manager,
