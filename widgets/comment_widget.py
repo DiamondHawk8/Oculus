@@ -75,6 +75,15 @@ class CommentWidget(QWidget):
         del self._editor
         self.editingEnded.emit()
 
+    def refresh_text(self, txt: str):
+        """
+        Called after DB update to keep UI in sync even if the change came from another panel.
+        :param txt:
+        :return:
+        """
+        self._orig_text = txt
+        self.ui.labelText.setText(txt)
+
     def eventFilter(self, obj, ev):
         if obj is getattr(self, "_editor", None) and ev.type() == QEvent.FocusOut:
             self.editingEnded.emit()

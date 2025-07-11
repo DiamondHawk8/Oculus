@@ -290,3 +290,9 @@ class MediaDAO(BaseManager):
     def delete_comment(self, comment_id: int) -> None:
         with self.conn:
             self.cur.execute("DELETE FROM comments WHERE id=?", (comment_id,))
+
+    def update_comment(self, comment_id: int, text: str) -> int:
+        with self.conn:
+            self.cur.execute(
+                "UPDATE comments SET text=? WHERE id=?", (text, comment_id)
+            )

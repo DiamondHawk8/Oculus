@@ -24,6 +24,7 @@ class CommentsPanel(QWidget):
         # Signals from service
         self._svc.commentAdded.connect(self._on_added)
         self._svc.commentDeleted.connect(self._on_deleted)
+        self._svc.commentEdited.connect(self._on_edited)
 
         # Post button / Return key
         self.ui.btnPost.clicked.connect(self._post_comment)
@@ -105,8 +106,17 @@ class CommentsPanel(QWidget):
         clear_fn()
 
     def _on_local_edit(self, cid: int, new_text: str):
-        # TODO fill out
-        print(f"(Preview) comment {cid} changed to: {new_text}")
+        self._svc.edit_comment(cid, new_text)
+
+    def _on_edited(self, media_id: int, row: dict):
+        if media_id != self._media_id:
+            return
+        lay = self.ui.commentsContainer.layout()
+        for i in range(lay.count()):
+            w = lay.itemAt(i).widget()
+            if isinstance(w, CommentWidget) and w.comment_id == row["id"]:
+                w.refresh_text(row["text"])  # new helper on widget
+                break
 
     def set_input_visible(self, visible: bool):
         self.ui.editComment.setVisible(visible)
