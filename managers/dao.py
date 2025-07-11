@@ -84,10 +84,11 @@ class MediaDAO(BaseManager):
     # ------------------------------ Variants ------------------------------
     def add_variant(self, base_id: int, variant_id: int, rank: int):
         logger.debug(f"Adding variant {variant_id} to {base_id}, with rank {rank}")
-        self.cur.execute(
-            "INSERT OR IGNORE INTO variants(base_id, variant_id, rank) VALUES (?,?,?)",
-            (base_id, variant_id, rank)
-        )
+        with self.conn:
+            self.cur.execute(
+                "INSERT OR IGNORE INTO variants(base_id, variant_id, rank) VALUES (?,?,?)",
+                (base_id, variant_id, rank)
+            )
 
     def is_variant(self, path: str) -> bool:
         row = self.fetchone("SELECT id FROM media WHERE path=?", (path,))
@@ -268,19 +269,24 @@ class MediaDAO(BaseManager):
     # ------------------------------ Comments ------------------------------
 
     def add_comment(self, media_id: int, text: str) -> int:
-        self.cur.execute(
-            "INSERT INTO comments(media_id, text) VALUES (?,?)",
-            (media_id, text.strip())
-        )
+        with self.conn:
+            self.cur.execute(
+                "INSERT INTO comments(media_id, text) VALUES (?,?)",
+                (media_id, text.strip())
+            )
+        print("INSERT INTO comments(media_id, text) VALUES (?,?)",
+              (media_id, text.strip()))
         return self.cur.lastrowid
 
     def list_comments(self, media_id: int) -> list[dict]:
-        self.cur.execute(
-            "SELECT id, created, text FROM comments "
-            "WHERE media_id=? ORDER BY created DESC",
-            (media_id,)
-        )
+        with self.conn:
+            self.cur.execute(
+                "SELECT id, created, text FROM comments "
+                "WHERE media_id=? ORDER BY created DESC",
+                (media_id,)
+            )
         return [dict(r) for r in self.cur.fetchall()]
 
     def delete_comment(self, comment_id: int) -> None:
-        self.cur.execute("DELETE FROM comments WHERE id=?", (comment_id,))
+        with self.conn:
+            self.cur.execute("DELETE FROM comments WHERE id=?", (comment_id,))
