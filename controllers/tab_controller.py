@@ -89,26 +89,6 @@ class TabController(QObject):
 
         clone_controller.open_folder(root_path)
 
-        # ----- viewer callback ---------------------------------
-        def open_viewer(paths, cur_idx, stack):
-            viewer = self._viewers.get(tab_page)
-
-            if viewer is None:  # first time in this tab
-                viewer = ImageViewerDialog(
-                    paths, cur_idx,
-                    self.media_manager,
-                    self.tag_manager,
-                    stack,
-                    parent=self._tabs
-                )
-                viewer.destroyed.connect(
-                    lambda: self._viewers.pop(tab_page, None))
-                self._viewers[tab_page] = viewer
-            else:
-                viewer.load_new_stack(paths, cur_idx, stack)  # refresh content
-                viewer.raise_()  # bring to front
-
-        clone_controller.set_viewer_callback(open_viewer)
         tab_idx = self.open_in_new_tab(tab_page, title or Path(root_path).name, switch=switch)
 
         return tab_idx
@@ -121,7 +101,8 @@ class TabController(QObject):
             if viewer is None:
                 continue
             if page is active_page:
-                if viewer.isVisible():
+                if viewer:
+                    viewer.show()
                     viewer.raise_()
             else:
                 viewer.hide()
@@ -173,6 +154,27 @@ class TabController(QObject):
         tabbar = self._tabs.tabBar()
         tabbar.setTabTextColor(new, Qt.red)
         QTimer.singleShot(150, lambda: tabbar.setTabTextColor(new, Qt.black))
+
+    def register_gallery(self, host_page: QWidget, controller) -> None:
+        """
+        Called by each GalleryController exactly once. Creates (or reuses) a persistent viewer bound to host_page.
+        """
+        def _open_viewer(paths, cur_idx, stack):
+            viewer = self._viewers.get(host_page)
+            if viewer is None:
+                viewer = ImageViewerDialog(
+                    paths, cur_idx,
+                    self.media_manager, self.tag_manager, stack,
+                    parent=self._tabs
+                )
+                viewer.destroyed.connect(lambda: self._viewers.pop(host_page, None))
+                self._viewers[host_page] = viewer
+            else:
+                viewer.load_new_stack(paths, cur_idx, stack)
+                viewer.show()
+                viewer.raise_()
+
+        controller.set_viewer_callback(_open_viewer)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonRelease:

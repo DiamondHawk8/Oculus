@@ -90,6 +90,8 @@ class GalleryController:
         self._meta_shortcut = QShortcut(QKeySequence("Ctrl+P"), self.ui.galleryList)
         self._meta_shortcut.activated.connect(self._open_metadata_dialog)
 
+        self.tab_controller.register_gallery(self._host_widget, self)
+
         logger.info("Gallery setup complete")
 
     # ----------------------------- Navigation / History -----------------------------
