@@ -2,6 +2,8 @@ from collections import deque
 import logging
 from pathlib import Path
 
+import PySide6
+from PySide6 import QtGui
 from PySide6.QtCore import QObject, QTimer, Qt, QEvent
 from PySide6.QtWidgets import QTabWidget, QWidget
 
@@ -46,6 +48,11 @@ class TabController(QObject):
 
         # Allow for tabs to be closed via MMB
         self._tabs.tabBar().installEventFilter(self)
+
+        self._home_page = self._tabs.widget(0)
+
+        # Remove close tab button for home tab
+        self._tabs.tabBar().setTabButton(0, PySide6.QtWidgets.QTabBar.ButtonPosition.RightSide, None)
 
         logger.info("Tab setup complete")
 
@@ -130,6 +137,9 @@ class TabController(QObject):
         logger.debug(f"New closed index: {idx}")
 
         page = self._tabs.widget(idx)
+        if page is self._home_page:
+            logger.debug("Ignoring attempt to close home page")
+            return
         viewer = self._viewers.pop(page, None)
         if viewer:
             viewer.close()
@@ -148,6 +158,10 @@ class TabController(QObject):
             return
         cur = self._tabs.currentIndex()
         new = (cur + step) % count
+
+        # Skip homepage during cycling
+        if self._tabs.widget(new) is self._home_page:
+            new = (new + step) % count
         self._tabs.setCurrentIndex(new)
 
         # Highlight tab that was switched to
