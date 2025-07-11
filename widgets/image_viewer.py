@@ -113,6 +113,12 @@ class ImageViewerDialog(QDialog):
         self._pix = pix
         self._current_path = path
 
+        # Load comments for current media
+        if self.comments_panel.isVisible():
+            mid = self._media_manager.get_media_id(self._current_path)
+            if mid:
+                self.comments_panel.load_comments(mid)
+
         # Check session cache
         if self._current_path in self._view_states:
             self._scale, saved_pos = self._view_states[path]
