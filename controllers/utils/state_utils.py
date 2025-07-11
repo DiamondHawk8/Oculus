@@ -51,9 +51,7 @@ class ViewerState:
         Route the request to the callback injected by TabController,
         so each tab owns one persistent viewer managed by TabController.
         """
-        print("open_via_callback called in state_utils")
         if callable(self.callback):
-            print("function is callable")
             self.callback(nav_paths, cur_idx, stack)
         else:
             dlg = ImageViewerDialog(
