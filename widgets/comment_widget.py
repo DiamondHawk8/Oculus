@@ -75,6 +75,15 @@ class CommentWidget(QWidget):
         del self._editor
         self.editingEnded.emit()
 
+    def cancel_edit(self, save=False):
+        """
+        Close editing dialog
+        :param save: If true, edits will be saved
+        :return:
+        """
+        if hasattr(self, "_editor"):
+            self._finish_edit(save)
+
     def refresh_text(self, txt: str):
         """
         Called after DB update to keep UI in sync even if the change came from another panel.

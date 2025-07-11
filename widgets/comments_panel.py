@@ -20,6 +20,7 @@ class CommentsPanel(QWidget):
 
         self._svc = comment_service
         self._media_id = None
+        self._active_editor = None
 
         # Signals from service
         self._svc.commentAdded.connect(self._on_added)
@@ -64,6 +65,8 @@ class CommentsPanel(QWidget):
         w.deleteClicked.connect(self._confirm_delete)
         w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         w.editSaved.connect(self._on_local_edit)
+        w.editingBegan.connect(lambda w=w: self._on_edit_started(w))
+        w.editingEnded.connect(lambda w=w: self._on_edit_ended(w))
         self.ui.commentsContainer.layout().addWidget(w, 0, Qt.AlignTop)
 
     def _confirm_delete(self, cid: int):
@@ -117,6 +120,18 @@ class CommentsPanel(QWidget):
             if isinstance(w, CommentWidget) and w.comment_id == row["id"]:
                 w.refresh_text(row["text"])  # new helper on widget
                 break
+
+    def _on_edit_started(self, widget):
+        if self._active_editor and self._active_editor is not widget:
+            # cancel previous editor without saving
+            self._active_editor.cancel_edit(save=False)
+        self._active_editor = widget
+        self.editingBegan.emit()
+
+    def _on_edit_ended(self, widget):
+        if widget is self._active_editor:
+            self._active_editor = None
+        self.editingEnded.emit()
 
     def set_input_visible(self, visible: bool):
         self.ui.editComment.setVisible(visible)
