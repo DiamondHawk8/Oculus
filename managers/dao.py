@@ -268,11 +268,11 @@ class MediaDAO(BaseManager):
 
     # ------------------------------ Comments ------------------------------
 
-    def add_comment(self, media_id: int, text: str) -> int:
+    def add_comment(self, media_id: int, text: str, seq: int) -> int:
         with self.conn:
             self.cur.execute(
-                "INSERT INTO comments(media_id, text) VALUES (?,?)",
-                (media_id, text.strip())
+                "INSERT INTO comments(media_id, text, seq) VALUES (?,?,?)",
+                (media_id, text.strip(), seq)
             )
         return self.cur.lastrowid
 
@@ -295,9 +295,16 @@ class MediaDAO(BaseManager):
             )
 
     def update_comment_sequence(self, media_id: int, ordered_ids: list[int]):
-        # bulk update using CASE ... WHEN for efficiency
-        cases = ", ".join(f"WHEN {cid} THEN {idx}" for idx, cid in enumerate(ordered_ids))
+        # build WHEN ... THEN ... clauses without commas
+        cases = " ".join(
+            f"WHEN {cid} THEN {idx}" for idx, cid in enumerate(ordered_ids)
+        )
         ids = ", ".join(str(cid) for cid in ordered_ids)
+
+        sql = (
+            "UPDATE comments "
+            f"SET seq = CASE id {cases} END "
+            f"WHERE id IN ({ids}) AND media_id=?"
+        )
         with self.conn:
-            sql = f"UPDATE comments SET seq = CASE id {cases} END WHERE id IN ({ids}) AND media_id=?"
             self.cur.execute(sql, (media_id,))
