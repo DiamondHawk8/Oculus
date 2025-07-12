@@ -22,6 +22,10 @@ class CommentsPanel(QWidget):
         self._media_id = None
         self._active_editor = None
 
+        # Allow for dragging of comment widgets
+        self.ui.commentsContainer.setAcceptDrops(True)
+        self.ui.commentsContainer.installEventFilter(self)
+
         # Signals from service
         self._svc.commentAdded.connect(self._on_added)
         self._svc.commentDeleted.connect(self._on_deleted)
@@ -141,6 +145,32 @@ class CommentsPanel(QWidget):
         self.editingEnded.emit()
         self.set_input_visible(not self.ui.editComment.isVisible())
 
+    def _reorder_comment_widget(self, comment_id, drop_pos):
+        lay = self.ui.commentsContainer.layout()
+        w = None
+        # Find dragged widget
+        dragged = None
+        for i in range(lay.count()):
+            w = lay.itemAt(i).widget()
+            if isinstance(w, CommentWidget) and w.comment_id == comment_id:
+                dragged = w
+                break
+        if not dragged:
+            return
+
+        # Remove and reinsert at correct position
+        lay.removeWidget(dragged)
+
+        insert_idx = 0
+        for i in range(lay.count()):
+            w = lay.itemAt(i).widget()
+            if drop_pos.y() < w.y():
+                break
+            insert_idx += 1
+
+        lay.insertWidget(insert_idx, dragged, 0, Qt.AlignTop)
+        lay.update()
+
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
             self.hide()
@@ -157,4 +187,12 @@ class CommentsPanel(QWidget):
             if ev.key() in (Qt.Key_Return, Qt.Key_Enter) and ev.modifiers() & Qt.ControlModifier:
                 self._post_comment()
                 return True
+        if obj is self.ui.commentsContainer:
+            if ev.type() == QEvent.DragEnter:
+                ev.accept()
+                return True
+        if ev.type() == QEvent.Drop:
+            comment_id = int(ev.mimeData().text())
+            self._reorder_comment_widget(comment_id, ev.pos())
+            return True
         return super().eventFilter(obj, ev)

@@ -1,6 +1,6 @@
-from PySide6.QtCore import Signal, Qt, QEvent
-from PySide6.QtGui import QTextOption
-from PySide6.QtWidgets import QWidget, QSizePolicy, QPlainTextEdit, QToolButton, QHBoxLayout
+from PySide6.QtCore import Signal, Qt, QEvent, QMimeData
+from PySide6.QtGui import QTextOption, QDrag
+from PySide6.QtWidgets import QWidget, QSizePolicy, QPlainTextEdit, QToolButton, QHBoxLayout, QApplication
 from ui.ui_comment_widget import Ui_CommentWidget
 
 
@@ -17,13 +17,21 @@ class CommentWidget(QWidget):
         self.comment_id = cid
         self._orig_text = text
 
+        self._drag_start = None
+
         self.ui.labelAuthor.setText(f"<b>{author}</b>")
         self.ui.labelText.setText(text)
         self.ui.labelTime.setText(f"<i>{ts}</i>")
 
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+
         # --- edit controls ---
         self.ui.btnEdit.clicked.connect(self._enter_edit)
         self.ui.btnDelete.clicked.connect(lambda: self.deleteClicked.emit(cid))
+
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAcceptDrops(True)
+        self.setStyleSheet("background: #333; padding: 8px; border-radius: 6px;")
 
     def _enter_edit(self):
         if hasattr(self, "_editor"):  # already in edit mode → ignore
@@ -92,6 +100,19 @@ class CommentWidget(QWidget):
         """
         self._orig_text = txt
         self.ui.labelText.setText(txt)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_start = event.pos()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.LeftButton:
+            if (event.pos() - self._drag_start).manhattanLength() > QApplication.startDragDistance():
+                drag = QDrag(self)
+                mime = QMimeData()
+                mime.setText(str(self.comment_id))  # pass comment ID
+                drag.setMimeData(mime)
+                drag.exec(Qt.MoveAction)
 
     def eventFilter(self, obj, ev):
         if obj is getattr(self, "_editor", None) and ev.type() == QEvent.FocusOut:
