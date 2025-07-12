@@ -15,9 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QListView,
-    QPushButton, QSizePolicy, QSpacerItem, QToolButton,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QHBoxLayout,
+    QListView, QPushButton, QSizePolicy, QSpacerItem,
+    QToolButton, QVBoxLayout, QWidget)
 from resources import resources_rc
 
 class Ui_Form(object):
@@ -180,6 +180,9 @@ class Ui_Form(object):
         sizePolicy.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
         self.galleryList.setSizePolicy(sizePolicy)
         self.galleryList.setLineWidth(0)
+        self.galleryList.setDragEnabled(True)
+        self.galleryList.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
+        self.galleryList.setDefaultDropAction(Qt.DropAction.MoveAction)
 
         self.verticalLayout.addWidget(self.galleryList)
 

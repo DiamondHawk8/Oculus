@@ -2695,6 +2695,15 @@ background-repeat: no-repeat;</string>
                              <property name="lineWidth">
                               <number>0</number>
                              </property>
+                             <property name="dragEnabled">
+                              <bool>true</bool>
+                             </property>
+                             <property name="dragDropMode">
+                              <enum>QAbstractItemView::DragDropMode::DragOnly</enum>
+                             </property>
+                             <property name="defaultDropAction">
+                              <enum>Qt::DropAction::MoveAction</enum>
+                             </property>
                             </widget>
                            </item>
                           </layout>
@@ -2998,7 +3007,7 @@ background-repeat: no-repeat;</string>
                                 <rect>
                                  <x>0</x>
                                  <y>0</y>
-                                 <width>218</width>
+                                 <width>443</width>
                                  <height>218</height>
                                 </rect>
                                </property>

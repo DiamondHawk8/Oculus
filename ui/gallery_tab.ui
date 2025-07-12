@@ -586,6 +586,15 @@
      <property name="lineWidth">
       <number>0</number>
      </property>
+     <property name="dragEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="dragDropMode">
+      <enum>QAbstractItemView::DragDropMode::DragOnly</enum>
+     </property>
+     <property name="defaultDropAction">
+      <enum>Qt::DropAction::MoveAction</enum>
+     </property>
     </widget>
    </item>
   </layout>

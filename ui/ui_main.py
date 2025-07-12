@@ -1268,6 +1268,9 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.galleryList.sizePolicy().hasHeightForWidth())
         self.galleryList.setSizePolicy(sizePolicy)
         self.galleryList.setLineWidth(0)
+        self.galleryList.setDragEnabled(True)
+        self.galleryList.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
+        self.galleryList.setDefaultDropAction(Qt.DropAction.MoveAction)
 
         self.verticalLayout_20.addWidget(self.galleryList)
 
@@ -1417,7 +1420,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 218, 218))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 443, 218))
         self.scrollAreaWidgetContents.setStyleSheet(u" QScrollBar:vertical {\n"
 "	border: none;\n"
 "    background: rgb(52, 59, 72);\n"
