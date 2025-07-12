@@ -1,10 +1,11 @@
+import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QListView, QMenu, QWidget, QApplication,
-    QStyle, QAbstractItemView, QDialog
+    QStyle, QAbstractItemView, QDialog, QFileDialog, QMessageBox
 )
 
 from controllers.utils import view_utils, path_utils
@@ -79,6 +80,9 @@ class GalleryController:
         self.ui.btn_gallery_view.toggled.connect(self._toggle_view)
         self.ui.cmb_gallery_sortKey.currentIndexChanged.connect(self._apply_sort)
         self.ui.btn_gallery_sortDir.toggled.connect(self._apply_sort)
+
+        # Move shortcut
+        self._add_shortcut("Ctrl+M", self._on_move_triggered)
 
         # ---------- size combo ----------
         # TODO derive sizes dynamically
@@ -269,7 +273,7 @@ class GalleryController:
         abs_path = self._model.data(idx, Qt.UserRole)  # absolute path of given row
 
         sel = self.get_selected_paths()
-
+        logger.debug(f"ctx menu working paths {sel}")
         menu = QMenu(self.ui.galleryList)
         menu.setStyleSheet("""
             QMenu { background:#2b2b2b; color:white; border:1px solid #444; }
@@ -289,6 +293,7 @@ class GalleryController:
         act_new = menu.addAction("Open in New Tab")
         rename_act = menu.addAction("Rename")
         edit_act = menu.addAction("Edit metadata")
+        act_move = menu.addAction("Move to...")
 
         # Ensure gallery is always properly rendered
         menu.aboutToHide.connect(self._reload_gallery)
@@ -303,6 +308,8 @@ class GalleryController:
             self._on_rename_triggered()
         elif chosen == edit_act:
             MetadataDialog(sel, self.media_manager, self.tag_manager, self._host_widget).exec()
+        elif chosen == act_move:
+            self._on_move_triggered(sel)
 
     def _on_rename_triggered(self):
         logger.info("Renaming media")
@@ -351,6 +358,27 @@ class GalleryController:
             self.media_manager.thumb(new_path)
             self._apply_sort()
 
+    def _on_move_triggered(self, sel):
+        if not sel:
+            return
+
+        # choose destination folder
+        dest_dir = QFileDialog.getExistingDirectory(
+            self.ui.galleryList, "Select destination folder", os.getcwd()
+        )
+        if not dest_dir:
+            return
+
+        # perform move via RenameService
+        moved = self.media_manager.rename_service.move_many(sel, dest_dir)
+        if moved:
+            self._reload_gallery()  # refresh list to reflect moves
+        else:
+            QMessageBox.information(self.ui.galleryList, "Move", "Nothing was moved.")
+
+        # refresh gallery view (files may have left or arrived)
+        self._reload_gallery()
+
     # ---------------------------- Viewer integration & tab helpers ----------------------------
 
     def _open_viewer(self, index: QModelIndex) -> None:
@@ -385,7 +413,7 @@ class GalleryController:
                 media_manager=self.media_manager, tag_manager=self.tag_manager
             )
         else:
-            print('VIEWER POSSESSES NO CALLBACK')
+            logger.critical("Viewer possesses no callback, functionality disrupted")
             self.viewer.open_paths(
                 nav_paths, cur_idx, stack, selected,
                 media_manager=self.media_manager,

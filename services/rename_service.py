@@ -45,6 +45,32 @@ class RenameService(QObject):
     def attach_undo_manager(self, undo_mgr):
         self.undo_manager = undo_mgr
 
+    def move_many(self, src_paths: list[str], dest_folder: str) -> bool:
+        """
+        Move each path into dest_folder. Uses existing rename()/overwrite()
+        logic so collision dialogs, DB updates and undo all work.
+        Returns True if at least one file was moved.
+        :param src_paths:
+        :param dest_folder:
+        :return:
+        """
+        dest_folder = Path(dest_folder).expanduser().resolve()
+        moved_any = False
+
+        for src in src_paths:
+            src_path = Path(src).expanduser().resolve()
+
+            # skip if already in that folder
+            if src_path.parent == dest_folder:
+                continue
+
+            target = dest_folder / src_path.name
+            # reuse rename(); it shows CollisionDialog and pushes undo entries
+            if self.rename(str(src_path), str(target)):
+                moved_any = True
+
+        return moved_any
+
     # ------------------------------------------------------------------
     def rename(self, old_abs: str, new_abs: str) -> bool:
         old_path = Path(old_abs).expanduser().resolve()
