@@ -19,6 +19,7 @@ class CommentsPanel(QWidget):
         self.setStyleSheet("background:#222; color:#eee;")
 
         self._svc = comment_service
+        self._skip_next_reorder = False
         self._media_id = None
         self._active_editor = None
 
@@ -30,6 +31,7 @@ class CommentsPanel(QWidget):
         self._svc.commentAdded.connect(self._on_added)
         self._svc.commentDeleted.connect(self._on_deleted)
         self._svc.commentEdited.connect(self._on_edited)
+        self._svc.commentReordered.connect(self._on_reordered)
 
         # Post button / Return key
         self.ui.btnPost.clicked.connect(self._post_comment)
@@ -62,6 +64,14 @@ class CommentsPanel(QWidget):
             if isinstance(w, CommentWidget) and w.comment_id == comment_id:
                 w.setParent(None)
                 break
+
+    def _on_reordered(self, media_id: int):
+        if media_id != self._media_id:
+            return
+        if self._skip_next_reorder:  # ignore the echo from local drag
+            self._skip_next_reorder = False
+            return
+        self.load_comments(media_id)  # refresh for changes from other panels
 
     # ---------- local helpers ---------- #
     def _add_comment_widget(self, row: dict):
@@ -169,6 +179,15 @@ class CommentsPanel(QWidget):
             insert_idx += 1
 
         lay.insertWidget(insert_idx, dragged, 0, Qt.AlignTop)
+        # build new order list
+        new_ids = [
+            lay.itemAt(i).widget().comment_id
+            for i in range(lay.count())
+            if isinstance(lay.itemAt(i).widget(), CommentWidget)
+        ]
+
+        self._skip_next_reorder = True  # suppress self-refresh
+        self._svc.set_order(self._media_id, new_ids)
         lay.update()
 
     def keyPressEvent(self, e):

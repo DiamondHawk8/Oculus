@@ -110,9 +110,14 @@ class CommentWidget(QWidget):
             if (event.pos() - self._drag_start).manhattanLength() > QApplication.startDragDistance():
                 drag = QDrag(self)
                 mime = QMimeData()
-                mime.setText(str(self.comment_id))  # pass comment ID
+                mime.setText(str(self.comment_id))
                 drag.setMimeData(mime)
+
+                self.hide()
                 drag.exec(Qt.MoveAction)
+                self.show()
+                return
+        super().mouseMoveEvent(event)
 
     def eventFilter(self, obj, ev):
         if obj is getattr(self, "_editor", None) and ev.type() == QEvent.FocusOut:

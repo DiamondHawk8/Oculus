@@ -7,13 +7,17 @@ class CommentService(QObject):
     commentAdded = Signal(int, dict)
     commentDeleted = Signal(int, int)
     commentEdited = Signal(int, dict)  # media_id, new_row
+    commentReordered = Signal(int)
 
     def __init__(self, dao: MediaDAO, parent=None):
         super().__init__(parent)
         self.dao = dao
 
     def add_comment(self, media_id: int, text: str):
-        cid = self.dao.add_comment(media_id, text)
+        max_seq = self.dao.fetchone(
+            "SELECT COALESCE(MAX(seq), 0) + 1 AS nxt FROM comments WHERE media_id=?", (media_id,)
+        )["nxt"]
+        cid = self.dao.add_comment(media_id, text, seq=max_seq)
         row = {"id": cid, "text": text, "created": "now"}
         self.commentAdded.emit(media_id, row)
         return cid
@@ -41,3 +45,9 @@ class CommentService(QObject):
                        "text": row["text"],
                        "created": row["created"]}
             self.commentEdited.emit(row["media_id"], payload)
+
+    def set_order(self, media_id: int, ordered_ids: list[int]):
+        if not ordered_ids:
+            return
+        self.dao.update_comment_sequence(media_id, ordered_ids)
+        self.commentReordered.emit(media_id)
