@@ -279,9 +279,8 @@ class MediaDAO(BaseManager):
     def list_comments(self, media_id: int) -> list[dict]:
         with self.conn:
             self.cur.execute(
-                "SELECT id, created, text FROM comments "
-                "WHERE media_id=? ORDER BY created DESC",
-                (media_id,)
+                "SELECT id, created, text, seq FROM comments "
+                "WHERE media_id=? ORDER BY seq", (media_id,)
             )
         return [dict(r) for r in self.cur.fetchall()]
 
@@ -294,3 +293,11 @@ class MediaDAO(BaseManager):
             self.cur.execute(
                 "UPDATE comments SET text=? WHERE id=?", (text, comment_id)
             )
+
+    def update_comment_sequence(self, media_id: int, ordered_ids: list[int]):
+        # bulk update using CASE ... WHEN for efficiency
+        cases = ", ".join(f"WHEN {cid} THEN {idx}" for idx, cid in enumerate(ordered_ids))
+        ids = ", ".join(str(cid) for cid in ordered_ids)
+        with self.conn:
+            sql = f"UPDATE comments SET seq = CASE id {cases} END WHERE id IN ({ids}) AND media_id=?"
+            self.cur.execute(sql, (media_id,))
