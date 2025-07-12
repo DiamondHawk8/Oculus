@@ -1,19 +1,19 @@
 # Oculus
 
-A **modern, high‑performance** desktop media manager and viewer built with **PySide6**.
+A **modern, high-performance** desktop media manager and viewer built with **PySide6**.
 
 ---
 
 ## Project Status
 
-| Phase                           | State       | Key Deliverables                                                                           |
-|---------------------------------|-------------|--------------------------------------------------------------------------------------------|
-| **1 — UI Skeleton**             | Completed   | Border‑less Dracula‑styled shell, custom window grips, page scaffolding                    |
-| **2 — Core Metadata & Thumbnailing** | Completed   | Threaded folder scanner, SQLite schema (`media`, `tags`, `roots`), thumbnail cache         |
-| **3 — Image Workflows** | In Progress | Tabs per folder, Browser‑style history, Fullscreen viewer (zoom + pan), Sorting, Variants, Metadata dialogs, Rename & drag‑move |
-| **4 — Rich Media Support**      | Planned     | GIF playback (`QMovie`), Video playback (`QMediaPlayer` / PyAV), Audio (stretch goal)    |
-| **5 — Polish&Packaging**        | Planned     | Session save/load, Commit/rollback move queue, Installers/portable build, Performance sweeps |
-| **6 — Experimental/Cloud**      | Planned     | PostgreSQL backend, Cloud sync hooks, AI tagging suggestions                             |
+| Phase                               | State       | Key Deliverables                                                                                                                                                          |
+|-------------------------------------|-------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **1 — UI Skeleton**                 | Completed   | Border-less dark shell, custom window grips, page scaffolding                                                                                                             |
+| **2 — Core Metadata & Thumbnailing**| Completed   | Threaded folder scanner, SQLite schema (`media`, `tags`, `roots`), thumbnail cache                                                                                        |
+| **3 — Image Workflows**             | Completed   | Tabs per folder, Browser-style history, Fullscreen viewer (zoom + pan), Sorting, Variants, Unified Metadata dialog, Rename & Move queue, Comment system with drag-reorder |
+| **4 — Rich Media Support**          | In Progress | GIF playback (`QMovie`), Video playback (`QMediaPlayer` / PyAV), Audio (stretch goal)                                                                                     |
+| **5 — Polish & Packaging**          | Planned     | Session save/load, Commit/rollback move queue, Installers/portable build, Performance sweeps                                                                              |
+| **6 — Experimental/Cloud**          | Planned     | PostgreSQL backend, Cloud sync hooks, AI tagging suggestions                                                                                                              |
 
 ---
 
@@ -21,48 +21,48 @@ A **modern, high‑performance** desktop media manager and viewer built with **P
 
 ### **Completed**
 
-- Asynchronous folder ingest (JPEG/PNG) with deep‑tree scan
+- Asynchronous folder ingest (JPEG/PNG) with deep-tree scan
 - SQLite backend for paths, roots, tags & favourites
 - Background thumbnail generation via `QThreadPool`
-- Gallery view:
-  - List/grid toggle, dynamic icon sizing
-  - Browser‑like Back/Forward navigation
-  - Tabs per sub‑folder (Ctrl+W, Ctrl+Tab, middle‑click open)
-- Fullscreen image viewer with:
-  - Fit/zoom (wheel, ±) & double‑click toggle
-  - Left/Right navigation through current list
-  - Basic click‑drag panning
+- Gallery view  
+  - List/grid toggle, dynamic icon sizing  
+  - Browser-like Back/Forward navigation  
+  - Tabs per sub-folder (Ctrl+W, Ctrl+Tab, middle-click open)  
+  - **Drag-move to "Move to..."
+- Fullscreen image viewer  
+  - Fit/zoom (wheel, ±) & double-click toggle  
+  - Left/Right navigation through current list  
+  - Basic click-drag panning  
+  - Comments panel (add / edit / delete, live sync, drag-reorder with DB persistence)
+- Variants  
+  - Auto-stack detection, collapse/expand, visual stack badge  
+  - In-viewer Up/Down variant cycling
+- Unified Metadata dialog (Tags, Attributes, Zoom/Pan presets)  
+  - Batch scope (this / selected / folder), variant inclusion  
+  - Zoom/Pan presets with default & hotkey support
+- Rename dialog + safe overwrite + undo
 
-### **In Progress(Phase 3)**
+### **In Progress (Phase 4)**
 
-- **Search "Open in New Tab"** hook
-- **Advanced sorting** (name, date, size, weight)
-- **Variants**: cycle, collapse/expand in Gallery, visual stack indicator
-- **Unified Metadata dialog** (Tags, Attributes, Zoom/Pan presets)
-- **Zoom/Pan presets** with batch apply (image / folder / range / variants)
-- **Rename & drag‑move** with commit/rollback + DB sync
-
-### **Queued (Phase 4)**
-
-- GIF playback (Qt `QMovie`)
+- GIF playback (`QMovie`)
 - Video playback (`QMediaPlayer` / PyAV)
 - Optional audio preview
 
 ### **Planned (Phase 5)**
 
-- Session save/load (open tabs + per‑tab view state)
+- Session save/load (open tabs + per-tab view state)
 - Performance sweeps, memory guardrails
-- Windows/MSIX + macOS dmg packaging
+- Windows / MSIX + macOS dmg packaging
 
 ### **Planned (Phase 6)**
 
 - PostgreSQL backend option
-- Cloud sync / multi‑user hooks
-- AI‑powered tagging & duplicate detection
+- Cloud sync / multi-user hooks
+- AI-powered tagging & duplicate detection
 
 ---
 
-## Screenshots *(Phase 2 — UI subject to polish)*
+## Screenshots  *(Phase 3 — UI subject to further polish)*
 
 | Gallery                                      | Search                                  | Media View                             |
 |----------------------------------------------|-----------------------------------------|----------------------------------------|
@@ -72,14 +72,11 @@ A **modern, high‑performance** desktop media manager and viewer built with **P
 
 ## Immediate Milestones
 
-1. **Wrap Phase 3 core**  
-   – Finish search‑to‑tab hook  
-   – Ship variant indicator & cycle  
-   – Land unified Metadata dialog  
-   – Integrate rename & drag‑move commit queue
-2. **Begin Phase 4**  
-   – Drop‑in GIF playback  
-   – Prototype video pipeline  
-   – Add first performance benchmarks
+1. **Complete Phase 4**  
+   - Integrate GIF playback pipeline  
+   - Prototype video playback with `QMediaPlayer` / PyAV
+2. **Phase 5**  
+   - Session save/load prototype (tabs, view state, panel positions)
+   - First end-to-end performance sweep
 
 ---
