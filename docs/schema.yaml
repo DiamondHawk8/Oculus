@@ -37,3 +37,4 @@ comments:
   media_id:   INTEGER NOT NULL
   created:    TIMESTAMP DEFAULT
   text:       TEXT NOT NULL
+  seq:        INTEGER

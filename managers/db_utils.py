@@ -74,6 +74,7 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
                 media_id  INTEGER NOT NULL,
                 created   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 text      TEXT NOT NULL,
+                seq       INTEGER,
                 FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
             );
             
