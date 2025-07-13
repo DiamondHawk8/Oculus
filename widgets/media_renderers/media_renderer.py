@@ -1,32 +1,22 @@
-from abc import ABC, abstractmethod
-from pathlib import Path
 from PySide6.QtCore import QSize, QPoint, Qt
 from PySide6.QtWidgets import QWidget
 
 
-class MediaRenderer(QWidget, ABC):
+class MediaRenderer(QWidget):
     """Abstract base for all renderers"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
-    @abstractmethod
     def load(self, path: str):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def zoom(self, factor: float):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def fit_to(self, size: QSize):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
-    def pan(self, delta: QPoint):
-        pass
-
-    @abstractmethod
-    def reset_view(self):
-        pass
+    def move_to(self, pos: QPoint):
+        raise NotImplementedError
