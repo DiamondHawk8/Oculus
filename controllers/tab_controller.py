@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QTabWidget, QWidget
 
 from managers.keybind_manager import KeybindManager
 from managers.media_manager import MediaManager
-from widgets.media_renderers.media_renderer import MediaViewerDialog
+from widgets.media_renderers.viewer_base import MediaViewerDialog
 from managers.tag_manager import TagManager
 from ui.ui_gallery_tab import Ui_Form
 from controllers.gallery_controller import GalleryController
