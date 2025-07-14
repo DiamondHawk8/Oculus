@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, Set
 
-from managers.media_renderers.media_renderer import MediaViewerDialog
-from widgets.image_viewer import ImageViewerDialog
+from widgets.media_renderer import MediaViewerDialog
 from PySide6.QtCore import Qt
 from pathlib import Path
 
