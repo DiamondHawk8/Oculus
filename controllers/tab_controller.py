@@ -3,12 +3,12 @@ import logging
 from pathlib import Path
 
 import PySide6
-from PySide6 import QtGui
 from PySide6.QtCore import QObject, QTimer, Qt, QEvent
 from PySide6.QtWidgets import QTabWidget, QWidget
 
 from managers.keybind_manager import KeybindManager
 from managers.media_manager import MediaManager
+from managers.media_renderers.media_renderer import MediaViewerDialog
 from managers.tag_manager import TagManager
 from ui.ui_gallery_tab import Ui_Form
 from controllers.gallery_controller import GalleryController
@@ -30,7 +30,7 @@ class TabController(QObject):
 
         self.media_manager = media_manager
         self.tag_manager = tag_manager
-        self._viewers: dict[QWidget, ImageViewerDialog] = {}
+        self._viewers: dict[QWidget, MediaViewerDialog] = {}
 
         self._tabs = tab_widget
         self._closed: deque = deque(maxlen=MAX_CLOSED_STACK)
@@ -176,7 +176,7 @@ class TabController(QObject):
         def _open_viewer(paths, cur_idx, stack):
             viewer = self._viewers.get(host_page)
             if viewer is None:
-                viewer = ImageViewerDialog(
+                viewer = MediaViewerDialog(
                     paths, cur_idx,
                     self.media_manager, self.tag_manager, stack,
                     parent=self._tabs

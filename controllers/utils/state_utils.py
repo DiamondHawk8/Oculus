@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, Set
 
+from managers.media_renderers.media_renderer import MediaViewerDialog
 from widgets.image_viewer import ImageViewerDialog
 from PySide6.QtCore import Qt
 from pathlib import Path
@@ -22,7 +23,7 @@ class GalleryState:
 
 class ViewerState:
     def __init__(self):
-        self.dialog: ImageViewerDialog | None = None
+        self.dialog: MediaViewerDialog | None = None
         self.callback = None
         self.is_open = False
 
@@ -36,7 +37,7 @@ class ViewerState:
         paths = [p for p in model.get_paths() if Path(p).is_file()]
         cur_idx = paths.index(path)
 
-        self.dialog = ImageViewerDialog(paths, cur_idx, media_manager, tag_manager, stack, parent=host_widget)
+        self.dialog = MediaViewerDialog(paths, cur_idx, media_manager, tag_manager, stack, parent=host_widget)
         self.is_open = True
         self.dialog.finished.connect(self._on_closed)
         self.dialog.exec()
@@ -54,7 +55,7 @@ class ViewerState:
         if callable(self.callback):
             self.callback(nav_paths, cur_idx, stack)
         else:
-            dlg = ImageViewerDialog(
+            dlg = MediaViewerDialog(
                 nav_paths, cur_idx,
                 media_manager, tag_manager,
                 stack, selected_path=selected,
@@ -66,7 +67,7 @@ class ViewerState:
 
     def open_paths(self, nav_paths, cur_idx, stack, selected,
                    media_manager, tag_manager, host_widget):
-        dlg = ImageViewerDialog(
+        dlg = MediaViewerDialog(
             nav_paths, cur_idx, media_manager, tag_manager,
             stack, selected_path=selected, parent=host_widget
         )
