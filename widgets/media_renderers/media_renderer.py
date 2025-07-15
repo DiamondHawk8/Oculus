@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import List, Optional
 
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QPixmap, QKeyEvent
+from PySide6.QtCore import Qt, QPoint, QPointF, QRectF
+from PySide6.QtGui import QPixmap, QKeyEvent, QWheelEvent, QMouseEvent, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -32,25 +32,113 @@ class MediaRenderer(QWidget):
 
 class ImageRenderer(MediaRenderer):
 
-    def __init__(self, parent: QWidget | None = None):
+    _MIN_SCALE = 0.05
+    _MAX_SCALE = 50.0
+
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._label = QLabel(self)
-        self._label.setAlignment(Qt.AlignCenter)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._label, 1)
+        self.setMouseTracking(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+
+        self._pixmap: QPixmap | None = None
+        self._scale: float = 1.0
+        self._offset: QPointF = QPointF(0, 0)  # top‑left of image in widget
+
+        # drag state
+        self._dragging = False
+        self._drag_start_cursor: QPoint = QPoint()
+        self._drag_start_offset: QPointF = QPointF()
 
     # ------------------------------------------------------------------ API
     def load(self, path: str):
-        pix = QPixmap(path)
-        self._label.setPixmap(pix)
-        self._label.adjustSize()
+        self._pixmap = QPixmap(path)
+        self.fit_to()
+        self.update()
 
     def zoom(self, factor: float, anchor: Optional[QPoint] = None):
-        pass  # not implemented yet
+        if not self._pixmap:
+            return
+        if anchor is None:
+            anchor = QPoint(self.width() // 2, self.height() // 2)
+
+        old_scale = self._scale
+        new_scale = max(self._MIN_SCALE, min(self._scale * factor, self._MAX_SCALE))
+        if new_scale == old_scale:
+            return  # clamped
+
+        # Keep the anchor pixel fixed
+        img_coord = (anchor - self._offset) / old_scale  # type: ignore[arg-type]
+        self._scale = new_scale
+        self._offset = anchor - img_coord * new_scale
+        self.update()
 
     def fit_to(self):
-        pass  # not implemented yet
+        if not self._pixmap:
+            return
+        vp = self.rect()
+        if vp.isEmpty():
+            return
+        img_w = self._pixmap.width()
+        img_h = self._pixmap.height()
+        if img_w == 0 or img_h == 0:
+            return
+        scale_w = vp.width() / img_w
+        scale_h = vp.height() / img_h
+        self._scale = min(scale_w, scale_h)
+        # Center
+        self._offset = QPointF(
+            (vp.width() - img_w * self._scale) / 2,
+            (vp.height() - img_h * self._scale) / 2,
+        )
+        self.update()
 
     def move_to(self, dx: int, dy: int):
-        pass  # not implemented yet
+        self._offset += QPointF(dx, dy)
+        self.update()
+
+    # ------------------------------------------------------------------ events
+    def wheelEvent(self, ev: QWheelEvent):  # noqa: N802
+        angle = ev.angleDelta().y()
+        factor = 1.15 if angle > 0 else 1 / 1.15
+        self.zoom(factor, ev.position().toPoint())
+
+    def mousePressEvent(self, ev: QMouseEvent):  # noqa: N802
+        if ev.button() == Qt.LeftButton:
+            self._dragging = True
+            self._drag_start_cursor = ev.globalPosition().toPoint()
+            self._drag_start_offset = QPointF(self._offset)
+            self.setCursor(Qt.ClosedHandCursor)
+        super().mousePressEvent(ev)
+
+    def mouseMoveEvent(self, ev: QMouseEvent):
+        if self._dragging:
+            delta = ev.globalPosition().toPoint() - self._drag_start_cursor
+            self._offset = self._drag_start_offset + QPointF(delta)
+            self.update()
+        super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev: QMouseEvent):
+        if ev.button() == Qt.LeftButton and self._dragging:
+            self._dragging = False
+            self.setCursor(Qt.ArrowCursor)
+        super().mouseReleaseEvent(ev)
+
+    def resizeEvent(self, ev):  # noqa: N802, D401
+        # Preserve center on resize
+        if self._pixmap:
+            self.fit_to()
+        super().resizeEvent(ev)
+
+    def paintEvent(self, ev):
+        if not self._pixmap:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+
+        target = QRectF(
+            self._offset.x(),
+            self._offset.y(),
+            self._pixmap.width() * self._scale,
+            self._pixmap.height() * self._scale,
+        )
+        painter.drawPixmap(target, self._pixmap, self._pixmap.rect())
