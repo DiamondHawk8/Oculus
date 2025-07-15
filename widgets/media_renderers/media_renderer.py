@@ -64,12 +64,15 @@ class ImageRenderer(MediaRenderer):
         old_scale = self._scale
         new_scale = max(self._MIN_SCALE, min(self._scale * factor, self._MAX_SCALE))
         if new_scale == old_scale:
-            return  # clamped
+            return
 
-        # Keep the anchor pixel fixed
-        img_coord = (anchor - self._offset) / old_scale  # type: ignore[arg-type]
+        # Work in floating-point space to dodge PySide operator issues
+        anchor_f = QPointF(anchor)
+        diff = anchor_f - self._offset
+        img_coord = QPointF(diff.x() / old_scale, diff.y() / old_scale)
+
         self._scale = new_scale
-        self._offset = anchor - img_coord * new_scale
+        self._offset = anchor_f - QPointF(img_coord.x() * new_scale, img_coord.y() * new_scale)
         self.update()
 
     def fit_to(self):
