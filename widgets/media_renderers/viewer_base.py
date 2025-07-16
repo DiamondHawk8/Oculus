@@ -3,10 +3,11 @@ from typing import List, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QHBoxLayout,
     QStackedLayout,
-    QWidget, QApplication,
+    QWidget,
 )
 
 from widgets.media_renderers.media_renderer import ImageRenderer
@@ -33,9 +34,9 @@ class MediaViewerDialog(QDialog):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStyleSheet("background: transparent;")
 
-        # Auto‑size to screen
         scr = self.screen() or QApplication.primaryScreen()
         self.resize(scr.availableGeometry().size())
+        self.showFullScreen()
 
         # navigation data
         self._paths = paths[:]
@@ -46,8 +47,10 @@ class MediaViewerDialog(QDialog):
         self._variant_pos: dict[str, int] = {}
 
         self._current_path = selected_path or self._paths[self._idx]
+        if self._stack and self._current_path in self._stack:
+            self._variant_pos[self._stack[0]] = self._stack.index(self._current_path)
 
-        # --- UI
+        # --- UI ------------------------------------------------------
         self._renderer = ImageRenderer(self)
         self._stacked = QStackedLayout()
         self._stacked.addWidget(self._renderer)
@@ -66,10 +69,14 @@ class MediaViewerDialog(QDialog):
 
         # first display
         self._show_current()
-        self.show()
 
     # public API
-    def load_new_stack(self, paths: List[str], cur_idx: int, stack: Optional[List[str]] = None,) -> None:
+    def load_new_stack(
+        self,
+        paths: List[str],
+        cur_idx: int,
+        stack: Optional[List[str]] = None,
+    ) -> None:
         self._paths = paths[:]
         self._idx = cur_idx % len(self._paths) if self._paths else 0
         self._stack = stack or []
@@ -79,12 +86,23 @@ class MediaViewerDialog(QDialog):
         self.activateWindow()
 
     # helpers
+    def _refresh_stack_for_current(self):
+        """
+        Update self._stack from media_manager if possible.
+        :return:
+        """
+        if hasattr(self._media_manager, "stack_paths"):
+            new_stack = self._media_manager.stack_paths(self._current_path)
+            if new_stack:
+                self._stack = new_stack
+
     def _show_current(self):
         if not self._paths:
             return
 
         self._current_path = self._paths[self._idx]
         self._renderer.load(self._current_path)
+        self._refresh_stack_for_current()
 
         # If the current path belongs to the known stack, remember index
         if self._stack and self._current_path in self._stack:
