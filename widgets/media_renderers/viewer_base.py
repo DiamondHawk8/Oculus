@@ -1,4 +1,6 @@
 from typing import List, Optional
+from dataclasses import dataclass
+import logging
 
 from PySide6.QtCore import Qt, QPoint, QTimer, QPointF
 from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence
@@ -15,6 +17,17 @@ from widgets.media_renderers.media_renderer import ImageRenderer, GifRenderer
 from widgets.metadata_dialog import MetadataDialog
 
 BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class ViewerContext:
+    path: str
+    media_id: int | None
+    media_type: str  # 'image' | 'gif' | 'video'
+    gif_frame: int | None  # None unless GifRenderer + paused
+    gif_paused: bool | None
+    timestamp: int | None  #
 
 
 class MediaViewerDialog(QDialog):
@@ -54,6 +67,7 @@ class MediaViewerDialog(QDialog):
         self._view_state_cache: dict[str, tuple] = {}
 
         self._current_path = selected_path or self._paths[self._idx]
+        self._media_id = self._media_manager.get_media_id(self._current_path)
         if self._stack and self._current_path in self._stack:
             self._variant_pos[self._stack[0]] = self._stack.index(self._current_path)
 
@@ -90,10 +104,32 @@ class MediaViewerDialog(QDialog):
             lambda: self._open_metadata_dialog()
         )
 
+        self.ctx = ViewerContext(self._current_path, self._media_id, "image", None, None, None)
+
         # first display
         self._show_current()
 
+        logger.info("MediaViewerDialog Initialized")
+
     # public API
+
+    def current_context(self) -> ViewerContext:  # used by MetadataDialog
+        return self.ctx
+
+    def _update_context(self) -> None:
+        if self._renderer is not None:
+            if isinstance(self._renderer, ImageRenderer):
+                self.ctx = ViewerContext(self._current_path, self._media_id, "image", None, None, None)
+            elif isinstance(self._renderer, GifRenderer):
+                paused, cur_frame = self._renderer.current_state()
+                self.ctx = ViewerContext(self._current_path, self._media_id, "gif", cur_frame, paused, None)
+            else:
+                # TODO add timestamp logic
+                self.ctx = ViewerContext(self._current_path, self._media_id, "video", None, None, None)
+
+        else:
+            logger.critical(f"Renderer improperly set for {self}")
+
     def load_new_stack(
             self,
             paths: List[str],
@@ -137,6 +173,11 @@ class MediaViewerDialog(QDialog):
             return
 
         self._current_path = self._paths[self._idx]
+        self._media_id = self._media_manager.get_media_id(self._current_path)
+
+        if self._media_id is None:
+            return
+
         cls_needed = GifRenderer if self._current_path.lower().endswith((".gif", ".webp")) else ImageRenderer
         if not isinstance(self._renderer, cls_needed):
             self._replace_renderer(self._make_renderer(self._current_path))
@@ -157,15 +198,9 @@ class MediaViewerDialog(QDialog):
         if self._stack and self._current_path in self._stack:
             self._variant_pos[self._stack[0]] = self._stack.index(self._current_path)
 
-        media_id = self._media_manager.get_media_id(self._current_path)
-        if media_id is None:
-            return
-
         # Load comments
         if self.comments_panel.isVisible():
-            mid = self._media_manager.get_media_id(self._current_path)
-            if mid:
-                self.comments_panel.load_comments(mid)
+            self.comments_panel.load_comments(self._media_id)
 
         # restore cached state from this dialog session
         cached = self._view_state_cache.get(self._current_path)
@@ -175,13 +210,16 @@ class MediaViewerDialog(QDialog):
             if extra and isinstance(self._renderer, GifRenderer):
                 self._renderer.restore_state(*extra)
             return
-        elif media_id not in self._applied_default:
+        elif self._media_id not in self._applied_default:
             #  delay default preset until all resize events are done
             QTimer.singleShot(
                 0,
-                lambda mid=media_id: self._apply_default_preset(mid),
+                lambda mid=self._media_id: self._apply_default_preset(mid),
             )
-        self._create_dynamic_shortcuts(media_id)
+        self._create_dynamic_shortcuts(self._media_id)
+
+        # Update context
+        self._update_context()
 
     def _apply_view_state(self, zoom: float, pan: QPoint | QPointF):
         """
