@@ -49,6 +49,10 @@ class ImageRenderer(MediaRenderer):
         self._drag_start_cursor: QPoint = QPoint()
         self._drag_start_offset: QPointF = QPointF()
 
+    # TESTING METHOD PLEASE REMOVE LATER
+    def print_offset(self):
+        print(self._offset)
+
     # ------------------------------------------------------------------ API
     def load(self, path: str):
         self._pixmap = QPixmap(path)
@@ -96,7 +100,9 @@ class ImageRenderer(MediaRenderer):
         self.update()
 
     def move_to(self, dx: int, dy: int):
-        self._offset += QPointF(dx, dy)
+        print(f"current offset {self._offset}")
+        self._offset = QPointF(dx, dy)
+        print(f"new offset {self._offset}")
         self.update()
 
     # ------------------------------------------------------------------ events
