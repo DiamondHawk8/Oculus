@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from PySide6.QtCore import Qt, QPoint, QTimer
+from PySide6.QtCore import Qt, QPoint, QTimer, QPointF
 from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -50,6 +50,7 @@ class MediaViewerDialog(QDialog):
         # Track which media have already had their default preset applied
         self._applied_default: set[int] = set()
         self._dyn_presets: List[QShortcut] = []
+        self._view_state_cache: dict[str, tuple[float, QPoint]] = {}
 
         self._current_path = selected_path or self._paths[self._idx]
         if self._stack and self._current_path in self._stack:
@@ -120,16 +121,22 @@ class MediaViewerDialog(QDialog):
         # Apply default preset + build shortcuts
         media_id = self._media_manager.get_media_id(self._current_path) if hasattr(self._media_manager,
                                                                                    "get_media_id") else None
-        if media_id:
-            if media_id not in self._applied_default:
-                #  delay default preset until all resize events are done
-                QTimer.singleShot(
-                    0,
-                    lambda mid=media_id: self._apply_default_preset(mid),
-                )
-            self._create_dynamic_shortcuts(media_id)
+        if not media_id:
+            return
+        # 1. restore cached state from this dialog session
+        cached = self._view_state_cache.get(self._current_path)
+        if cached:
+            zoom, pan = cached
+            self._apply_view_state(zoom, QPointF(pan.x(), pan.y()))
+        elif media_id not in self._applied_default:
+            #  delay default preset until all resize events are done
+            QTimer.singleShot(
+                0,
+                lambda mid=media_id: self._apply_default_preset(mid),
+            )
+        self._create_dynamic_shortcuts(media_id)
 
-    def _apply_view_state(self, zoom: float, pan: QPoint):
+    def _apply_view_state(self, zoom: float, pan: QPoint | QPointF):
         """
         Apply absolute zoom and pan from a zoom, (x, y) format
         :param zoom:
@@ -140,18 +147,26 @@ class MediaViewerDialog(QDialog):
             self._renderer.zoom(zoom / self._renderer._scale)
         self._renderer.move_to(pan.x(), pan.y())
 
+    def _stash_current_view_state(self):
+        if self._current_path and self._renderer._pixmap:
+            self._view_state_cache[self._current_path] = (
+                self._renderer._scale,
+                self._renderer._offset.toPoint(),
+            )
+
     def _step(self, delta: int):
         if not self._paths:
             return
+        self._stash_current_view_state()
         self._idx = (self._idx + delta) % len(self._paths)
         self._show_current()
 
     def _cycle_variant(self, delta: int):
         if not self._stack or self._current_path not in self._stack:
             return  # nothing to cycle
+        self._stash_current_view_state()
         root = self._stack[0]
-        pos = self._variant_pos.get(root, 0)
-        pos = (pos + delta) % len(self._stack)
+        pos = (self._variant_pos.get(root, 0) + delta) % len(self._stack)
         self._variant_pos[root] = pos
         self._current_path = self._stack[pos]
         self._renderer.load(self._current_path)
@@ -168,7 +183,6 @@ class MediaViewerDialog(QDialog):
                 QPoint(row["pan_x"], row["pan_y"]),
             )
         self._applied_default.add(media_id)
-        self._renderer.print_offset()
 
     def _clear_dynamic_shortcuts(self):
         for sc in self._dyn_presets:
@@ -205,7 +219,6 @@ class MediaViewerDialog(QDialog):
                 super().keyPressEvent(ev)
 
     def _open_metadata_dialog(self):
-        self._renderer.print_offset()
         if not self._paths:
             return
         z = self._renderer._scale
