@@ -1,10 +1,12 @@
 from typing import Optional
 
-from PySide6.QtCore import Qt, QPoint, QPointF, QRectF
+from PySide6.QtCore import Qt, QPoint, QPointF, QRectF, QUrl
 from PySide6.QtGui import QPixmap, QKeyEvent, QWheelEvent, QMouseEvent, QPainter, QMovie
+from PySide6.QtMultimedia import QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
     QApplication,
-    QWidget,
+    QWidget, QHBoxLayout,
 )
 
 
@@ -210,3 +212,46 @@ class GifRenderer(ImageRenderer):
     def step_frame(self, delta: int):
         if self._movie and self._paused:
             self._movie.jumpToFrame((self._cur_frame + delta) % self._movie.frameCount())
+
+
+class VideoRenderer(MediaRenderer):
+
+    supports_presets = False  # skip image presets
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._widget = QVideoWidget(self)
+        self._player = QMediaPlayer(self)
+        self._player.setVideoOutput(self._widget)
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._widget, 1)
+
+    # mandatory API --------------------------------------------------------
+    def load(self, path: str):
+        self._player.setSource(QUrl.fromLocalFile(path))
+        self._player.play()
+
+    # stubs to satisfy interface ------------------------------------------
+    def zoom(self, *a, **k):
+        pass
+
+    def fit_to(self):
+        pass
+
+    def move_to(self, *a, **k):
+        pass
+
+    # video helpers --------------------------------------------------------
+    def toggle_play(self):
+        if self._player.playbackState() == QMediaPlayer.PlayingState:
+            self._player.pause()
+        else:
+            self._player.play()
+
+    def seek_seconds(self, delta: int):
+        self._player.setPosition(max(0, self._player.position() + delta * 1000))
+
+    def adjust_volume(self, delta: int):
+        self._player.setVolume(max(0, min(100, self._player.volume() + delta)))

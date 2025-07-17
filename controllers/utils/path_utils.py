@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Tuple
 
-IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".mov", ".avi"}
 
 
 def list_subdirs(folder: str | Path) -> List[str]:

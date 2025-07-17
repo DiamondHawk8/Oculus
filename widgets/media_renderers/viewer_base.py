@@ -2,7 +2,7 @@ from typing import List, Optional
 from dataclasses import dataclass
 import logging
 
-from PySide6.QtCore import Qt, QPoint, QTimer, QPointF
+from PySide6.QtCore import Qt, QPoint, QTimer, QPointF, QUrl
 from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -13,12 +13,13 @@ from PySide6.QtWidgets import (
 )
 
 from widgets.comments_panel import CommentsPanel
-from widgets.media_renderers.media_renderer import ImageRenderer, GifRenderer
+from widgets.media_renderers.media_renderer import ImageRenderer, GifRenderer, MediaRenderer, VideoRenderer
 from widgets.metadata_dialog import MetadataDialog
 
 BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ViewerContext:
@@ -152,6 +153,14 @@ class MediaViewerDialog(QDialog):
             return GifRenderer(self)
         return ImageRenderer(self)
 
+    def _select_renderer_class(self, path: str):
+        low = path.lower()
+        if low.endswith((".mp4", ".mkv", ".mov", ".avi")):
+            return VideoRenderer
+        if low.endswith((".gif", ".webp")):
+            return GifRenderer
+        return ImageRenderer
+
     def _replace_renderer(self, new_renderer: QWidget):
         self._stacked.removeWidget(self._renderer)
         self._renderer.deleteLater()
@@ -178,9 +187,9 @@ class MediaViewerDialog(QDialog):
         if self._media_id is None:
             return
 
-        cls_needed = GifRenderer if self._current_path.lower().endswith((".gif", ".webp")) else ImageRenderer
+        cls_needed = self._select_renderer_class(self._current_path)
         if not isinstance(self._renderer, cls_needed):
-            self._replace_renderer(self._make_renderer(self._current_path))
+            self._replace_renderer(cls_needed(self))
 
         self._current_path = self._paths[self._idx]
         self._refresh_stack_for_current()
