@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from widgets.comments_panel import CommentsPanel
-from widgets.media_renderers.media_renderer import ImageRenderer
+from widgets.media_renderers.media_renderer import ImageRenderer, GifRenderer
 from widgets.metadata_dialog import MetadataDialog
 
 BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
@@ -109,6 +109,19 @@ class MediaViewerDialog(QDialog):
         self.activateWindow()
 
     # helpers
+
+    def _make_renderer(self, path: str):
+        low = path.lower()
+        if low.endswith((".gif", ".webp")):
+            return GifRenderer(self)
+        return ImageRenderer(self)
+
+    def _replace_renderer(self, new_renderer: QWidget):
+        self._stacked.removeWidget(self._renderer)
+        self._renderer.deleteLater()
+        self._renderer = new_renderer
+        self._stacked.addWidget(self._renderer)
+
     def _refresh_stack_for_current(self):
         """
         Update self._stack from media_manager if possible.
@@ -124,17 +137,28 @@ class MediaViewerDialog(QDialog):
             return
 
         self._current_path = self._paths[self._idx]
-        self._renderer.load(self._current_path)
+        cls_needed = GifRenderer if self._current_path.lower().endswith((".gif", ".webp")) else ImageRenderer
+        if not isinstance(self._renderer, cls_needed):
+            self._replace_renderer(self._make_renderer(self._current_path))
+
+        self._current_path = self._paths[self._idx]
         self._refresh_stack_for_current()
+
+        if self._stack:
+            root = self._stack[0]
+            desired_pos = self._variant_pos.get(root, 0)
+            desired_path = self._stack[desired_pos]
+            if desired_path != self._current_path:
+                self._current_path = desired_path
+
+        self._renderer.load(self._current_path)
 
         # If the current path belongs to the known stack, remember index
         if self._stack and self._current_path in self._stack:
             self._variant_pos[self._stack[0]] = self._stack.index(self._current_path)
 
-        # Apply default preset + build shortcuts
-        media_id = self._media_manager.get_media_id(self._current_path) if hasattr(self._media_manager,
-                                                                                   "get_media_id") else None
-        if not media_id:
+        media_id = self._media_manager.get_media_id(self._current_path)
+        if media_id is None:
             return
 
         # Load comments
@@ -168,7 +192,7 @@ class MediaViewerDialog(QDialog):
         self._renderer.move_to(pan.x(), pan.y())
 
     def _stash_current_view_state(self):
-        if self._current_path and self._renderer._pixmap:
+        if self._current_path and getattr(self._renderer, "_pixmap", None):
             self._view_state_cache[self._current_path] = (
                 self._renderer._scale,
                 self._renderer._offset.toPoint(),
@@ -183,12 +207,16 @@ class MediaViewerDialog(QDialog):
 
     def _cycle_variant(self, delta: int):
         if not self._stack or self._current_path not in self._stack:
-            return  # nothing to cycle
+            return
         self._stash_current_view_state()
+
         root = self._stack[0]
         pos = (self._variant_pos.get(root, 0) + delta) % len(self._stack)
         self._variant_pos[root] = pos
-        self._current_path = self._stack[pos]
+        new_path = self._stack[pos]
+
+        if self._current_path in self._paths:
+            self._idx = self._paths.index(self._current_path)
         self._show_current()
 
     # ------- Preset helpers --------------------------------------
@@ -239,12 +267,12 @@ class MediaViewerDialog(QDialog):
             return
         w = self.comments_panel.sizeHint().width()
         self.comments_panel.setGeometry(
-            self.width() - w,        # x
-            0,                       # y
-            w,                       # full height so input sits bottom
+            self.width() - w,  # x
+            0,  # y
+            w,  # full height so input sits bottom
             self.height(),
         )
-        self.comments_panel.raise_()     # keep above backdrop
+        self.comments_panel.raise_()  # keep above backdrop
 
     # events
 
@@ -271,6 +299,9 @@ class MediaViewerDialog(QDialog):
             return
         if key == Qt.Key_V:
             self._renderer.center_axis(horizontal=False)
+            return
+        if ev.key() == Qt.Key_Space and hasattr(self._renderer, "toggle_play"):
+            self._renderer.toggle_play()
             return
         match key:
             case Qt.Key_Right:

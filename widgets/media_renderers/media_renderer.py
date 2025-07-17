@@ -1,14 +1,9 @@
-from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from PySide6.QtCore import Qt, QPoint, QPointF, QRectF
-from PySide6.QtGui import QPixmap, QKeyEvent, QWheelEvent, QMouseEvent, QPainter
+from PySide6.QtGui import QPixmap, QKeyEvent, QWheelEvent, QMouseEvent, QPainter, QMovie
 from PySide6.QtWidgets import (
     QApplication,
-    QDialog,
-    QHBoxLayout,
-    QLabel,
-    QStackedLayout,
     QWidget,
 )
 
@@ -31,7 +26,6 @@ class MediaRenderer(QWidget):
 
 
 class ImageRenderer(MediaRenderer):
-
     _MIN_SCALE = 0.05
     _MAX_SCALE = 50.0
 
@@ -170,3 +164,33 @@ class ImageRenderer(MediaRenderer):
             self._pixmap.height() * self._scale,
         )
         painter.drawPixmap(target, self._pixmap, self._pixmap.rect())
+
+
+class GifRenderer(ImageRenderer):
+    supports_presets = True
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._movie: QMovie | None = None
+
+    def load(self, path: str):
+        if self._movie:
+            self._movie.frameChanged.disconnect()
+            self._movie.stop()
+        self._movie = QMovie(path)
+        self._movie.setCacheMode(QMovie.CacheAll)
+        self._movie.frameChanged.connect(self._on_frame_changed)
+        self._on_frame_changed()  # set first frame into _pixmap
+        self._movie.start()
+        self.fit_to()
+
+    # --- helper -----------------------------------------------------------
+    def _on_frame_changed(self):
+        if self._movie and self._movie.currentPixmap():
+            self._pixmap = self._movie.currentPixmap()
+            self.update()
+
+    def toggle_play(self):
+        if not self._movie:
+            return
+        self._movie.setPaused(self._movie.state() == QMovie.Running)
