@@ -51,7 +51,7 @@ class MediaViewerDialog(QDialog):
         # Track which media have already had their default preset applied
         self._applied_default: set[int] = set()
         self._dyn_presets: List[QShortcut] = []
-        self._view_state_cache: dict[str, tuple[float, QPoint]] = {}
+        self._view_state_cache: dict[str, tuple] = {}
 
         self._current_path = selected_path or self._paths[self._idx]
         if self._stack and self._current_path in self._stack:
@@ -170,8 +170,11 @@ class MediaViewerDialog(QDialog):
         # restore cached state from this dialog session
         cached = self._view_state_cache.get(self._current_path)
         if cached:
-            zoom, pan = cached
+            zoom, pan, extra = cached
             self._apply_view_state(zoom, QPointF(pan.x(), pan.y()))
+            if extra and isinstance(self._renderer, GifRenderer):
+                self._renderer.restore_state(*extra)
+            return
         elif media_id not in self._applied_default:
             #  delay default preset until all resize events are done
             QTimer.singleShot(
@@ -193,9 +196,13 @@ class MediaViewerDialog(QDialog):
 
     def _stash_current_view_state(self):
         if self._current_path and getattr(self._renderer, "_pixmap", None):
+            extra = ()
+            if isinstance(self._renderer, GifRenderer):
+                extra = self._renderer.current_state()
             self._view_state_cache[self._current_path] = (
                 self._renderer._scale,
                 self._renderer._offset.toPoint(),
+                extra,
             )
 
     def _step(self, delta: int):
@@ -303,6 +310,12 @@ class MediaViewerDialog(QDialog):
         if ev.key() == Qt.Key_Space and hasattr(self._renderer, "toggle_play"):
             self._renderer.toggle_play()
             return
+        if key == Qt.Key_Comma and isinstance(self._renderer, GifRenderer):
+            self._renderer.step_frame(-1)
+            return  # previous frame
+        if key == Qt.Key_Period and isinstance(self._renderer, GifRenderer):
+            self._renderer.step_frame(+1)
+            return  # next frame
         match key:
             case Qt.Key_Right:
                 self._step(+1)

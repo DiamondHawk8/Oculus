@@ -170,6 +170,8 @@ class GifRenderer(ImageRenderer):
     supports_presets = True
 
     def __init__(self, parent: QWidget | None = None):
+        self._paused = False          # remember play state
+        self._cur_frame = 0           # remember frame index
         super().__init__(parent)
         self._movie: QMovie | None = None
 
@@ -180,17 +182,31 @@ class GifRenderer(ImageRenderer):
         self._movie = QMovie(path)
         self._movie.setCacheMode(QMovie.CacheAll)
         self._movie.frameChanged.connect(self._on_frame_changed)
-        self._on_frame_changed()  # set first frame into _pixmap
+        self._on_frame_changed(self._cur_frame)  # set first frame into _pixmap
         self._movie.start()
         self.fit_to()
 
     # --- helper -----------------------------------------------------------
-    def _on_frame_changed(self):
-        if self._movie and self._movie.currentPixmap():
-            self._pixmap = self._movie.currentPixmap()
-            self.update()
+    def _on_frame_changed(self, i: int):
+        self._cur_frame = i
+        self._pixmap = self._movie.currentPixmap()
+        self.update()
+
+    def current_state(self):
+        return self._paused, self._cur_frame
+
+    def restore_state(self, paused: bool, frame: int):
+        if self._movie:
+            self._movie.jumpToFrame(frame)
+            self._movie.setPaused(paused)
+            self._paused = paused
+            self._cur_frame = frame
 
     def toggle_play(self):
-        if not self._movie:
-            return
-        self._movie.setPaused(self._movie.state() == QMovie.Running)
+        if self._movie:
+            self._paused = not self._paused
+            self._movie.setPaused(self._paused)
+
+    def step_frame(self, delta: int):
+        if self._movie and self._paused:
+            self._movie.jumpToFrame((self._cur_frame + delta) % self._movie.frameCount())
