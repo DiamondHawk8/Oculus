@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from widgets.comments_panel import CommentsPanel
 from widgets.media_renderers.media_renderer import ImageRenderer
 from widgets.metadata_dialog import MetadataDialog
 
@@ -56,6 +57,12 @@ class MediaViewerDialog(QDialog):
         if self._stack and self._current_path in self._stack:
             self._variant_pos[self._stack[0]] = self._stack.index(self._current_path)
 
+        # --- Comments ------------------------------------------------------
+        self.comments_panel = CommentsPanel(media_manager.comments, self)
+        self.comments_panel.hide()
+        self.comments_panel.editingBegan.connect(lambda: None)
+        self.comments_panel.editingEnded.connect(self.setFocus)
+
         # --- UI ------------------------------------------------------
         self._renderer = ImageRenderer(self)
         self._stacked = QStackedLayout()
@@ -73,6 +80,12 @@ class MediaViewerDialog(QDialog):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(self._backdrop, 1)
 
+        QShortcut(QKeySequence("Ctrl+/"), self).activated.connect(
+            lambda: self._toggle_comments()
+        )
+        QShortcut(QKeySequence("Ctrl+Shift+/"), self).activated.connect(
+            lambda: self.comments_panel.toggle_input()
+        )
         QShortcut(QKeySequence("Ctrl+P"), self).activated.connect(
             lambda: self._open_metadata_dialog()
         )
@@ -123,7 +136,14 @@ class MediaViewerDialog(QDialog):
                                                                                    "get_media_id") else None
         if not media_id:
             return
-        # 1. restore cached state from this dialog session
+
+        # Load comments
+        if self.comments_panel.isVisible():
+            mid = self._media_manager.get_media_id(self._current_path)
+            if mid:
+                self.comments_panel.load_comments(mid)
+
+        # restore cached state from this dialog session
         cached = self._view_state_cache.get(self._current_path)
         if cached:
             zoom, pan = cached
@@ -169,7 +189,7 @@ class MediaViewerDialog(QDialog):
         pos = (self._variant_pos.get(root, 0) + delta) % len(self._stack)
         self._variant_pos[root] = pos
         self._current_path = self._stack[pos]
-        self._renderer.load(self._current_path)
+        self._show_current()
 
     # ------- Preset helpers --------------------------------------
     def _apply_default_preset(self, media_id: int):
@@ -202,9 +222,57 @@ class MediaViewerDialog(QDialog):
             )
             self._dyn_presets.append(sc)
 
+    # --- Comment Helpers --------------------------------------
+    def _toggle_comments(self):
+        if self.comments_panel.isVisible():
+            self.comments_panel.hide()
+        else:
+            mid = self._media_manager.get_media_id(self._current_path)
+            if mid:
+                self.comments_panel.load_comments(mid)
+            self.comments_panel.show()
+            self._position_comments_panel()
+        self.setFocus()
+
+    def _position_comments_panel(self):
+        if self.comments_panel.isHidden():
+            return
+        w = self.comments_panel.sizeHint().width()
+        self.comments_panel.setGeometry(
+            self.width() - w,        # x
+            0,                       # y
+            w,                       # full height so input sits bottom
+            self.height(),
+        )
+        self.comments_panel.raise_()     # keep above backdrop
+
     # events
-    def keyPressEvent(self, ev: QKeyEvent):
-        match ev.key():
+
+    def resizeEvent(self, ev):  # noqa: N802
+        self._position_comments_panel()
+        super().resizeEvent(ev)
+
+    def keyPressEvent(self, ev: QKeyEvent):  # noqa: N802
+        key = ev.key()
+        if key in (Qt.Key_D,):
+            self._renderer.nudge(+1, 0)
+            return
+        if key in (Qt.Key_A,):
+            self._renderer.nudge(-1, 0)
+            return
+        if key in (Qt.Key_S,):
+            self._renderer.nudge(0, +1)
+            return
+        if key in (Qt.Key_W,):
+            self._renderer.nudge(0, -1)
+            return
+        if key == Qt.Key_H:
+            self._renderer.center_axis(horizontal=True)
+            return
+        if key == Qt.Key_V:
+            self._renderer.center_axis(horizontal=False)
+            return
+        match key:
             case Qt.Key_Right:
                 self._step(+1)
             case Qt.Key_Left:
@@ -235,4 +303,3 @@ class MediaViewerDialog(QDialog):
 
     def refresh(self):
         self._show_current()
-

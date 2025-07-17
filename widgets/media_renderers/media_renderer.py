@@ -99,10 +99,35 @@ class ImageRenderer(MediaRenderer):
         self._offset = QPointF(dx, dy)
         self.update()
 
+    def nudge(self, dx: int, dy: int):
+        """
+        Pan by a small delta in widget space
+        :param dx:
+        :param dy:
+        :return:
+        """
+        self._offset += QPointF(dx, dy)
+        self.update()
+
+    def center_axis(self, horizontal: bool = True):
+        if not self._pixmap:
+            return
+        vp = self.rect()
+        if horizontal:
+            self._offset.setX((vp.width() - self._pixmap.width() * self._scale) / 2)
+        else:
+            self._offset.setY((vp.height() - self._pixmap.height() * self._scale) / 2)
+        self.update()
+
     # ------------------------------------------------------------------ events
     def wheelEvent(self, ev: QWheelEvent):  # noqa: N802
+        mod = QApplication.keyboardModifiers()
         angle = ev.angleDelta().y()
-        factor = 1.15 if angle > 0 else 1 / 1.15
+        if mod & Qt.ControlModifier:
+            base = 1.05 if not (mod & Qt.ShiftModifier) else 1.01
+        else:
+            base = 1.15
+        factor = base if angle > 0 else 1 / base
         self.zoom(factor, ev.position().toPoint())
 
     def mousePressEvent(self, ev: QMouseEvent):  # noqa: N802
