@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PySide6.QtCore import Qt, QPoint, QPointF, QRectF, QUrl, Signal
+from PySide6.QtCore import Qt, QPoint, QPointF, QRectF, QUrl, Signal, QTimer
 from PySide6.QtGui import QPixmap, QWheelEvent, QMouseEvent, QPainter, QMovie
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -235,6 +235,12 @@ class VideoRenderer(MediaRenderer):
         self._ui = Ui_VideoControls()
         self._ui.setupUi(self._controls)
 
+        # --- autohide timer -------------------------------------------------
+        self._AUTOHIDE_MS = 2500  # 2.5 s after last mouse move
+        self._hide_timer = QTimer(self)
+        self._hide_timer.setSingleShot(True)
+        self._hide_timer.timeout.connect(self._controls.hide)
+
         # Stretch controls full-width
         self._controls.setSizePolicy(
             QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
@@ -301,6 +307,10 @@ class VideoRenderer(MediaRenderer):
             self._paused = False
             self._ui.playBtn.setChecked(True)
 
+    def _reset_hide_timer(self) -> None:
+        self._controls.show()
+        self._hide_timer.start(self._AUTOHIDE_MS)
+
     def seek_seconds(self, delta: int):
         new_ms = max(0, self._player.position() + delta * 1000)
         self._player.setPosition(new_ms)
@@ -318,8 +328,11 @@ class VideoRenderer(MediaRenderer):
         self._player.setPaused(paused)
         self._paused, self._last_pos = paused, pos
 
-    def enterEvent(self, _):
-        self._controls.show()
+    def enterEvent(self, event):
+        self._reset_hide_timer()  # show + start countdown
+        super().enterEvent(event)
 
-    def leaveEvent(self, _):
-        self._controls.hide()
+    def leaveEvent(self, event):
+        self._hide_timer.stop()
+        self._controls.hide()  # hide immediately when cursor exits
+        super().leaveEvent(event)
