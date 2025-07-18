@@ -13,6 +13,7 @@ WIDGETS_PATHS = {
     "ui/metadata_dialog.ui": "ui/ui_metadata_dialog.py",
     "ui/comment_widget.ui": "ui/ui_comment_widget.py",
     "ui/comments_panel.ui": "ui/ui_comments_panel.py",
+    "ui/video_controls.ui": "ui/ui_video_controls.py",
 }
 
 
