@@ -600,6 +600,11 @@ class Ui_VideoControls(object):
 
         self.volSlider = QSlider(VideoControls)
         self.volSlider.setObjectName(u"volSlider")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.volSlider.sizePolicy().hasHeightForWidth())
+        self.volSlider.setSizePolicy(sizePolicy1)
         self.volSlider.setMaximum(100)
         self.volSlider.setOrientation(Qt.Orientation.Horizontal)
 
