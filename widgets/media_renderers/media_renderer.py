@@ -6,7 +6,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
     QApplication,
-    QWidget, QHBoxLayout, QVBoxLayout,
+    QWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QSizePolicy,
 )
 
 from ui.ui_video_controls import Ui_VideoControls
@@ -220,26 +220,43 @@ class VideoRenderer(MediaRenderer):
     supports_presets = False  # skip image presets
     request_fullscreen_toggle = Signal()
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(self, parent=None):
         super().__init__(parent)
+
+        # ----- core widgets -------------------------------------------------
         self._player = QMediaPlayer(self)
         self._audio = QAudioOutput(self)
         self._player.setAudioOutput(self._audio)
-        self._audio.setVolume(1)
-        self._widget = QVideoWidget(self)
 
-        # -------- control bar (Qt-Designer .ui) --------------------------
+        self._video = QVideoWidget(self)
+
+        # ----- controls -------------------------------------
         self._controls = QWidget(self)
         self._ui = Ui_VideoControls()
         self._ui.setupUi(self._controls)
-        self._controls.setAutoFillBackground(False)
 
-        lay = QVBoxLayout(self)  # <-- was QHBoxLayout
+        # Stretch controls full-width
+        self._controls.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        )
+        self._controls.setMinimumHeight(self._controls.sizeHint().height())
+
+        # ----- single-container vertical layout ----------------------------
+        container = QWidget(self)  # native parent for both
+        lay = QVBoxLayout(container)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(self._widget, 1)
-        lay.addWidget(self._controls, 0)  # controls underneath
+        lay.setSpacing(0)
+        lay.addWidget(self._video, 1)  # stretch to fill
+        lay.addWidget(self._controls, 0)  # stick to bottom
 
-        self._player.setVideoOutput(self._widget)
+        # make renderer’s own layout just hold that container
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(container)
+
+        # ----- connect player ----------------------------------------------
+        self._player.setVideoOutput(self._video)
+
         self._player.positionChanged.connect(
             lambda ms: self._ui.posSlider.setValue(ms // 1000)
         )
