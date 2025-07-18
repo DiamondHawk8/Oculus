@@ -146,13 +146,6 @@ class MediaViewerDialog(QDialog):
         self.activateWindow()
 
     # helpers
-
-    def _make_renderer(self, path: str):
-        low = path.lower()
-        if low.endswith((".gif", ".webp")):
-            return GifRenderer(self)
-        return ImageRenderer(self)
-
     def _select_renderer_class(self, path: str):
         low = path.lower()
         if low.endswith((".mp4", ".mkv", ".mov", ".avi")):
@@ -166,6 +159,10 @@ class MediaViewerDialog(QDialog):
         self._renderer.deleteLater()
         self._renderer = new_renderer
         self._stacked.addWidget(self._renderer)
+
+        if isinstance(new_renderer, VideoRenderer):
+            new_renderer._ui.playBtn.setCheckable(True)
+            new_renderer._ui.playBtn.clicked.connect(new_renderer.toggle_play)
 
     def _refresh_stack_for_current(self):
         """
@@ -245,6 +242,8 @@ class MediaViewerDialog(QDialog):
         if self._current_path and getattr(self._renderer, "_pixmap", None):
             extra = ()
             if isinstance(self._renderer, GifRenderer):
+                extra = self._renderer.current_state()
+            if isinstance(self._renderer, VideoRenderer):
                 extra = self._renderer.current_state()
             self._view_state_cache[self._current_path] = (
                 self._renderer._scale,
