@@ -20,6 +20,9 @@ BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 
 logger = logging.getLogger(__name__)
 
+COMMENTS_PANEL_MIN_W = 260
+COMMENTS_PANEL_W_FRAC = 0.30          # 30 % of viewer width
+
 
 @dataclass
 class ViewerContext:
@@ -149,6 +152,7 @@ class MediaViewerDialog(QDialog):
     def _select_renderer_class(self, path: str):
         low = path.lower()
         if low.endswith((".mp4", ".mkv", ".mov", ".avi")):
+            self.comments_panel.hide()
             return VideoRenderer
         if low.endswith((".gif", ".webp")):
             return GifRenderer
@@ -305,6 +309,11 @@ class MediaViewerDialog(QDialog):
 
     # --- Comment Helpers --------------------------------------
     def _toggle_comments(self):
+
+        # Do not allow comments panel on video
+        if isinstance(self._renderer, VideoRenderer):
+            return
+
         if self.comments_panel.isVisible():
             self.comments_panel.hide()
         else:
@@ -315,17 +324,17 @@ class MediaViewerDialog(QDialog):
             self._position_comments_panel()
         self.setFocus()
 
-    def _position_comments_panel(self):
+    def _position_comments_panel(self) -> None:
         if self.comments_panel.isHidden():
             return
-        w = self.comments_panel.sizeHint().width()
+        w = max(COMMENTS_PANEL_MIN_W, int(self.width() * COMMENTS_PANEL_W_FRAC))
         self.comments_panel.setGeometry(
-            self.width() - w,  # x
-            0,  # y
-            w,  # full height so input sits bottom
-            self.height(),
+            self.width() - w,  # x: flush right
+            0,  # y: top-aligned
+            w,  # dynamic width
+            self.height(),  # full height so input box sticks to bottom
         )
-        self.comments_panel.raise_()  # keep above backdrop
+        self.comments_panel.raise_()
 
     # events
 
