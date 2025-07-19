@@ -362,46 +362,76 @@ class MediaViewerDialog(QDialog):
 
     def keyPressEvent(self, ev: QKeyEvent):  # noqa: N802
         key = ev.key()
-        if key in (Qt.Key_D,):
-            self._renderer.nudge(+1, 0)
+        mods = ev.modifiers()
+
+        # 1. renderer-specific keys
+        if isinstance(self._renderer, VideoRenderer):
+            # Ctrl+←/→ : big jump (bookmark placeholder)
+            if mods & Qt.ControlModifier:
+                if key == Qt.Key_Left:
+                    self._renderer.seek_seconds(-10)
+                    return
+                if key == Qt.Key_Right:
+                    self._renderer.seek_seconds(+10)
+                    return
+            # , / . : small jump
+            if key == Qt.Key_Comma:
+                self._renderer.seek_seconds(-1)
+                return
+            if key == Qt.Key_Period:
+                self._renderer.seek_seconds(+1)
+                return
+            # Space : play/pause
+            if key == Qt.Key_Space:
+                self._renderer.toggle_play()
+                return
+
+        elif isinstance(self._renderer, GifRenderer):
+            if key == Qt.Key_Comma:
+                self._renderer.step_frame(-1)
+                return
+            if key == Qt.Key_Period:
+                self._renderer.step_frame(+1)
+                return
+            if key == Qt.Key_Space:
+                self._renderer.toggle_play()
+                return
+
+        # 2. image/GIF pan & center keys (nudge / center_axis exist)
+        if key in (Qt.Key_D, Qt.Key_A, Qt.Key_W, Qt.Key_S) and hasattr(self._renderer, "nudge"):
+            dx, dy = {Qt.Key_D: (1, 0), Qt.Key_A: (-1, 0),
+                      Qt.Key_W: (0, -1), Qt.Key_S: (0, 1)}[key]
+            self._renderer.nudge(dx, dy)
             return
-        if key in (Qt.Key_A,):
-            self._renderer.nudge(-1, 0)
-            return
-        if key in (Qt.Key_S,):
-            self._renderer.nudge(0, +1)
-            return
-        if key in (Qt.Key_W,):
-            self._renderer.nudge(0, -1)
-            return
-        if key == Qt.Key_H:
+
+        if key == Qt.Key_H and hasattr(self._renderer, "center_axis"):
             self._renderer.center_axis(horizontal=True)
             return
-        if key == Qt.Key_V:
+        if key == Qt.Key_V and hasattr(self._renderer, "center_axis"):
             self._renderer.center_axis(horizontal=False)
             return
-        if ev.key() == Qt.Key_Space and hasattr(self._renderer, "toggle_play"):
-            self._renderer.toggle_play()
-            return
-        if key == Qt.Key_Comma and isinstance(self._renderer, GifRenderer):
-            self._renderer.step_frame(-1)
-            return  # previous frame
-        if key == Qt.Key_Period and isinstance(self._renderer, GifRenderer):
-            self._renderer.step_frame(+1)
-            return  # next frame
-        match key:
-            case Qt.Key_Right:
+
+        # 3. global viewer navigation (ignore Ctrl / other modifiers)
+        if mods == Qt.NoModifier:
+            if key == Qt.Key_Right:
                 self._step(+1)
-            case Qt.Key_Left:
+                return
+            if key == Qt.Key_Left:
                 self._step(-1)
-            case Qt.Key_Down:
+                return
+            if key == Qt.Key_Down:
                 self._cycle_variant(+1)
-            case Qt.Key_Up:
+                return
+            if key == Qt.Key_Up:
                 self._cycle_variant(-1)
-            case Qt.Key_Escape:
-                self.close()
-            case _:
-                super().keyPressEvent(ev)
+                return
+
+        # Esc always closes
+        if key == Qt.Key_Escape:
+            self.close()
+            return
+
+        super().keyPressEvent(ev)
 
     def _open_metadata_dialog(self):
         if not self._paths:
