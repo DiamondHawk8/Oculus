@@ -109,6 +109,9 @@ class MediaViewerDialog(QDialog):
         QShortcut(QKeySequence("Ctrl+P"), self).activated.connect(
             lambda: self._open_metadata_dialog()
         )
+        QShortcut(QKeySequence("C"), self).activated.connect(
+            lambda: self._toggle_bar()
+        )
 
         self.ctx = ViewerContext(self._current_path, self._media_id, "image", None, None, None)
 
@@ -334,6 +337,10 @@ class MediaViewerDialog(QDialog):
             self.comments_panel.show()
             self._position_comments_panel()
         self.setFocus()
+
+    def _toggle_bar(self):
+        if hasattr(self._renderer, "toggle_bar"):
+            self._renderer.toggle_bar()
 
     def _position_comments_panel(self) -> None:
         if self.comments_panel.isHidden():

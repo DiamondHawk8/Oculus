@@ -1,7 +1,7 @@
 from typing import Optional
 
 from PySide6.QtCore import Qt, QPoint, QPointF, QRectF, QUrl, Signal, QTimer
-from PySide6.QtGui import QPixmap, QWheelEvent, QMouseEvent, QPainter, QMovie
+from PySide6.QtGui import QPixmap, QWheelEvent, QMouseEvent, QPainter, QMovie, QKeySequence, QShortcut
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
@@ -286,6 +286,7 @@ class VideoRenderer(MediaRenderer):
             lambda ms: self._ui.posSlider.setMaximum(max(1, ms))
         )
 
+
         self._ui.posSlider.setSingleStep(100)  # 0.1 s per left/right key press
         self._ui.posSlider.setPageStep(500)  # 0.5 s per PgUp/PgDn (optional)
 
@@ -324,6 +325,9 @@ class VideoRenderer(MediaRenderer):
             self._player.pause()
         else:
             self._player.play()
+
+    def toggle_bar(self):
+        self._controls.setVisible(not self._controls.isVisible())
 
     def seek_seconds(self, delta: int):
         new_ms = max(0, self._player.position() + delta * 1000)
