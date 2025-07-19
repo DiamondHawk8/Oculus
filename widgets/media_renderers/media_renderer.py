@@ -224,6 +224,7 @@ class VideoRenderer(MediaRenderer):
         super().__init__(parent)
 
         # ----- core widgets -------------------------------------------------
+        self._src_path = None
         self._player = QMediaPlayer(self)
         self._player.playbackStateChanged.connect(self._on_state_changed)
         self._player.mediaStatusChanged.connect(self._on_media_status)
@@ -257,6 +258,7 @@ class VideoRenderer(MediaRenderer):
         self._update_mute_icon(False)
         self._ui.volBtn.toggled.connect(self._audio.setMuted)
         self._audio.mutedChanged.connect(self._update_mute_icon)
+        self._ui.posSlider.setFocusPolicy(Qt.NoFocus)
 
         # Stretch controls full-width
         self._controls.setSizePolicy(
@@ -314,10 +316,18 @@ class VideoRenderer(MediaRenderer):
         self._paused = False  # remember play state
         self._last_pos = 0  # remember position
 
+    def _mgr(self):
+        """climb two levels to viewer, then grab media_manager."""
+        parent = self.parent()
+        parent = parent.parent()
+        return getattr(parent, "_media_manager", None)
+
     def load(self, path: str):
+        self._src_path = path
         self._player.setSource(QUrl.fromLocalFile(path))
-        # bm_seconds = self._media_manager.bookmarks_for_path(path)  # or []
-        # self.set_bookmarks(bm_seconds)
+        mgr = self._mgr()
+        if mgr:
+            self.set_bookmarks(mgr.bookmarks_for_path(path))
 
     # stubs to satisfy interface ------------------------------------------
     def zoom(self, *a, **k):
@@ -373,14 +383,15 @@ class VideoRenderer(MediaRenderer):
     def add_bookmark(self) -> None:
         """Store current position (ms) and refresh ticks."""
         pos = self._player.position()
-        ticks = set(self._ui.posSlider.bookmarks)
-        ticks.add(pos)
+        ticks = set(self._ui.posSlider.bookmarks) | {pos}
         self.set_bookmarks(list(ticks))
-        # TODO: persist
+        mgr = self._mgr()
+        if mgr:
+            mgr.add_bookmark(self._src_path, pos)
 
     def delete_nearest_bookmark(self) -> None:
         """Remove tick nearest to current position (1 s tolerance)."""
-        ticks = self._ui.posSlider.bookmarks
+        ticks = set(self._ui.posSlider.bookmarks)
         if not ticks:
             return
         cur = self._player.position()
@@ -388,20 +399,26 @@ class VideoRenderer(MediaRenderer):
         if abs(nearest - cur) > 1000:
             return
         ticks.remove(nearest)
-        self.set_bookmarks(ticks)
-        # TODO: persist
+        self.set_bookmarks(list(ticks))
+
+        mgr = self._mgr()
+        if mgr:
+            mgr.delete_bookmark(self._src_path, nearest)
 
     def set_bookmarks(self, seconds: list[float] | list[int]) -> None:
         """
         Accepts seconds (float/int) or milliseconds (int) and updates ticks.
         """
-        if not seconds:
+        seq = list(seconds)  # <-- handles set, tuple, etc.
+        if not seq:
             ms_list = []
-        elif isinstance(seconds[0], float):
-            ms_list = [int(s * 1000) for s in seconds]
-        else:  # already ms
-            ms_list = seconds
+        elif isinstance(seq[0], float):
+            ms_list = [int(s * 1000) for s in seq]
+        else:
+            ms_list = [int(s) for s in seq]
+
         self._ui.posSlider.set_bookmarks(sorted(ms_list))
+
 
     def skip_bookmark(self, direction: int) -> None:
         """
@@ -454,10 +471,8 @@ class VideoRenderer(MediaRenderer):
     def _apply_restore(self, paused: bool, pos: int):
         self._player.setPosition(pos)
         if paused:
-            print("PAUSING")
             self._player.pause()
         else:
-            print("PLAYING")
             self._player.play()
 
     def _update_time_label(self, *_):
