@@ -254,12 +254,6 @@ class VideoRenderer(MediaRenderer):
         self._ui.playBtn.setCheckable(True)
         self._ui.playBtn.clicked.connect(self.toggle_play)
 
-        # --- autohide timer -------------------------------------------------
-        self._AUTOHIDE_MS = 2500  # 2.5 s after last mouse move
-        self._hide_timer = QTimer(self)
-        self._hide_timer.setSingleShot(True)
-        self._hide_timer.timeout.connect(self._controls.hide)
-
         # Stretch controls full-width
         self._controls.setSizePolicy(
             QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
@@ -282,7 +276,7 @@ class VideoRenderer(MediaRenderer):
         # ----- connect player ----------------------------------------------
         self._player.setVideoOutput(self._video)
 
-        self._ui.posSlider.sliderMoved.connect(
+        self._ui.posSlider.valueChanged.connect(
             lambda v: self._player.setPosition(v)
         )
         self._player.positionChanged.connect(
@@ -330,10 +324,6 @@ class VideoRenderer(MediaRenderer):
             self._player.pause()
         else:
             self._player.play()
-
-    def _reset_hide_timer(self) -> None:
-        self._controls.show()
-        self._hide_timer.start(self._AUTOHIDE_MS)
 
     def seek_seconds(self, delta: int):
         new_ms = max(0, self._player.position() + delta * 1000)
@@ -399,15 +389,6 @@ class VideoRenderer(MediaRenderer):
         cur = self._player.position()
         dur = max(self._player.duration(), 1)
         self._ui.timeLbl.setText(f"{_fmt_ms(cur)} / {_fmt_ms(dur)}")
-
-    def enterEvent(self, event):
-        self._reset_hide_timer()  # show + start countdown
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        self._hide_timer.stop()
-        self._controls.hide()  # hide immediately when cursor exits
-        super().leaveEvent(event)
 
 
 class ClickableSlider(QSlider):
