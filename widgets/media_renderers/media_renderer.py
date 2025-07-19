@@ -6,7 +6,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
     QApplication,
-    QWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QSizePolicy, QSlider,
+    QWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QSizePolicy, QSlider, QAbstractSlider,
 )
 
 from ui.ui_video_controls import Ui_VideoControls
@@ -242,9 +242,9 @@ class VideoRenderer(MediaRenderer):
         self._ui.setupUi(self._controls)
 
         old = self._ui.posSlider
-        self._ui.posSlider = ClickableSlider(Qt.Horizontal, self._controls)
+        self._ui.posSlider = BookmarkSlider(Qt.Horizontal, self._controls)
         self._ui.posSlider.setRange(old.minimum(), old.maximum())
-        # copy sizePolicy etc. as needed
+
         layout = self._ui.horizontalLayout
         idx = layout.indexOf(old)
         layout.removeWidget(old)
@@ -253,6 +253,10 @@ class VideoRenderer(MediaRenderer):
 
         self._ui.playBtn.setCheckable(True)
         self._ui.playBtn.clicked.connect(self.toggle_play)
+        self._ui.volBtn.setCheckable(True)
+        self._update_mute_icon(False)
+        self._ui.volBtn.toggled.connect(self._audio.setMuted)
+        self._audio.mutedChanged.connect(self._update_mute_icon)
 
         # Stretch controls full-width
         self._controls.setSizePolicy(
@@ -276,16 +280,27 @@ class VideoRenderer(MediaRenderer):
         # ----- connect player ----------------------------------------------
         self._player.setVideoOutput(self._video)
 
-        self._ui.posSlider.valueChanged.connect(
+        self._ui.posSlider.sliderMoved.connect(
             lambda v: self._player.setPosition(v)
         )
+
+        # Keyboard triggers (←/→, PgUp/Dn) without loop
+        self._ui.posSlider.actionTriggered.connect(
+            lambda action: self._player.setPosition(self._ui.posSlider.value())
+            if action in (
+                QAbstractSlider.SliderSingleStepAdd,
+                QAbstractSlider.SliderSingleStepSub,
+                QAbstractSlider.SliderPageStepAdd,
+                QAbstractSlider.SliderPageStepSub,
+            ) else None
+        )
+
         self._player.positionChanged.connect(
             lambda ms: self._ui.posSlider.setValue(ms)
         )
         self._player.durationChanged.connect(
             lambda ms: self._ui.posSlider.setMaximum(max(1, ms))
         )
-
 
         self._ui.posSlider.setSingleStep(100)  # 0.1 s per left/right key press
         self._ui.posSlider.setPageStep(500)  # 0.5 s per PgUp/PgDn (optional)
@@ -298,6 +313,10 @@ class VideoRenderer(MediaRenderer):
 
         self._paused = False  # remember play state
         self._last_pos = 0  # remember position
+
+        # TODO TESTING CODE, REMOVE LATER
+        self.set_bookmarks([5.0, 12.3, 42.0])
+
 
     # mandatory API --------------------------------------------------------
     def load(self, path: str):
@@ -346,6 +365,33 @@ class VideoRenderer(MediaRenderer):
         self._ui.playBtn.setChecked(playing)
         self._ui.playBtn.setToolTip("Pause" if playing else "Play")
         self._ui.playBtn.blockSignals(False)
+
+    def _update_mute_icon(self, muted: bool) -> None:
+        """Keep icon/tooltip aligned with audio mute state."""
+        self._ui.volBtn.blockSignals(True)
+        self._ui.volBtn.setChecked(muted)
+        self._ui.volBtn.setToolTip("Unmute" if muted else "Mute")
+        self._ui.volBtn.blockSignals(False)
+
+    def set_bookmarks(self, seconds: list[float]) -> None:
+        """Populate tick marks on the progress bar."""
+        ms_list = [int(s * 1000) for s in seconds]
+        self._ui.posSlider.set_bookmarks(ms_list)
+
+    def skip_bookmark(self, direction: int) -> None:
+        """
+        Jump to the next (direction=+1) or previous (direction=-1) bookmark.
+        Wraps at ends.
+        """
+        ticks = self._ui.posSlider.bookmarks
+        if not ticks:
+            return
+        cur = self._player.position()
+        if direction > 0:
+            nxt = next((t for t in ticks if t > cur + 500), ticks[0])
+        else:
+            nxt = next((t for t in reversed(ticks) if t < cur - 500), ticks[-1])
+        self._player.setPosition(nxt)
 
     def _on_state_changed(self, state):  # slot for playbackStateChanged
         self._update_play_icon(state == QMediaPlayer.PlayingState)
@@ -404,6 +450,31 @@ class ClickableSlider(QSlider):
             self.sliderMoved.emit(int(val))
             ev.accept()
         super().mousePressEvent(ev)
+
+
+class BookmarkSlider(ClickableSlider):
+    """Slider that can paint bookmark ticks."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.bookmarks: list[int] = []  # milliseconds
+
+    def set_bookmarks(self, ms_list: list[int]) -> None:
+        self.bookmarks = sorted(ms_list)
+        self.update()
+
+    def paintEvent(self, ev):
+        super().paintEvent(ev)
+        if not self.bookmarks or self.maximum() == self.minimum():
+            return
+        from PySide6.QtGui import QPainter, QColor
+        p = QPainter(self)
+        p.setPen(QColor("red"))
+        full = self.maximum() - self.minimum()
+        h = self.height()
+        for ms in self.bookmarks:
+            x = int((ms - self.minimum()) / full * self.width())
+            p.drawLine(x, 0, x, h)
 
 
 def _fmt_ms(ms: int) -> str:

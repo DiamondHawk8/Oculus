@@ -54,8 +54,6 @@ class MediaViewerDialog(QDialog):
         self.setStyleSheet("background: transparent;")
 
         scr = self.screen()
-        print(self.screen().availableGeometry().size())
-        print(QApplication.primaryScreen().availableGeometry().size())
         self.resize(scr.availableGeometry().size())
         self.showFullScreen()
 
@@ -369,17 +367,17 @@ class MediaViewerDialog(QDialog):
             # Ctrl+←/→ : big jump (bookmark placeholder)
             if mods & Qt.ControlModifier:
                 if key == Qt.Key_Left:
-                    self._renderer.seek_seconds(-10)
+                    self._renderer.skip_bookmark(-1)
                     return
                 if key == Qt.Key_Right:
-                    self._renderer.seek_seconds(+10)
+                    self._renderer.skip_bookmark(+1)
                     return
             # , / . : small jump
             if key == Qt.Key_Comma:
-                self._renderer.seek_seconds(-1)
+                self._renderer.seek_seconds(-3)
                 return
             if key == Qt.Key_Period:
-                self._renderer.seek_seconds(+1)
+                self._renderer.seek_seconds(+3)
                 return
             # Space : play/pause
             if key == Qt.Key_Space:
