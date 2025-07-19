@@ -585,8 +585,8 @@ QToolButton:checked {
        </property>
        <property name="icon">
         <iconset resource="../resources/resources.qrc">
-         <normaloff>:/icons/cil-volume-off.png</normaloff>
-         <normalon>:/icons/cil-volume-high.png</normalon>:/icons/cil-volume-off.png</iconset>
+         <normaloff>:/icons/cil-volume-high.png</normaloff>
+         <normalon>:/icons/cil-volume-off.png</normalon>:/icons/cil-volume-high.png</iconset>
        </property>
       </widget>
      </item>

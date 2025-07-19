@@ -597,8 +597,8 @@ class Ui_VideoControls(object):
         self.volBtn = QToolButton(VideoControls)
         self.volBtn.setObjectName(u"volBtn")
         icon1 = QIcon()
-        icon1.addFile(u":/icons/cil-volume-off.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        icon1.addFile(u":/icons/cil-volume-high.png", QSize(), QIcon.Mode.Normal, QIcon.State.On)
+        icon1.addFile(u":/icons/cil-volume-high.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon1.addFile(u":/icons/cil-volume-off.png", QSize(), QIcon.Mode.Normal, QIcon.State.On)
         self.volBtn.setIcon(icon1)
 
         self.horizontalLayout.addWidget(self.volBtn)
