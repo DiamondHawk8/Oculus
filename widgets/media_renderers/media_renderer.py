@@ -250,9 +250,6 @@ class VideoRenderer(MediaRenderer):
         layout.removeWidget(old)
         old.deleteLater()
         layout.insertWidget(idx, self._ui.posSlider, 1)
-        self._ui.posSlider.sliderMoved.connect(
-            lambda v: self._player.setPosition(v * 1000)
-        )
 
         self._ui.playBtn.setCheckable(True)
         self._ui.playBtn.clicked.connect(self.toggle_play)
@@ -285,18 +282,22 @@ class VideoRenderer(MediaRenderer):
         # ----- connect player ----------------------------------------------
         self._player.setVideoOutput(self._video)
 
+        self._ui.posSlider.sliderMoved.connect(
+            lambda v: self._player.setPosition(v)
+        )
         self._player.positionChanged.connect(
-            lambda ms: self._ui.posSlider.setValue(ms // 1000)
+            lambda ms: self._ui.posSlider.setValue(ms)
         )
         self._player.durationChanged.connect(
-            lambda ms: self._ui.posSlider.setMaximum(max(1, ms // 1000))
+            lambda ms: self._ui.posSlider.setMaximum(max(1, ms))
         )
+
+        self._ui.posSlider.setSingleStep(100)  # 0.1 s per left/right key press
+        self._ui.posSlider.setPageStep(500)  # 0.5 s per PgUp/PgDn (optional)
 
         # buttons / sliders
         self._ui.playBtn.clicked.connect(self.toggle_play)
-        self._ui.posSlider.sliderMoved.connect(
-            lambda v: self._player.setPosition(v * 1000)
-        )
+
         self._ui.volSlider.valueChanged.connect(lambda v: self._audio.setVolume(v / 100))
         self._ui.fsBtn.clicked.connect(self.request_fullscreen_toggle.emit)
 
