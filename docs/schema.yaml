@@ -38,3 +38,7 @@ comments:
   created:    TIMESTAMP DEFAULT
   text:       TEXT NOT NULL
   seq:        INTEGER
+
+bookmarks:
+  path: TEXT NOT NULL
+  time_ms: INTEGER NOT NULL

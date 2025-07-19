@@ -308,3 +308,23 @@ class MediaDAO(BaseManager):
         )
         with self.conn:
             self.cur.execute(sql, (media_id,))
+
+    def bookmarks_for_path(self, path: str) -> list[int]:
+        rows = self.cur.execute(
+            "SELECT time_ms FROM bookmarks WHERE path = ? ORDER BY time_ms", (path,)
+        ).fetchall()
+        return [r["time_ms"] for r in rows]
+
+    def add_bookmark(self, path: str, ms: int) -> None:
+        with self.conn:
+            self.cur.execute(
+                "INSERT OR IGNORE INTO bookmarks(path, time_ms) VALUES (?, ?)",
+                (path, ms),
+            )
+
+    def delete_bookmark(self, path: str, ms: int) -> None:
+        with self.conn:
+            self.cur.execute(
+                "DELETE FROM bookmarks WHERE path = ? AND time_ms = ?",
+                (path, ms),
+            )

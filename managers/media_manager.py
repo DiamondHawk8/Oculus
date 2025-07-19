@@ -126,6 +126,7 @@ class MediaManager(QObject):
 
     def path_for_id(self, media_id: int) -> str | None:
         return self.dao.path_for_id(media_id)
+
     def folder_for_id(self, media_id: int) -> Path | None:
         return self.dao.folder_for_id(media_id)
 
@@ -306,3 +307,24 @@ class MediaManager(QObject):
             self.thumb_ready.emit(p, pix)  # Qt queues to GUI thread
 
         self.pool.start(ThumbWorker(path, self.thumb_size, _emit))
+
+    # ----------------------------- Bookmarks -----------------------------
+
+    def bookmarks_for_path(self, path: str) -> list[int]:
+        return self.dao.bookmarks_for_path(path)
+
+    def add_bookmark(self, path: str, ms: int) -> None:
+        self.dao.add_bookmark(path, ms)
+
+    def delete_bookmark(self, path: str, ms: int) -> None:
+        self.dao.delete_bookmark(path, ms)
+
+    # Temp saving method
+    def export_bookmarks_json(self, outfile: str) -> None:
+        import json
+        rows = self.dao.cur.execute("SELECT path, time_ms FROM bookmarks").fetchall()
+        data: dict[str, list[int]] = {}
+        for r in rows:
+            data.setdefault(r["path"], []).append(r["time_ms"])
+        with open(outfile, "w", encoding="utf-8") as fp:
+            json.dump(data, fp, indent=2)

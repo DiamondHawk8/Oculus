@@ -77,6 +77,12 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
                 seq       INTEGER,
                 FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                path TEXT NOT NULL,
+                time_ms INTEGER NOT NULL,
+                PRIMARY KEY (path, time_ms)
+            );
+            
             
             CREATE INDEX IF NOT EXISTS idx_comments_media ON comments(media_id);
             """
