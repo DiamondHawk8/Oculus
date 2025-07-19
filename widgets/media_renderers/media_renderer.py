@@ -225,8 +225,12 @@ class VideoRenderer(MediaRenderer):
 
         # ----- core widgets -------------------------------------------------
         self._player = QMediaPlayer(self)
+        self._player.playbackStateChanged.connect(self._on_state_changed)
+        self._player.mediaStatusChanged.connect(self._on_media_status)
         self._audio = QAudioOutput(self)
         self._player.setAudioOutput(self._audio)
+        self._pending_restore = None         # type: tuple[bool, int] | None
+        self._player.mediaStatusChanged.connect(self._maybe_apply_pending)
 
         self._video = QVideoWidget(self)
 
@@ -234,6 +238,8 @@ class VideoRenderer(MediaRenderer):
         self._controls = QWidget(self)
         self._ui = Ui_VideoControls()
         self._ui.setupUi(self._controls)
+        self._ui.playBtn.setCheckable(True)
+        self._ui.playBtn.clicked.connect(self.toggle_play)
 
         # --- autohide timer -------------------------------------------------
         self._AUTOHIDE_MS = 2500  # 2.5 s after last mouse move
@@ -284,7 +290,6 @@ class VideoRenderer(MediaRenderer):
     # mandatory API --------------------------------------------------------
     def load(self, path: str):
         self._player.setSource(QUrl.fromLocalFile(path))
-        self._player.play()
 
     # stubs to satisfy interface ------------------------------------------
     def zoom(self, *a, **k):
@@ -298,14 +303,16 @@ class VideoRenderer(MediaRenderer):
 
     # video helpers --------------------------------------------------------
     def toggle_play(self):
+        dur = self._player.duration()
+        at_end = dur > 0 and self._player.position() >= dur - 50  # 50 ms tolerance
+
+        if at_end:
+            self._player.setPosition(0)
+
         if self._player.playbackState() == QMediaPlayer.PlayingState:
             self._player.pause()
-            self._paused = True
-            self._ui.playBtn.setChecked(False)  # update icon state
         else:
             self._player.play()
-            self._paused = False
-            self._ui.playBtn.setChecked(True)
 
     def _reset_hide_timer(self) -> None:
         self._controls.show()
@@ -320,13 +327,57 @@ class VideoRenderer(MediaRenderer):
         cur = int(self._audio.volume() * 100)
         self._audio.setVolume(max(0, min(100, cur + delta)) / 100)
 
+    def _update_play_icon(self, playing: bool) -> None:
+        """
+        Sync the playBtn check-state and tooltip with the player state.
+        """
+        self._ui.playBtn.blockSignals(True)
+        self._ui.playBtn.setChecked(playing)
+        self._ui.playBtn.setToolTip("Pause" if playing else "Play")
+        self._ui.playBtn.blockSignals(False)
+
+    def _on_state_changed(self, state):  # slot for playbackStateChanged
+        self._update_play_icon(state == QMediaPlayer.PlayingState)
+
+    def _on_media_status(self, status):  # slot for mediaStatusChanged
+        if status == QMediaPlayer.EndOfMedia:
+            # Seek to first frame and stay paused so user sees poster frame
+            self._player.pause()
+            self._player.setPosition(0)
+
     def current_state(self):
-        return self._paused, self._last_pos
+        return {
+            "paused": self._player.playbackState() != QMediaPlayer.PlayingState,
+            "pos": self._player.position(),
+        }
 
     def restore_state(self, paused: bool, pos: int):
+        """
+        Defer the seek until media is ready; then play/pause as requested.
+        """
+        if self._player.mediaStatus() in (QMediaPlayer.LoadedMedia,
+                                          QMediaPlayer.BufferedMedia):
+            self._apply_restore(paused, pos)
+        else:
+            # save for later
+            self._pending_restore = (paused, pos)
+
+
+    def _maybe_apply_pending(self, status):
+        if status in (QMediaPlayer.LoadedMedia, QMediaPlayer.BufferedMedia):
+            if self._pending_restore:
+                paused, pos = self._pending_restore
+                self._apply_restore(paused, pos)
+                self._pending_restore = None
+
+    def _apply_restore(self, paused: bool, pos: int):
         self._player.setPosition(pos)
-        self._player.setPaused(paused)
-        self._paused, self._last_pos = paused, pos
+        if paused:
+            print("PAUSING")
+            self._player.pause()
+        else:
+            print("PLAYING")
+            self._player.play()
 
     def enterEvent(self, event):
         self._reset_hide_timer()  # show + start countdown

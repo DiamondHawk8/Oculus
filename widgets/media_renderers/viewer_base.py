@@ -163,7 +163,6 @@ class MediaViewerDialog(QDialog):
         self._renderer.deleteLater()
         self._renderer = new_renderer
         self._stacked.addWidget(self._renderer)
-
         if isinstance(new_renderer, VideoRenderer):
             new_renderer._ui.playBtn.setCheckable(True)
             new_renderer._ui.playBtn.clicked.connect(new_renderer.toggle_play)
@@ -216,10 +215,15 @@ class MediaViewerDialog(QDialog):
         cached = self._view_state_cache.get(self._current_path)
         if cached:
             zoom, pan, extra = cached
-            self._apply_view_state(zoom, QPointF(pan.x(), pan.y()))
-            if extra and isinstance(self._renderer, GifRenderer):
-                self._renderer.restore_state(*extra)
-            return
+            if zoom and pan:
+                self._apply_view_state(zoom, QPointF(pan.x(), pan.y()))
+            if extra and hasattr(self._renderer, "restore_state"):
+                # extra may be a tuple or dict depending on renderer
+                if isinstance(extra, dict):
+                    self._renderer.restore_state(**extra)
+                else:
+                    # expected (paused, frame_or_pos)
+                    self._renderer.restore_state(*extra)
         elif self._media_id not in self._applied_default:
             #  delay default preset until all resize events are done
             QTimer.singleShot(
@@ -231,30 +235,34 @@ class MediaViewerDialog(QDialog):
         # Update context
         self._update_context()
 
-    def _apply_view_state(self, zoom: float, pan: QPoint | QPointF):
+    def _apply_view_state(self, zoom, offset):
+
+        # ensure current renderer actually has _scale/_offset
+        if not hasattr(self._renderer, "_scale") or not hasattr(self._renderer, "move_to"):
+            return
+
+        if zoom != self._renderer._scale:
+            self._renderer.zoom(zoom / self._renderer._scale)
+        self._renderer.move_to(offset.x(), offset.y())
+
+    def _stash_current_view_state(self) -> None:
         """
-        Apply absolute zoom and pan from a zoom, (x, y) format
-        :param zoom:
-        :param pan:
+        Cache zoom/pan (if supported) plus renderer-specific extras.
         :return:
         """
-        if zoom and zoom != self._renderer._scale:
-            self._renderer.zoom(zoom / self._renderer._scale)
-        self._renderer.move_to(pan.x(), pan.y())
+        if not self._current_path:
+            return
 
-    def _stash_current_view_state(self):
-        if self._current_path and getattr(self._renderer, "_pixmap", None):
-            extra = ()
-            if isinstance(self._renderer, GifRenderer):
-                extra = self._renderer.current_state()
-            if isinstance(self._renderer, VideoRenderer):
-                extra = self._renderer.current_state()
-            self._view_state_cache[self._current_path] = (
-                self._renderer._scale,
-                self._renderer._offset.toPoint(),
-                extra,
-            )
+        # Detect whether the renderer exposes scale/offset attributes
+        zoom = getattr(self._renderer, "_scale", None)
+        offset = getattr(self._renderer, "_offset", None)  # QPointF or None
 
+        # Renderer-specific state (gif: (paused, frame); video: (paused, pos))
+        extra = ()
+        if hasattr(self._renderer, "current_state"):
+            extra = self._renderer.current_state()
+
+        self._view_state_cache[self._current_path] = (zoom, offset, extra)
     def _step(self, delta: int):
         if not self._paths:
             return
