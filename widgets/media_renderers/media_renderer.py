@@ -314,13 +314,10 @@ class VideoRenderer(MediaRenderer):
         self._paused = False  # remember play state
         self._last_pos = 0  # remember position
 
-        # TODO TESTING CODE, REMOVE LATER
-        self.set_bookmarks([5.0, 12.3, 42.0])
-
-
-    # mandatory API --------------------------------------------------------
     def load(self, path: str):
         self._player.setSource(QUrl.fromLocalFile(path))
+        # bm_seconds = self._media_manager.bookmarks_for_path(path)  # or []
+        # self.set_bookmarks(bm_seconds)
 
     # stubs to satisfy interface ------------------------------------------
     def zoom(self, *a, **k):
@@ -373,10 +370,38 @@ class VideoRenderer(MediaRenderer):
         self._ui.volBtn.setToolTip("Unmute" if muted else "Mute")
         self._ui.volBtn.blockSignals(False)
 
-    def set_bookmarks(self, seconds: list[float]) -> None:
-        """Populate tick marks on the progress bar."""
-        ms_list = [int(s * 1000) for s in seconds]
-        self._ui.posSlider.set_bookmarks(ms_list)
+    def add_bookmark(self) -> None:
+        """Store current position (ms) and refresh ticks."""
+        pos = self._player.position()
+        ticks = set(self._ui.posSlider.bookmarks)
+        ticks.add(pos)
+        self.set_bookmarks(list(ticks))
+        # TODO: persist
+
+    def delete_nearest_bookmark(self) -> None:
+        """Remove tick nearest to current position (1 s tolerance)."""
+        ticks = self._ui.posSlider.bookmarks
+        if not ticks:
+            return
+        cur = self._player.position()
+        nearest = min(ticks, key=lambda t: abs(t - cur))
+        if abs(nearest - cur) > 1000:
+            return
+        ticks.remove(nearest)
+        self.set_bookmarks(ticks)
+        # TODO: persist
+
+    def set_bookmarks(self, seconds: list[float] | list[int]) -> None:
+        """
+        Accepts seconds (float/int) or milliseconds (int) and updates ticks.
+        """
+        if not seconds:
+            ms_list = []
+        elif isinstance(seconds[0], float):
+            ms_list = [int(s * 1000) for s in seconds]
+        else:  # already ms
+            ms_list = seconds
+        self._ui.posSlider.set_bookmarks(sorted(ms_list))
 
     def skip_bookmark(self, direction: int) -> None:
         """
@@ -467,14 +492,21 @@ class BookmarkSlider(ClickableSlider):
         super().paintEvent(ev)
         if not self.bookmarks or self.maximum() == self.minimum():
             return
-        from PySide6.QtGui import QPainter, QColor
+
+        from PySide6.QtGui import QPainter, QColor, QPen
         p = QPainter(self)
-        p.setPen(QColor("red"))
+        pen = QPen(QColor("red"))
+        pen.setWidth(3)  # thicker
+        p.setPen(pen)
+
         full = self.maximum() - self.minimum()
         h = self.height()
+        tick_h = int(h * 0.4)  # 40 % height
+
         for ms in self.bookmarks:
             x = int((ms - self.minimum()) / full * self.width())
-            p.drawLine(x, 0, x, h)
+            y0 = (h - tick_h) // 2  # vertically centered stub
+            p.drawLine(x, y0, x, y0 + tick_h)
 
 
 def _fmt_ms(ms: int) -> str:

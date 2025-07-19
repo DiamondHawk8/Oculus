@@ -383,6 +383,12 @@ class MediaViewerDialog(QDialog):
             if key == Qt.Key_Space:
                 self._renderer.toggle_play()
                 return
+            if key == Qt.Key_B and mods == Qt.NoModifier:
+                self._renderer.add_bookmark()
+                return
+            if key == Qt.Key_B and mods & Qt.ShiftModifier:
+                self._renderer.delete_nearest_bookmark()
+                return
 
         elif isinstance(self._renderer, GifRenderer):
             if key == Qt.Key_Comma:
