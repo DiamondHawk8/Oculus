@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>622</width>
     <height>300</height>
    </rect>
   </property>
@@ -568,6 +568,13 @@ QToolButton:checked {
        </property>
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="timeLbl">
+       <property name="text">
+        <string>If you are seeing this text something has gone wrong</string>
        </property>
       </widget>
      </item>

@@ -15,15 +15,15 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QSizePolicy, QSlider,
-    QToolButton, QWidget)
+from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QSizePolicy,
+    QSlider, QToolButton, QWidget)
 from resources import resources_rc
 
 class Ui_VideoControls(object):
     def setupUi(self, VideoControls):
         if not VideoControls.objectName():
             VideoControls.setObjectName(u"VideoControls")
-        VideoControls.resize(400, 300)
+        VideoControls.resize(622, 300)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -589,6 +589,11 @@ class Ui_VideoControls(object):
 
         self.horizontalLayout.addWidget(self.posSlider)
 
+        self.timeLbl = QLabel(VideoControls)
+        self.timeLbl.setObjectName(u"timeLbl")
+
+        self.horizontalLayout.addWidget(self.timeLbl)
+
         self.volBtn = QToolButton(VideoControls)
         self.volBtn.setObjectName(u"volBtn")
         icon1 = QIcon()
@@ -630,6 +635,7 @@ class Ui_VideoControls(object):
     def retranslateUi(self, VideoControls):
         VideoControls.setWindowTitle(QCoreApplication.translate("VideoControls", u"Form", None))
         self.playBtn.setText(QCoreApplication.translate("VideoControls", u"...", None))
+        self.timeLbl.setText(QCoreApplication.translate("VideoControls", u"If you are seeing this text something has gone wrong", None))
         self.volBtn.setText(QCoreApplication.translate("VideoControls", u"...", None))
         self.fsBtn.setText(QCoreApplication.translate("VideoControls", u"...", None))
     # retranslateUi

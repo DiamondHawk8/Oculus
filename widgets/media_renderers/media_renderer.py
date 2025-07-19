@@ -6,7 +6,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
     QApplication,
-    QWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QSizePolicy,
+    QWidget, QHBoxLayout, QVBoxLayout, QStackedLayout, QSizePolicy, QSlider,
 )
 
 from ui.ui_video_controls import Ui_VideoControls
@@ -227,9 +227,11 @@ class VideoRenderer(MediaRenderer):
         self._player = QMediaPlayer(self)
         self._player.playbackStateChanged.connect(self._on_state_changed)
         self._player.mediaStatusChanged.connect(self._on_media_status)
+        self._player.positionChanged.connect(self._update_time_label)
+        self._player.durationChanged.connect(self._update_time_label)
         self._audio = QAudioOutput(self)
         self._player.setAudioOutput(self._audio)
-        self._pending_restore = None         # type: tuple[bool, int] | None
+        self._pending_restore = None  # type: tuple[bool, int] | None
         self._player.mediaStatusChanged.connect(self._maybe_apply_pending)
 
         self._video = QVideoWidget(self)
@@ -238,6 +240,20 @@ class VideoRenderer(MediaRenderer):
         self._controls = QWidget(self)
         self._ui = Ui_VideoControls()
         self._ui.setupUi(self._controls)
+
+        old = self._ui.posSlider
+        self._ui.posSlider = ClickableSlider(Qt.Horizontal, self._controls)
+        self._ui.posSlider.setRange(old.minimum(), old.maximum())
+        # copy sizePolicy etc. as needed
+        layout = self._ui.horizontalLayout
+        idx = layout.indexOf(old)
+        layout.removeWidget(old)
+        old.deleteLater()
+        layout.insertWidget(idx, self._ui.posSlider, 1)
+        self._ui.posSlider.sliderMoved.connect(
+            lambda v: self._player.setPosition(v * 1000)
+        )
+
         self._ui.playBtn.setCheckable(True)
         self._ui.playBtn.clicked.connect(self.toggle_play)
 
@@ -362,7 +378,6 @@ class VideoRenderer(MediaRenderer):
             # save for later
             self._pending_restore = (paused, pos)
 
-
     def _maybe_apply_pending(self, status):
         if status in (QMediaPlayer.LoadedMedia, QMediaPlayer.BufferedMedia):
             if self._pending_restore:
@@ -379,6 +394,11 @@ class VideoRenderer(MediaRenderer):
             print("PLAYING")
             self._player.play()
 
+    def _update_time_label(self, *_):
+        cur = self._player.position()
+        dur = max(self._player.duration(), 1)
+        self._ui.timeLbl.setText(f"{_fmt_ms(cur)} / {_fmt_ms(dur)}")
+
     def enterEvent(self, event):
         self._reset_hide_timer()  # show + start countdown
         super().enterEvent(event)
@@ -387,3 +407,19 @@ class VideoRenderer(MediaRenderer):
         self._hide_timer.stop()
         self._controls.hide()  # hide immediately when cursor exits
         super().leaveEvent(event)
+
+
+class ClickableSlider(QSlider):
+    def mousePressEvent(self, ev: QMouseEvent):
+        if ev.button() == Qt.LeftButton:
+            frac = ev.position().x() / self.width()
+            val = self.minimum() + frac * (self.maximum() - self.minimum())
+            self.setValue(int(val))
+            self.sliderMoved.emit(int(val))
+            ev.accept()
+        super().mousePressEvent(ev)
+
+
+def _fmt_ms(ms: int) -> str:
+    sec = ms // 1000
+    return f"{sec // 60:02d}:{sec % 60:02d}"

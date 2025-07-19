@@ -3,13 +3,13 @@ from dataclasses import dataclass
 import logging
 
 from PySide6.QtCore import Qt, QPoint, QTimer, QPointF, QUrl
-from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence
+from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence, QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QHBoxLayout,
     QStackedLayout,
-    QWidget,
+    QWidget, QSlider,
 )
 
 from widgets.comments_panel import CommentsPanel
@@ -53,7 +53,9 @@ class MediaViewerDialog(QDialog):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStyleSheet("background: transparent;")
 
-        scr = self.screen() or QApplication.primaryScreen()
+        scr = self.screen()
+        print(self.screen().availableGeometry().size())
+        print(QApplication.primaryScreen().availableGeometry().size())
         self.resize(scr.availableGeometry().size())
         self.showFullScreen()
 
@@ -129,7 +131,8 @@ class MediaViewerDialog(QDialog):
                 self.ctx = ViewerContext(self._current_path, self._media_id, "gif", cur_frame, paused, None)
             else:
                 # TODO add timestamp logic
-                self.ctx = ViewerContext(self._current_path, self._media_id, "video", None, None, None)
+                self.ctx = ViewerContext(self._current_path, self._media_id, "video", None, None,
+                                         self._renderer._last_pos)
 
         else:
             logger.critical(f"Renderer improperly set for {self}")
@@ -410,3 +413,4 @@ class MediaViewerDialog(QDialog):
 
     def refresh(self):
         self._show_current()
+
