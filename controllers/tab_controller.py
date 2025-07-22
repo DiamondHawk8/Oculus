@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from collections import deque
 import logging
 from pathlib import Path
@@ -188,6 +190,10 @@ class TabController(QObject):
                 viewer.raise_()
 
         controller.set_viewer_callback(_open_viewer)
+
+    def open_in_new_window(self, root_path: str):
+        subprocess.Popen([sys.executable, Path(__file__).parent / "../main.py",
+                          "--open-folder", root_path])
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonRelease:

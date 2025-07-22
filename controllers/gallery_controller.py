@@ -291,6 +291,7 @@ class GalleryController:
             act_toggle = None
 
         act_new = menu.addAction("Open in New Tab")
+        act_new_window = menu.addAction("Open in New Window")
         rename_act = menu.addAction("Rename")
         edit_act = menu.addAction("Edit metadata")
         act_move = menu.addAction("Move to...")
@@ -304,6 +305,8 @@ class GalleryController:
             self._toggle_stack(base_path)
         elif chosen == act_new:
             self._open_in_new_tab(idx)
+        elif chosen == act_new_window:
+            self._open_in_new_window(idx)
         elif chosen == rename_act:
             self._on_rename_triggered()
         elif chosen == edit_act:
@@ -442,6 +445,21 @@ class GalleryController:
             title=Path(target).name or "Root",
             switch=True
         )
+
+    def _open_in_new_window(self, index: QModelIndex) -> None:
+        """
+        Spawn a new Oculus process focused on this folder (or file's parent).
+        :param index: Index of media to spawn process with
+        :return:
+        """
+        if not index.isValid():
+            return
+
+        abs_path = self._model.data(index, Qt.UserRole)
+        target = abs_path if Path(abs_path).is_dir() else str(Path(abs_path).parent)
+
+        # Delegate to TabController helper (spawns subprocess)
+        self.tab_controller.open_in_new_window(target)
 
     def _open_metadata_dialog(self):
         sel = self.get_selected_paths()

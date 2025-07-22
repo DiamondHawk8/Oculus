@@ -1,6 +1,7 @@
-from pathlib import Path
+import argparse
 import sys
 import logging
+from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Qt, QEvent
@@ -76,6 +77,7 @@ class MainWindow(QMainWindow):
                 self.showNormal()
             else:
                 self.showMaximized()
+
         self.ui.maximizeRestoreAppBtn.clicked.connect(_toggle_max_restore)
 
         # Register global keybinds
@@ -122,7 +124,6 @@ class MainWindow(QMainWindow):
         self._grips[2].setGeometry(0, 0, w, g)
         self._grips[3].setGeometry(0, h - g, w, g)
 
-
     def eventFilter(self, obj, event):
         if obj == self.ui.contentTopBg:
             if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.LeftButton:
@@ -142,8 +143,28 @@ class MainWindow(QMainWindow):
         return super().eventFilter(obj, event)
 
 
+def parse_cli():
+    p = argparse.ArgumentParser(description="Oculus Image Viewer")
+    p.add_argument("--open-folder", help="Open with this folder selected")
+    p.add_argument("--open-file", help="Open viewer directly on this file")
+    return p.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_cli()
     app = QApplication(sys.argv)
     win = MainWindow()
+
+    # honour CLI flags
+    if args.open_folder:
+        win.gallery_controller.open_folder(args.open_folder)
+    elif args.open_file:
+        win.gallery_controller.open_folder(str(Path(args.open_file).parent))
+        idx = win.gallery_controller.state.row_map.get(args.open_file)
+        if idx is not None:
+            win.gallery_controller._open_viewer(
+                win.gallery_controller._model.index(idx)
+            )
+
     win.show()
     sys.exit(app.exec())
