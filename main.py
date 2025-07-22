@@ -6,6 +6,8 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMainWindow
 from PySide6.QtCore import Qt, QEvent
 
+import utils.backup_util
+
 from ui.custom_grips import CustomGrip
 from ui.ui_main import Ui_MainWindow
 
@@ -40,7 +42,9 @@ class MainWindow(QMainWindow):
         self.setup_window()
 
         self.conn = get_db_connection(db_path="oculus.db", backend=ACTIVE_BACKEND)
-        logger.info("Connected to database")
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        utils.backup_util.export_db_to_json(self.conn)
+        logger.info("Connected to database and backup saved")
 
         # backend managers
         self.undo = UndoManager()
