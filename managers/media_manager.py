@@ -85,11 +85,20 @@ class MediaManager(QObject):
 
         logger.info("Media manager initialized")
 
-    def add_media(self, path: str) -> int:
+    def add_media(self, path: str, st) -> int:
         """
         Adds the given path to database
         """
-        return self.dao.insert_media(path)
+        return self.dao.insert_media(path, st)
+
+    def update_media_path(self, mid: int, new_path: str, mtime: int) -> None:
+        self.dao.update_media_path(mid, new_path, mtime)
+
+    def fetch_many_inodes(self, inodes: list[int]) -> dict[int, tuple[int, str]]:
+        """
+        Return {inode: (id, path)} for any rows whose inode is in inodes.
+        """
+        return self.dao.fetch_many_inodes(inodes)
 
     def get_media_id(self, path: str) -> int | None:
         row = self.dao.fetchone("SELECT id FROM media WHERE path=?", (path,))

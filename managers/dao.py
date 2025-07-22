@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from pathlib import Path
@@ -38,10 +39,13 @@ class MediaDAO(BaseManager):
 
     # ---------- Core Operations ----------
 
-    def insert_media(self, path: str) -> int:
+    def insert_media(self, path: str, st: os.stat_result | None = None) -> int:
         p = Path(path)
+        st = st or p.stat()
         is_dir = int(p.is_dir())
-        size = 0 if is_dir else p.stat().st_size
+        size = 0 if is_dir else st.st_size
+        inode = st.st_ino
+        mtime = int(st.st_mtime)
         ftype = (
             "gif" if p.suffix.lower() == ".gif" else
             "video" if p.suffix.lower() in (".mp4", ".mkv", ".webm", ".mov") else
@@ -52,19 +56,39 @@ class MediaDAO(BaseManager):
         with self.conn:
             self.cur.execute(
                 """
-                INSERT INTO media(path, added, is_dir, byte_size, type)
-                VALUES (?,?,?,?,?)
+                INSERT INTO media(path, added, is_dir, byte_size,
+                                  type, inode, mtime)
+                VALUES (?,?,?,?,?,?,?)
                 ON CONFLICT(path) DO NOTHING
                 """,
-                (str(p), int(time.time()), is_dir, size, ftype),
+                (str(p), int(time.time()), is_dir, size, ftype, inode, mtime),
             )
-            if self.cur.rowcount:  # fresh insert
+            if self.cur.rowcount:
                 return self.cur.lastrowid
 
         row = self.cur.execute(
-            "SELECT id FROM media WHERE path=?", (str(p),)
+            "SELECT id FROM media WHERE path = ?", (str(p),)
         ).fetchone()
-        return row["id"]
+        return row["id"] if row else 0
+
+    def update_media_path(self, mid: int, new_path: str, mtime: int) -> None:
+        with self.conn:
+            self.cur.execute(
+                "UPDATE media SET path = ?, mtime = ? WHERE id = ?",
+                (new_path, mtime, mid),
+            )
+
+    def fetch_many_inodes(self, inodes: list[int]) -> dict[int, tuple[int, str]]:
+        """
+        Return {inode: (id, path)} for any rows whose inode is in inodes.
+        """
+        if not inodes:
+            return {}
+        q = ",".join("?" * len(inodes))
+        rows = self.cur.execute(
+            f"SELECT id, path, inode FROM media WHERE inode IN ({q})", inodes
+        ).fetchall()
+        return {r["inode"]: (r["id"], r["path"]) for r in rows}
 
     def set_attr(self, media_id: int, **kwargs):
         logger.debug(f"Setting attributes for {media_id} with args {kwargs}")
