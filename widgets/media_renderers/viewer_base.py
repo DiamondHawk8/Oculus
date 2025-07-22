@@ -458,6 +458,17 @@ class MediaViewerDialog(QDialog):
         )
         dlg.exec()
 
+    def closeEvent(self, ev):
+        # Halt any playing video before the dialog vanishes
+        if isinstance(self._renderer, VideoRenderer):
+            self._renderer.stop()
+        super().closeEvent(ev)
+
+    def focusNextPrevChild(self, _next: bool) -> bool:  # noqa: D401
+        """Disable Tab/Shift-Tab focus traversal so viewer retains focus."""
+        return False
+
+
     def refresh(self):
         self._show_current()
 

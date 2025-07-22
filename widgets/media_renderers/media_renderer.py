@@ -236,11 +236,18 @@ class VideoRenderer(MediaRenderer):
         self._player.mediaStatusChanged.connect(self._maybe_apply_pending)
 
         self._video = QVideoWidget(self)
+        self._video.setFocusPolicy(Qt.NoFocus)
 
         # ----- controls -------------------------------------
         self._controls = QWidget(self)
         self._ui = Ui_VideoControls()
         self._ui.setupUi(self._controls)
+
+        for w in (
+                self._ui.playBtn, self._ui.volBtn, self._ui.fsBtn,
+                self._ui.posSlider, self._ui.volSlider
+        ):
+            w.setFocusPolicy(Qt.NoFocus)
 
         old = self._ui.posSlider
         self._ui.posSlider = BookmarkSlider(Qt.Horizontal, self._controls)
@@ -258,7 +265,6 @@ class VideoRenderer(MediaRenderer):
         self._update_mute_icon(False)
         self._ui.volBtn.toggled.connect(self._audio.setMuted)
         self._audio.mutedChanged.connect(self._update_mute_icon)
-        self._ui.posSlider.setFocusPolicy(Qt.NoFocus)
 
         # Stretch controls full-width
         self._controls.setSizePolicy(
@@ -361,6 +367,10 @@ class VideoRenderer(MediaRenderer):
         else:
             self._player.play()
 
+    def stop(self) -> None:
+        """Fully stop playback so audio and decoding cease."""
+        self._player.stop()
+
     def toggle_bar(self):
         self._controls.setVisible(not self._controls.isVisible())
 
@@ -427,6 +437,10 @@ class VideoRenderer(MediaRenderer):
             ms_list = [int(s) for s in seq]
 
         self._ui.posSlider.set_bookmarks(sorted(ms_list))
+
+    def focusNextPrevChild(self, _next: bool) -> bool:  # noqa: D401
+        """Disable Tab/Shift-Tab focus traversal so viewer retains focus."""
+        return False
 
 
     def skip_bookmark(self, direction: int) -> None:
