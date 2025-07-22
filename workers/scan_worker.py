@@ -28,9 +28,7 @@ class ScanWorker(QRunnable, QObject):
         found = []
         for dirpath, _, files in os.walk(self.root):
             for fn in files:
-                print(fn)
                 if Path(fn).suffix.lower() in IMAGE_EXT:
-                    print(str(Path(dirpath) / fn))
                     found.append(str(Path(dirpath) / fn))
         self.finished.emit(
             ScanResult(self.root, found, time.time() - start)

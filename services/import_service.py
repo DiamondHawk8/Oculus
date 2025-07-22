@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal, QThreadPool
 from workers.scan_worker import ScanWorker, ScanResult
@@ -36,26 +37,44 @@ class ImportService(QObject):
     # ----------------------------------------------------------
 
     def _on_scan_done(self, result: ScanResult):
-        """
-        Second pass: auto-stack new files.
-        :param result:
-        :return:
-        """
         added = skipped = 0
+        newly_added: list[tuple[int, str]] = []
         parents: set[Path] = set()
 
-        for p in result.files:
-            mid = self.dao.insert_media(p)  # inserts file
-            if mid:
-                added += 1
-                self.variants.detect_and_stack(mid, p)
-            else:
-                skipped += 1
-            parents.add(Path(p).parent)  # collect the folder
+        # pre-fetch existing inodes for all scanned files
+        stats = {p: os.stat(p, follow_symlinks=False) for p in result.files}
+        inode_map = self.dao.fetch_many_inodes([st.st_ino for st in stats.values()])
 
-        # one insert per unique folder
-        for folder in parents:
-            self.dao.insert_media(str(folder))
+        with self.dao.conn:  # single transaction, rolls back on error
+            for path, st in stats.items():
+                inode = st.st_ino
+                rec = inode_map.get(inode)
+
+                # exact match -> skip
+                if rec and rec[1] == path:
+                    skipped += 1
+                    continue
+
+                # inode known but path moved -> update
+                if rec:
+                    self.dao.update_media_path(rec[0], path, int(st.st_mtime))
+                    skipped += 1
+                    continue
+
+                # brand-new file -> insert
+                mid = self.dao.insert_media(path, st)
+                newly_added.append((mid, path))
+                added += 1
+
+                parents.add(Path(path).parent)
+
+            # ensure all parent folders exist in DB
+            for folder in parents:
+                self.dao.insert_media(str(folder))
+
+        # second pass: stack only the new ones
+        for mid, p in newly_added:
+            self.variants.detect_and_stack(mid, p)
 
         self.import_completed.emit(
             ImportSummary(result.root, added, skipped, result.duration)
