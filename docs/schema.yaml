@@ -8,6 +8,8 @@ media:  # table of every file known about
   weight:      REAL
   artist:      TEXT
   type:        TEXT NOT NULL
+  inode:       INTEGER
+  mtime:       INTEGER
 
 variants:  # 'stacks' of related images
   base_id:     INTEGER  # ref media.id  (rank == 0)

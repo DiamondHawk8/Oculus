@@ -39,7 +39,9 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
                 favorite  INTEGER NOT NULL DEFAULT 0,
                 weight    REAL,
                 artist    TEXT,
-                type      TEXT    NOT NULL
+                type      TEXT    NOT NULL,
+                inode     INTEGER,
+                mtime     INTEGER
                             
             );
 
