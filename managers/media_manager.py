@@ -18,8 +18,7 @@ from workers.thumb_worker import ThumbWorker
 from .dao import MediaDAO
 from .utils.thumb_cache import ThumbCache
 
-IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
-
+MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 logger = logging.getLogger(__name__)
 
 
@@ -218,7 +217,7 @@ class MediaManager(QObject):
                 if child.is_dir():
                     sub.append(str(child))
                     q.append(child)
-                elif child.suffix.lower() in IMAGE_EXT:
+                elif child.suffix.lower() in MEDIA_EXT:
                     imgs.append(str(child))
             tree[str(folder)] = (sub, imgs)
         return tree
