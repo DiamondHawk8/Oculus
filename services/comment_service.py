@@ -51,3 +51,14 @@ class CommentService(QObject):
             return
         self.dao.update_comment_sequence(media_id, ordered_ids)
         self.commentReordered.emit(media_id)
+
+    def exists(self, media_id: int, text: str) -> bool:
+        """
+        Return True if text already exists for this media item.
+        Case-sensitive match
+        """
+        row = self.dao.fetchone(
+            "SELECT 1 FROM comments WHERE media_id = ? AND text = ? LIMIT 1",
+            (media_id, text),
+        )
+        return row is not None
