@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import List, Dict, Any
 
+from controllers.utils.path_utils import natural_key
 from .base import BaseManager
 
 logger = logging.getLogger(__name__)
@@ -206,22 +207,19 @@ class MediaDAO(BaseManager):
         if not subset:
             return []
 
-        clause = _SORT_SQL.get((sort_key, asc), _SORT_SQL[("name", True)])
+        if sort_key == "name":
+            return sorted(subset, key=natural_key, reverse=not asc)
 
+        clause = _SORT_SQL.get((sort_key, asc), _SORT_SQL[("name", True)])
         ordered: list[str] = []
-        CHUNK = 900  # SQLite has a 999 placeholder cap
+        CHUNK = 900
         for i in range(0, len(subset), CHUNK):
-            chunk = subset[i:i + CHUNK]
+            chunk = subset[i: i + CHUNK]
             ph = ", ".join("?" for _ in chunk)
-            sql = f"""
-                SELECT path FROM media
-                WHERE path IN ({ph})
-                {clause};
-            """
+            sql = f"SELECT path FROM media WHERE path IN ({ph}) {clause};"
             self.cur.execute(sql, chunk)
             ordered.extend(row["path"] for row in self.cur.fetchall())
 
-        # Any paths missing from DB or filtered out are appended in original order
         missing = [p for p in subset if p not in ordered]
         return ordered + missing
 
