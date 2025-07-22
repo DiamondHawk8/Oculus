@@ -72,6 +72,9 @@ class ImportService(QObject):
             for folder in parents:
                 self.dao.insert_media(str(folder))
 
+            # Ensure import root itself is included
+            self.dao.insert_media(str(result.root))
+
         # second pass: stack only the new ones
         for mid, p in newly_added:
             self.variants.detect_and_stack(mid, p)
