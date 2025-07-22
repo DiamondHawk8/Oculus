@@ -243,11 +243,6 @@ class VideoRenderer(MediaRenderer):
         self._ui = Ui_VideoControls()
         self._ui.setupUi(self._controls)
 
-        for w in (
-                self._ui.playBtn, self._ui.volBtn, self._ui.fsBtn,
-                self._ui.posSlider, self._ui.volSlider
-        ):
-            w.setFocusPolicy(Qt.NoFocus)
 
         old = self._ui.posSlider
         self._ui.posSlider = BookmarkSlider(Qt.Horizontal, self._controls)
@@ -318,6 +313,13 @@ class VideoRenderer(MediaRenderer):
 
         self._ui.volSlider.valueChanged.connect(lambda v: self._audio.setVolume(v / 100))
         self._ui.fsBtn.clicked.connect(self.request_fullscreen_toggle.emit)
+
+        self._controls.setFocusPolicy(Qt.NoFocus)
+        for w in (
+                self._ui.playBtn, self._ui.volBtn, self._ui.fsBtn,
+                self._ui.posSlider, self._ui.volSlider
+        ):
+            w.setFocusPolicy(Qt.NoFocus)
 
         self._paused = False  # remember play state
         self._last_pos = 0  # remember position
