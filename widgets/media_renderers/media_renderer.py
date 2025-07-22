@@ -325,6 +325,15 @@ class VideoRenderer(MediaRenderer):
     def load(self, path: str):
         self._src_path = path
         self._player.setSource(QUrl.fromLocalFile(path))
+
+        # ensure widget is ready
+        if self._video.size().isEmpty():
+            # force layout to run once and give the widget a size
+            self.layout().activate()
+            if self._video.size().isEmpty():
+                # minimum safety fallback
+                self._video.resize(16, 16)
+
         mgr = self._mgr()
         if mgr:
             self.set_bookmarks(mgr.bookmarks_for_path(path))

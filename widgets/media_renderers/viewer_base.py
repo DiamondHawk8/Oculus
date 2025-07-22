@@ -374,10 +374,16 @@ class MediaViewerDialog(QDialog):
                     return
             # , / . : small jump
             if key == Qt.Key_Comma:
-                self._renderer.seek_seconds(-3)
+                if mods and Qt.ControlModifier:
+                    self._renderer.seek_seconds(-1)
+                else:
+                    self._renderer.seek_seconds(-3)
                 return
             if key == Qt.Key_Period:
-                self._renderer.seek_seconds(+3)
+                if mods and Qt.ControlModifier:
+                    self._renderer.seek_seconds(+1)
+                else:
+                    self._renderer.seek_seconds(+3)
                 return
             # Space : play/pause
             if key == Qt.Key_Space:
