@@ -308,15 +308,14 @@ class GalleryController:
         elif chosen == act_new_window:
             self._open_in_new_window(idx)
         elif chosen == rename_act:
-            self._on_rename_triggered()
+            self._on_rename_triggered(idx)
         elif chosen == edit_act:
             MetadataDialog(sel, self.media_manager, self.tag_manager, self._host_widget).exec()
         elif chosen == act_move:
             self._on_move_triggered(sel)
 
-    def _on_rename_triggered(self):
+    def _on_rename_triggered(self, idx):
         logger.info("Renaming media")
-        idx = self.ui.galleryList.currentIndex()
         if not idx.isValid():
             return
         old_path = self._model.data(idx, Qt.UserRole)
