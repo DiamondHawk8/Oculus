@@ -27,7 +27,7 @@ def _generate_thumb(path: str, size: int) -> QPixmap:
 
     # grab frame ~1 s in (or frame 0 if shorter)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    cap.set(cv2.CAP_PROP_POS_FRAMES, int(fps) * 30)  # seek to ~30 sec
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(fps) * 3)  # seek to ~3 sec
     success, frame = cap.read()
     cap.release()
 
