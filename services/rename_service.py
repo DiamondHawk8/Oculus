@@ -91,9 +91,10 @@ class RenameService(QObject):
             logger.error("Rename failed on disk: %s", exc)
             return False
 
-        self.dao.cur.execute(
-            "UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path))
-        )
+        with self.dao.conn:
+            self.dao.cur.execute(
+                "UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path))
+            )
 
         self._log_rename(old_path, new_path)
         if self.undo_manager:
