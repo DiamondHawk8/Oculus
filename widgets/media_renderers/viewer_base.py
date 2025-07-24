@@ -21,7 +21,7 @@ BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
 logger = logging.getLogger(__name__)
 
 COMMENTS_PANEL_MIN_W = 260
-COMMENTS_PANEL_W_FRAC = 0.30          # 30 % of viewer width
+COMMENTS_PANEL_W_FRAC = 0.30  # 30 % of viewer width
 
 
 @dataclass
@@ -267,6 +267,7 @@ class MediaViewerDialog(QDialog):
             extra = self._renderer.current_state()
 
         self._view_state_cache[self._current_path] = (zoom, offset, extra)
+
     def _step(self, delta: int):
         if not self._paths:
             return
@@ -295,6 +296,7 @@ class MediaViewerDialog(QDialog):
 
         row = self._media_manager.default_view_state(media_id)
         if row:
+            print(row["zoom"], QPoint(row["pan_x"], row["pan_y"]), )
             self._apply_view_state(
                 row["zoom"],
                 QPoint(row["pan_x"], row["pan_y"]),
@@ -458,17 +460,20 @@ class MediaViewerDialog(QDialog):
         )
         dlg.exec()
 
+    def flush_default_applied_cache(self):
+        self._applied_default.clear()
+
     def closeEvent(self, ev):
         # Halt any playing video before the dialog vanishes
         if isinstance(self._renderer, VideoRenderer):
             self._renderer.stop()
+        self.flush_default_applied_cache()
         super().closeEvent(ev)
 
     def focusNextPrevChild(self, _next: bool) -> bool:  # noqa: D401
         """Disable Tab/Shift-Tab focus traversal so viewer retains focus."""
         return False
 
-
     def refresh(self):
+        self._stash_current_view_state()
         self._show_current()
-
