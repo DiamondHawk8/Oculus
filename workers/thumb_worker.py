@@ -1,54 +1,62 @@
 from pathlib import Path
-
 import cv2
 
-from PySide6.QtCore import QRunnable
-from PySide6.QtGui import QPixmap, Qt, QImage
+from PySide6.QtCore import QRunnable, Qt, QTimer
+from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtWidgets import QApplication
 
 VIDEO_SUFFIXES = {".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 
-def _generate_thumb(path: str, size: int) -> QPixmap:
+# ------------------------------------------------------------------ helpers
+def _generate_thumb(path: str, size: int) -> QImage:
+
     suffix = Path(path).suffix.lower()
 
-    #  image & gif
+    # ----- images & GIFs --------------------------------------------------
     if suffix not in VIDEO_SUFFIXES:
-        pix = QPixmap(path)
-        return (
-            pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            if not pix.isNull()
-            else QPixmap()
-        )
+        img = QImage(path)
+        if img.isNull():
+            return QImage()
+        return img.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
-    #  video thumbnail
+    # ----- videos ---------------------------------------------------------
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
-        return QPixmap()
+        return QImage()
 
-    # grab frame ~1 s in (or frame 0 if shorter)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    cap.set(cv2.CAP_PROP_POS_FRAMES, int(fps) * 3)  # seek to ~3 sec
-    success, frame = cap.read()
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(fps) * 3)    # seek ~3 s in
+    ok, frame = cap.read()
     cap.release()
+    if not ok:
+        return QImage()
 
-    if not success:
-        return QPixmap()
-
-    # BGR -> RGB, ndarray -> QImage -> QPixmap
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, _ = frame_rgb.shape
-    qimg = QImage(frame_rgb.data, w, h, QImage.Format_RGB888)
-    pix = QPixmap.fromImage(qimg)
-    return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    img = QImage(frame_rgb.data, w, h, QImage.Format_RGB888)
+    return img.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
 
 class ThumbWorker(QRunnable):
+    """
+    Runs off-thread: builds QImage, then posts a Pixmap-ready callback
+    back to the GUI thread.
+    """
     def __init__(self, path: str, size: int, cb):
         super().__init__()
         self.path, self.size, self.cb = path, size, cb
         self.setAutoDelete(True)
 
     def run(self):
-        pix = _generate_thumb(self.path, self.size)
-        if not pix.isNull():
-            self.cb(self.path, pix)
+        img = _generate_thumb(self.path, self.size)
+        if img.isNull():
+            return
+
+        # schedule on the GUI thread (via QApplication's thread)
+        QTimer.singleShot(
+            0,
+            QApplication.instance(),  # receiver to main thread
+            lambda p=self.path, im=img:  # lambda runs in GUI thread
+            self.cb(p, QPixmap.fromImage(im))
+        )
