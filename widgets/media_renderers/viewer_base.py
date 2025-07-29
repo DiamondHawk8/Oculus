@@ -117,6 +117,7 @@ class MediaViewerDialog(QDialog):
         self._show_current()
 
         logger.info("MediaViewerDialog Initialized")
+        print('AAAA')
 
     # public API
 
@@ -192,8 +193,8 @@ class MediaViewerDialog(QDialog):
             return
 
         cls_needed = self._select_renderer_class(self._current_path)
-        if not isinstance(self._renderer, cls_needed):
-            self._replace_renderer(cls_needed(self))
+
+        self._replace_renderer(cls_needed(self))
 
         self._current_path = self._paths[self._idx]
         self._refresh_stack_for_current()
