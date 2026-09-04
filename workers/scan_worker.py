@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QRunnable, Signal, QObject
 
-IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".mov", ".avi"}
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 
 class ScanResult:

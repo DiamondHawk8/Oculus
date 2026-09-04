@@ -309,8 +309,6 @@ class VideoRenderer(MediaRenderer):
         self._ui.posSlider.setPageStep(500)  # 0.5 s per PgUp/PgDn (optional)
 
         # buttons / sliders
-        self._ui.playBtn.clicked.connect(self.toggle_play)
-
         self._ui.volSlider.valueChanged.connect(lambda v: self._audio.setVolume(v / 100))
         self._ui.fsBtn.clicked.connect(self.request_fullscreen_toggle.emit)
 
@@ -325,10 +323,14 @@ class VideoRenderer(MediaRenderer):
         self._last_pos = 0  # remember position
 
     def _mgr(self):
-        """climb two levels to viewer, then grab media_manager."""
+        """Find the owning viewer's media manager in the parent chain."""
         parent = self.parent()
-        parent = parent.parent()
-        return getattr(parent, "_media_manager", None)
+        while parent is not None:
+            manager = getattr(parent, "_media_manager", None)
+            if manager is not None:
+                return manager
+            parent = parent.parent()
+        return None
 
     def load(self, path: str):
         self._src_path = path

@@ -33,8 +33,6 @@ class ImportController:
         ui.debugFolderTree.deleteLater()
         ui.debugFolderTree = tree
 
-        media_manager.import_finished.connect(self.handle_scan_finished)
-
         logger.info("Import setup complete")
 
     def _choose_folder(self) -> None:

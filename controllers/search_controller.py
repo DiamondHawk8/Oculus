@@ -65,7 +65,7 @@ class SearchController(QObject):
         self.ui.btn_search_view.toggled.connect(self._toggle_view)
 
         # size combo
-        self.ui.cmb_gallery_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
+        self.ui.cmb_search_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
         self.ui.cmb_search_size.setCurrentText(self._search_preset)
         self.ui.cmb_search_size.currentTextChanged.connect(self.change_size)
 
@@ -87,24 +87,19 @@ class SearchController(QObject):
         if not term:
             # if blank query, return all media
             self._result_paths = self.media_manager.all_paths(files_only=False)
-            self._apply_sort()
+        else:
+            self._result_paths = (
+                self.search_manager.tag_search(term)
+                if any(sym in term for sym in "|,()")
+                else self.search_manager.simple_search(term)
+            )
 
-        paths = (
-            self.search_manager.tag_search(term)
-            if any(sym in term for sym in "|,()")
-            else self.search_manager.simple_search(term)
-        )
-
-        self._result_paths = paths
         self._apply_sort()
 
         self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX)
 
     def _apply_sort(self):
         logger.info("Sort started")
-        if not self._result_paths:
-            return
-
         key = _SORT_KEYS.get(self.ui.cmb_search_sortKey.currentIndex(), "name")
         asc = not self.ui.btn_search_sortDir.isChecked()
         ordered = self.media_manager.order_subset(self._result_paths, key, asc)
@@ -112,6 +107,9 @@ class SearchController(QObject):
         # repopulate model
         self._model.set_paths(ordered)
         self._search_items = {p: i for i, p in enumerate(ordered)}
+
+        if not ordered:
+            return
 
         for p in ordered:
             if Path(p).is_dir():
@@ -141,17 +139,26 @@ class SearchController(QObject):
 
     def _open_viewer(self, index: QModelIndex):
         path = self._model.data(index, Qt.UserRole)
+        if not path:
+            return
         stack = self.media_manager.stack_paths(path)
 
         # navigation list -> skip any file that is a variant
         paths = [p for p in self._model.get_paths()
                  if Path(p).is_file() and not self.media_manager.is_variant(p)]
-        cur_idx = paths.index(stack[0])  # base index
+        base = stack[0]
+        # A search can match only a variant, so its base may not be in the
+        # result model. Include it so viewer navigation still has a valid index.
+        if base not in paths:
+            paths.append(base)
+        cur_idx = paths.index(base)
 
         # open viewer at base, but pass full stack so Up/Down still work
         if self.viewer.callback:
-            self.viewer.open_via_callback(paths, cur_idx, stack,
-                                          self._host_widget, self.media_manager)
+            self.viewer.open_via_callback(
+                paths, cur_idx, stack, path,
+                self._host_widget, self.media_manager, self.tag_manager,
+            )
         else:
             self.viewer.open(self._model, index, self.media_manager,
                              self.tag_manager, self._host_widget)

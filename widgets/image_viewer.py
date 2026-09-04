@@ -17,11 +17,11 @@ class ImageViewerDialog(QDialog):
     def __init__(self, paths, cur_idx, media_manager, tag_manager, stack, selected_path=None, parent=None):
         super().__init__(parent)
 
-        self._paths = list(paths)
+        self._paths = [str(path) for path in paths]
         self._idx = cur_idx
         self._media_manager = media_manager
         self._tag_manager = tag_manager
-        self._stack = stack
+        self._stack = [str(path) for path in (stack or [])]
 
         self._view_states: dict[str, tuple[float, QPoint]] = {}
         self._variant_pos: dict[str, int] = {}
@@ -67,10 +67,10 @@ class ImageViewerDialog(QDialog):
         self.showFullScreen()
 
         first_path = selected_path or self._paths[self._idx]
-        self._current_path = first_path
+        self._current_path = str(first_path)
         # If variant, save the position
-        if first_path in stack and first_path != stack[0]:
-            self._variant_pos[stack[0]] = stack.index(first_path)
+        if first_path in self._stack and first_path != self._stack[0]:
+            self._variant_pos[self._stack[0]] = self._stack.index(first_path)
 
         self._load_image(first_path)
 
@@ -101,6 +101,7 @@ class ImageViewerDialog(QDialog):
         :param path: path to image
         :return:
         """
+        path = str(path)
         logger.info(f"Loading image from {path}")
         pix = QPixmap(path)
         if pix.isNull():
@@ -445,8 +446,8 @@ class ImageViewerDialog(QDialog):
         self._label.move(pos)
 
     def load_new_stack(self, paths, cur_idx, stack):
-        self._paths = list(paths)
-        self._stack = stack
+        self._paths = [str(path) for path in paths]
+        self._stack = [str(path) for path in (stack or [])]
         self._idx = cur_idx
         self._load_image(paths[cur_idx])
 

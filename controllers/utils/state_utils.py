@@ -52,7 +52,7 @@ class ViewerState:
         so each tab owns one persistent viewer managed by TabController.
         """
         if callable(self.callback):
-            self.callback(nav_paths, cur_idx, stack)
+            self.callback(nav_paths, cur_idx, stack, selected)
         else:
             dlg = MediaViewerDialog(
                 nav_paths, cur_idx,

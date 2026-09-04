@@ -42,13 +42,22 @@ class ImportService(QObject):
         parents: set[Path] = set()
 
         # pre-fetch existing inodes for all scanned files
-        stats = {p: os.stat(p, follow_symlinks=False) for p in result.files}
+        stats = {}
+        for path in result.files:
+            try:
+                stats[path] = os.stat(path, follow_symlinks=False)
+            except OSError:
+                # A file may disappear between the worker scan and this pass.
+                logger.debug("Skipping missing file discovered during scan: %s", path)
         inode_map = self.dao.fetch_many_inodes([st.st_ino for st in stats.values()])
 
         with self.dao.conn:  # single transaction, rolls back on error
             for path, st in stats.items():
                 inode = st.st_ino
                 rec = inode_map.get(inode)
+                # Keep parent folders discoverable even when an existing
+                # inode was moved into a previously unindexed directory.
+                parents.add(Path(path).parent)
 
                 # exact match -> skip
                 if rec and rec[1] == path:
@@ -66,14 +75,13 @@ class ImportService(QObject):
                 newly_added.append((mid, path))
                 added += 1
 
-                parents.add(Path(path).parent)
-
             # ensure all parent folders exist in DB
             for folder in parents:
                 self.dao.insert_media(str(folder))
 
             # Ensure import root itself is included
-            self.dao.insert_media(str(result.root))
+            if result.root.is_dir():
+                self.dao.insert_media(str(result.root))
 
         # second pass: stack only the new ones
         for mid, p in newly_added:

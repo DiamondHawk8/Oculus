@@ -2,18 +2,17 @@ from typing import List, Optional
 from dataclasses import dataclass
 import logging
 
-from PySide6.QtCore import Qt, QPoint, QTimer, QPointF, QUrl
-from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence, QMouseEvent
+from PySide6.QtCore import Qt, QPoint, QTimer, QPointF
+from PySide6.QtGui import QKeyEvent, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
-    QApplication,
     QDialog,
     QHBoxLayout,
     QStackedLayout,
-    QWidget, QSlider,
+    QWidget,
 )
 
 from widgets.comments_panel import CommentsPanel
-from widgets.media_renderers.media_renderer import ImageRenderer, GifRenderer, MediaRenderer, VideoRenderer
+from widgets.media_renderers.media_renderer import ImageRenderer, GifRenderer, VideoRenderer
 from widgets.metadata_dialog import MetadataDialog
 
 BACKDROP_CSS = "background-color: rgba(0, 0, 0, 180);"  # 70 % black
@@ -70,8 +69,14 @@ class MediaViewerDialog(QDialog):
         self._dyn_presets: List[QShortcut] = []
         self._view_state_cache: dict[str, tuple] = {}
 
-        self._current_path = selected_path or self._paths[self._idx]
-        self._media_id = self._media_manager.get_media_id(self._current_path)
+        self._current_path = selected_path or (
+            self._paths[self._idx] if self._paths else ""
+        )
+        self._media_id = (
+            self._media_manager.get_media_id(self._current_path)
+            if self._current_path
+            else None
+        )
         if self._stack and self._current_path in self._stack:
             self._variant_pos[self._stack[0]] = self._stack.index(self._current_path)
 
@@ -116,25 +121,25 @@ class MediaViewerDialog(QDialog):
         # first display
         self._show_current()
 
-        logger.info("MediaViewerDialog Initialized")
-        print('AAAA')
-
     # public API
-
     def current_context(self) -> ViewerContext:  # used by MetadataDialog
+        self._update_context()
         return self.ctx
 
     def _update_context(self) -> None:
         if self._renderer is not None:
-            if isinstance(self._renderer, ImageRenderer):
-                self.ctx = ViewerContext(self._current_path, self._media_id, "image", None, None, None)
-            elif isinstance(self._renderer, GifRenderer):
+            # GifRenderer subclasses ImageRenderer, so check it first.
+            if isinstance(self._renderer, GifRenderer):
                 paused, cur_frame = self._renderer.current_state()
                 self.ctx = ViewerContext(self._current_path, self._media_id, "gif", cur_frame, paused, None)
-            else:
-                # TODO add timestamp logic
+            elif isinstance(self._renderer, ImageRenderer):
+                self.ctx = ViewerContext(self._current_path, self._media_id, "image", None, None, None)
+            elif isinstance(self._renderer, VideoRenderer):
+                timestamp = self._renderer.current_state().get("pos")
                 self.ctx = ViewerContext(self._current_path, self._media_id, "video", None, None,
-                                         self._renderer._last_pos)
+                                         timestamp)
+            else:
+                logger.critical("Unknown renderer type: %s", type(self._renderer).__name__)
 
         else:
             logger.critical(f"Renderer improperly set for {self}")
@@ -144,11 +149,14 @@ class MediaViewerDialog(QDialog):
             paths: List[str],
             cur_idx: int,
             stack: Optional[List[str]] = None,
+            selected_path: Optional[str] = None,
     ) -> None:
-        self._paths = paths[:]
+        self._paths = list(paths)
         self._idx = cur_idx % len(self._paths) if self._paths else 0
-        self._stack = stack or []
+        self._stack = list(stack or [])
         self._variant_pos.clear()
+        if selected_path and selected_path in self._stack:
+            self._variant_pos[self._stack[0]] = self._stack.index(selected_path)
         self._show_current()
         self.raise_()
         self.activateWindow()
@@ -156,7 +164,7 @@ class MediaViewerDialog(QDialog):
     # helpers
     def _select_renderer_class(self, path: str):
         low = path.lower()
-        if low.endswith((".mp4", ".mkv", ".mov", ".avi")):
+        if low.endswith((".mp4", ".mkv", ".webm", ".mov", ".avi")):
             self.comments_panel.hide()
             return VideoRenderer
         if low.endswith((".gif", ".webp")):
@@ -164,13 +172,13 @@ class MediaViewerDialog(QDialog):
         return ImageRenderer
 
     def _replace_renderer(self, new_renderer: QWidget):
-        self._stacked.removeWidget(self._renderer)
-        self._renderer.deleteLater()
+        if self._renderer is not None:
+            if isinstance(self._renderer, VideoRenderer):
+                self._renderer.stop()
+            self._stacked.removeWidget(self._renderer)
+            self._renderer.deleteLater()
         self._renderer = new_renderer
         self._stacked.addWidget(self._renderer)
-        if isinstance(new_renderer, VideoRenderer):
-            new_renderer._ui.playBtn.setCheckable(True)
-            new_renderer._ui.playBtn.clicked.connect(new_renderer.toggle_play)
 
     def _refresh_stack_for_current(self):
         """
@@ -178,23 +186,16 @@ class MediaViewerDialog(QDialog):
         :return:
         """
         if hasattr(self._media_manager, "stack_paths"):
-            new_stack = self._media_manager.stack_paths(self._current_path)
-            if new_stack:
-                self._stack = new_stack
+            self._stack = list(
+                self._media_manager.stack_paths(self._current_path) or []
+            )
 
     def _show_current(self):
         if not self._paths:
+            self._current_path = ""
+            self._media_id = None
+            self._clear_dynamic_shortcuts()
             return
-
-        self._current_path = self._paths[self._idx]
-        self._media_id = self._media_manager.get_media_id(self._current_path)
-
-        if self._media_id is None:
-            return
-
-        cls_needed = self._select_renderer_class(self._current_path)
-
-        self._replace_renderer(cls_needed(self))
 
         self._current_path = self._paths[self._idx]
         self._refresh_stack_for_current()
@@ -202,9 +203,20 @@ class MediaViewerDialog(QDialog):
         if self._stack:
             root = self._stack[0]
             desired_pos = self._variant_pos.get(root, 0)
+            desired_pos = max(0, min(desired_pos, len(self._stack) - 1))
+            self._variant_pos[root] = desired_pos
             desired_path = self._stack[desired_pos]
-            if desired_path != self._current_path:
-                self._current_path = desired_path
+            self._current_path = desired_path
+
+        self._media_id = self._media_manager.get_media_id(self._current_path)
+
+        if self._media_id is None:
+            self._clear_dynamic_shortcuts()
+            return
+
+        cls_needed = self._select_renderer_class(self._current_path)
+
+        self._replace_renderer(cls_needed(self))
 
         self._renderer.load(self._current_path)
 
@@ -231,9 +243,15 @@ class MediaViewerDialog(QDialog):
                     self._renderer.restore_state(*extra)
         elif self._media_id not in self._applied_default:
             #  delay default preset until all resize events are done
+            path = self._current_path
+            media_id = self._media_id
             QTimer.singleShot(
                 0,
-                lambda mid=self._media_id: self._apply_default_preset(mid),
+                lambda: (
+                    self._apply_default_preset(media_id)
+                    if self._current_path == path and self._media_id == media_id
+                    else None
+                ),
             )
         self._create_dynamic_shortcuts(self._media_id)
 
@@ -277,15 +295,13 @@ class MediaViewerDialog(QDialog):
         self._show_current()
 
     def _cycle_variant(self, delta: int):
-        if not self._stack or self._current_path not in self._stack:
+        if len(self._stack) <= 1 or self._current_path not in self._stack:
             return
         self._stash_current_view_state()
 
         root = self._stack[0]
         pos = (self._variant_pos.get(root, 0) + delta) % len(self._stack)
         self._variant_pos[root] = pos
-        new_path = self._stack[pos]
-
         if self._current_path in self._paths:
             self._idx = self._paths.index(self._current_path)
         self._show_current()
@@ -294,10 +310,12 @@ class MediaViewerDialog(QDialog):
     def _apply_default_preset(self, media_id: int):
         if media_id in self._applied_default:
             return
+        if not getattr(self._renderer, "supports_presets", True):
+            self._applied_default.add(media_id)
+            return
 
         row = self._media_manager.default_view_state(media_id)
         if row:
-            print(row["zoom"], QPoint(row["pan_x"], row["pan_y"]), )
             self._apply_view_state(
                 row["zoom"],
                 QPoint(row["pan_x"], row["pan_y"]),
@@ -311,6 +329,8 @@ class MediaViewerDialog(QDialog):
 
     def _create_dynamic_shortcuts(self, media_id: int):
         self._clear_dynamic_shortcuts()
+        if not getattr(self._renderer, "supports_presets", True):
+            return
         for r in self._media_manager.preset_shortcuts(media_id) or []:
             seq = QKeySequence(r["hotkey"])
             if seq.isEmpty():
@@ -333,7 +353,7 @@ class MediaViewerDialog(QDialog):
             self.comments_panel.hide()
         else:
             mid = self._media_manager.get_media_id(self._current_path)
-            if mid:
+            if mid is not None:
                 self.comments_panel.load_comments(mid)
             self.comments_panel.show()
             self._position_comments_panel()
@@ -377,13 +397,13 @@ class MediaViewerDialog(QDialog):
                     return
             # , / . : small jump
             if key == Qt.Key_Comma:
-                if mods and Qt.ControlModifier:
+                if mods & Qt.ControlModifier:
                     self._renderer.seek_seconds(-1)
                 else:
                     self._renderer.seek_seconds(-3)
                 return
             if key == Qt.Key_Period:
-                if mods and Qt.ControlModifier:
+                if mods & Qt.ControlModifier:
                     self._renderer.seek_seconds(+1)
                 else:
                     self._renderer.seek_seconds(+3)
@@ -449,8 +469,9 @@ class MediaViewerDialog(QDialog):
     def _open_metadata_dialog(self):
         if not self._paths:
             return
-        z = self._renderer._scale
-        pos = self._renderer._offset.toPoint()
+        z = getattr(self._renderer, "_scale", 1.0)
+        offset = getattr(self._renderer, "_offset", None)
+        pos = offset.toPoint() if isinstance(offset, QPointF) else QPoint()
         dlg = MetadataDialog(
             [self._current_path],
             self._media_manager,

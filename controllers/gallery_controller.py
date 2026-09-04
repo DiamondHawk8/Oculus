@@ -122,6 +122,9 @@ class GalleryController:
         :return: None
         """
         logger.debug(f"open_folder called with folder abspath: {folder_abspath}")
+        if not folder_abspath or not Path(folder_abspath).is_dir():
+            logger.warning("Cannot open missing folder: %s", folder_abspath)
+            return
         self.state.current_folder = folder_abspath
         if not self.history.push(folder_abspath):
             return
@@ -373,9 +376,7 @@ class GalleryController:
 
         # perform move via RenameService
         moved = self.media_manager.rename_service.move_many(sel, dest_dir)
-        if moved:
-            self._reload_gallery()  # refresh list to reflect moves
-        else:
+        if not moved:
             QMessageBox.information(self.ui.galleryList, "Move", "Nothing was moved.")
 
         # refresh gallery view (files may have left or arrived)
@@ -404,9 +405,6 @@ class GalleryController:
             if Path(p).is_file() and not self.media_manager.is_variant(p)
         ]
         cur_idx = nav_paths.index(base)  # viewer index
-
-        # Index of the base inside the navigation list
-        cur_idx = nav_paths.index(base)
 
         if self.viewer.callback:
             self.viewer.open_via_callback(

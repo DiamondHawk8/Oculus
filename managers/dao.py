@@ -49,7 +49,7 @@ class MediaDAO(BaseManager):
         mtime = int(st.st_mtime)
         ftype = (
             "gif" if p.suffix.lower() == ".gif" else
-            "video" if p.suffix.lower() in (".mp4", ".mkv", ".webm", ".mov") else
+            "video" if p.suffix.lower() in (".mp4", ".mkv", ".webm", ".mov", ".avi") else
             "image" if not is_dir else
             "dir"
         )

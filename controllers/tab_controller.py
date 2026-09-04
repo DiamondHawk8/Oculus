@@ -174,18 +174,19 @@ class TabController(QObject):
         """
         Called by each GalleryController exactly once. Creates (or reuses) a persistent viewer bound to host_page.
         """
-        def _open_viewer(paths, cur_idx, stack):
+        def _open_viewer(paths, cur_idx, stack, selected=None):
             viewer = self._viewers.get(host_page)
             if viewer is None:
                 viewer = MediaViewerDialog(
                     paths, cur_idx,
                     self.media_manager, self.tag_manager, stack,
+                    selected_path=selected,
                     parent=self._tabs
                 )
                 viewer.destroyed.connect(lambda: self._viewers.pop(host_page, None))
                 self._viewers[host_page] = viewer
             else:
-                viewer.load_new_stack(paths, cur_idx, stack)
+                viewer.load_new_stack(paths, cur_idx, stack, selected_path=selected)
                 viewer.show()
                 viewer.raise_()
 
