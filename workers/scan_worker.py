@@ -1,5 +1,6 @@
 import os
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtCore import QRunnable, Signal, QObject
@@ -7,11 +8,17 @@ from PySide6.QtCore import QRunnable, Signal, QObject
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
 
 
+@dataclass(frozen=True)
+class ScannedFile:
+    path: str
+    stat: os.stat_result
+
+
+@dataclass(frozen=True)
 class ScanResult:
-    def __init__(self, root: Path, files: list[str], duration: float):
-        self.root = root
-        self.files = files
-        self.duration = duration
+    root: Path
+    files: list[ScannedFile]
+    duration: float
 
 
 class ScanWorker(QRunnable, QObject):
@@ -25,11 +32,17 @@ class ScanWorker(QRunnable, QObject):
 
     def run(self):
         start = time.time()
-        found = []
+        found: list[ScannedFile] = []
         for dirpath, _, files in os.walk(self.root):
             for fn in files:
                 if Path(fn).suffix.lower() in IMAGE_EXT:
-                    found.append(str(Path(dirpath) / fn))
+                    path = str(Path(dirpath) / fn)
+                    try:
+                        # Stat on the worker thread; large network collections
+                        # should not perform this I/O after returning to the UI.
+                        found.append(ScannedFile(path, os.stat(path, follow_symlinks=False)))
+                    except OSError:
+                        continue
         self.finished.emit(
             ScanResult(self.root, found, time.time() - start)
         )

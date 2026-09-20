@@ -8,17 +8,19 @@ Scanned 1,000 files in 3.42 s  →  292.4 files/s
 from __future__ import annotations
 
 import argparse
-
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
 from managers.media_manager import MediaManager
+from managers.db_utils import get_db_connection
+from managers.undo_manager import UndoManager
 
 # ensure project root is on sys.path so the import works when running via -m
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
@@ -38,16 +40,23 @@ def main() -> None:
     folder = _parse_cli()
     app = QApplication([])
 
-    mm = MediaManager()
+    temp_dir = tempfile.TemporaryDirectory()
+    temp_root = Path(temp_dir.name)
+    conn = get_db_connection(db_path=temp_root / "perf.db", backend="sqlite")
+    undo = UndoManager(log_path=temp_root / "rename_log.json")
+    mm = MediaManager(conn, undo, operation_backup_dir=temp_root / "overwritten")
     t0 = time.perf_counter()
 
-    def _done(paths: list[str]):
+    def _done(summary):
         dt = time.perf_counter() - t0
-        per_s = len(paths) / dt if dt else 0.0
-        print(f"\nScanned {len(paths):,} files in {dt:.2f} s  :  {per_s:.1f} files/s")
+        total: int = summary.added + summary.skipped
+        per_s = total / dt if dt else 0.0
+        print(f"\nScanned {total:,} files in {dt:.2f} s  :  {per_s:.1f} files/s")
+        conn.close()
+        temp_dir.cleanup()
         app.quit()
 
-    mm.scan_finished.connect(_done)
+    mm.import_finished.connect(_done)
     mm.scan_folder(folder)
     app.exec()
 
