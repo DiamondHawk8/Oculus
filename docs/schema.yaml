@@ -8,7 +8,8 @@ media:  # table of every file known about
   weight:      REAL
   artist:      TEXT
   type:        TEXT NOT NULL
-  inode:       INTEGER
+  device:      TEXT  # tagged filesystem device/volume identity
+  inode:       TEXT  # tagged value; Windows file IDs may exceed 64 bits
   mtime:       INTEGER
 
 variants:  # 'stacks' of related images
