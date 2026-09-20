@@ -26,11 +26,11 @@ class UndoManager:
     _LOG_PATH = Path.home() / "OculusBackups" / "rename_log.json"
     _MAX = 1024  # keep last 1024 renames
 
-    def __init__(self) -> None:
+    def __init__(self, log_path: str | Path | None = None) -> None:
         self.rename = None
         self._history: Deque[UndoEntry] = deque(maxlen=1024)
-        self._log_path = Path.home() / "OculusBackups" / "rename_log.json"
-        self._log_path.parent.mkdir(exist_ok=True)
+        self._log_path = Path(log_path) if log_path else self._LOG_PATH
+        self._log_path.parent.mkdir(parents=True, exist_ok=True)
         self._load()
 
         logger.info("UndoManager initialized")
@@ -54,9 +54,12 @@ class UndoManager:
         """
         if not self._history:
             return False
-        entry = self._history.pop()
+        entry = self._history[-1]
         ok = self.rename.undo(entry)  # RenameService handles logic
-        self._dump()
+        # Keep failed operations available not erase the only record needed to retry the undo.
+        if ok:
+            self._history.pop()
+            self._dump()
         return ok
 
     def _dump(self):

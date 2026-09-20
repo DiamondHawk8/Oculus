@@ -1,9 +1,6 @@
-from pathlib import Path
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QListWidget, QListView
 import logging
-
-from widgets.image_viewer import ImageViewerDialog
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +14,11 @@ _SIZE_PRESETS = {
 }
 
 
-def icon_preset(name: str) -> (int, QSize):
+def icon_preset_names() -> list[str]:
+    return list(_SIZE_PRESETS)
+
+
+def icon_preset(name: str) -> tuple[int, QSize]:
     """
     Return a QSize for grid/list cell based on preset name.
     :param name:
