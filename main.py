@@ -1,6 +1,7 @@
 import argparse
 import sys
 import logging
+import importlib
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMainWindow
@@ -15,7 +16,7 @@ from managers.media_manager import MediaManager
 from managers.search_manager import SearchManager
 from managers.tag_manager import TagManager
 from managers.keybind_manager import KeybindManager
-from managers.db_utils import get_db_connection
+from managers.db_utils import ensure_schema, get_db_connection
 from managers.undo_manager import UndoManager
 
 from controllers.gallery_controller import GalleryController
@@ -23,8 +24,9 @@ from controllers.import_controller import ImportController
 from controllers.search_controller import SearchController
 from controllers.tab_controller import TabController
 
+from utils.config import AppConfig, load_config
+
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename='logs/oculus.log', level=logging.DEBUG)
 
 ACTIVE_BACKEND = "sqlite"
 
@@ -33,25 +35,42 @@ WIDGET_PAGE_INDEX = 1
 IMPORT_PAGE_INDEX = 2
 SEARCH_PAGE_INDEX = 3
 
-
 class MainWindow(QMainWindow):
 
-    def __init__(self) -> None:
+    def __init__(self, config: AppConfig) -> None:
         super().__init__()
+        self.config = config
 
         self.setup_window()
 
-        self.conn = get_db_connection(db_path="oculus.db", backend=ACTIVE_BACKEND)
+        self.conn = get_db_connection(
+            db_path=config.database_path,
+            backend=ACTIVE_BACKEND,
+            initialize_schema=False,
+        )
+        if config.backup_on_startup:
+            # Capture the pre-migration state so schema upgrades remain
+            utils.backup_util.export_db_to_json(self.conn, config.backup_dir)
+            logger.info("Pre-migration database backup saved")
+        else:
+            logger.info("Startup database backup disabled")
+        ensure_schema(self.conn)
         self.conn.execute("PRAGMA journal_mode=WAL")
-        utils.backup_util.export_db_to_json(self.conn)
-        logger.info("Connected to database and backup saved")
+        logger.info("Connected to database")
 
         # backend managers
-        self.undo = UndoManager()
-        self.media = MediaManager(self.conn, self.undo, parent=self)
+        self.undo = UndoManager(log_path=config.operation_backup_dir / "rename_log.json")
+        self.media = MediaManager(
+            self.conn,
+            self.undo,
+            operation_backup_dir=config.operation_backup_dir / "overwritten",
+            parent=self,
+        )
         self.tags = TagManager(self.conn)
         self.search = SearchManager(self.conn, self.tags)
         logger.debug("Main managers instantiated")
+
+        self._run_optional_comment_migration()
 
         # Other Managers
         self.keybinds = KeybindManager(self)
@@ -72,7 +91,11 @@ class MainWindow(QMainWindow):
 
         roots = self.media.root_folders()
         if roots:
-            self.gallery_controller.open_folder(roots[-1])  # newest root
+            # Prefer the configured collection path, but fall back to a DB
+            # root when the drive is unavailable (for example on another PC).
+            configured_root = config.collection_root
+            root_path = configured_root if configured_root and configured_root.is_dir() else roots[-1]
+            self.gallery_controller.open_folder(str(root_path))
         else:
             self.gallery_controller.populate_gallery([])  # empty state
 
@@ -93,6 +116,26 @@ class MainWindow(QMainWindow):
         self.ui.btn_import.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(IMPORT_PAGE_INDEX))
         self.ui.btn_search.clicked.connect(lambda: self.ui.stackedWidget.setCurrentIndex(SEARCH_PAGE_INDEX))
         logger.info("Main window setup complete")
+
+    def _run_optional_comment_migration(self) -> None:
+        if not self.config.migrate_drive_comments:
+            return
+        if not self.config.migration_root:
+            logger.warning("Comment migration enabled without a migration_root")
+            return
+
+        # The migration utility is intentionally optional and may be absent
+
+        try:
+            migration_module = importlib.import_module("utils.migrate_drive_comments")
+        except ModuleNotFoundError:
+            logger.warning("Comment migration requested, but its utility is unavailable")
+            return
+        migration_module.migrate(
+            self.config.migration_root,
+            conn=self.conn,
+            backup_root=self.config.backup_dir / "drive_comments",
+        )
 
     def setup_window(self) -> None:
 
@@ -146,6 +189,11 @@ class MainWindow(QMainWindow):
 
         return super().eventFilter(obj, event)
 
+    def closeEvent(self, event):
+        # Explicit closure keeps WAL/checkpoint lifecycle tied to the window.
+        self.conn.close()
+        super().closeEvent(event)
+
 
 def parse_cli():
     p = argparse.ArgumentParser(description="Oculus Image Viewer")
@@ -156,10 +204,13 @@ def parse_cli():
 
 if __name__ == "__main__":
     args = parse_cli()
+    app_config = load_config()
+    app_config.log_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(filename=app_config.log_path, level=logging.DEBUG)
     app = QApplication(sys.argv)
-    win = MainWindow()
+    win = MainWindow(app_config)
 
-    # honour CLI flags
+    # honor CLI flags
     if args.open_folder:
         win.gallery_controller.open_folder(args.open_folder)
     elif args.open_file:
