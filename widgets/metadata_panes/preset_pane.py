@@ -1,8 +1,8 @@
 from pathlib import Path
 import uuid
-from typing import Callable, List
+from typing import Callable
 
-from PySide6.QtCore import Qt, QPoint, Signal, QObject
+from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
      QMessageBox, QTableWidgetItem, QRadioButton, QLineEdit, QAbstractItemView
@@ -74,10 +74,7 @@ class PresetPane(QObject):
 
             # col 1 Scope list
             if r["media_id"] is None:  # folder default
-                folder_rows = self._media.dao.fetchall(
-                    "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
-                )
-                names = [Path(fr["path"]).name for fr in folder_rows]
+                names = [Path(path).name for path in self._media.paths_in_folder(folder)]
             else:  # file-specific group
                 linked = self._media.list_presets_in_group(r["group_id"])
                 names = [Path(lr["path"]).name for lr in linked]
@@ -140,9 +137,7 @@ class PresetPane(QObject):
         if not items:
             return
         preset_id = items[0].data(Qt.UserRole)
-        p = self._media.dao.fetchone(
-            "SELECT zoom, pan_x, pan_y FROM presets WHERE id=?", (preset_id,)
-        )
+        p = self._media.preset_by_id(preset_id)
         # viewer is handled by dialog; emit signal if needed
         if p:
             self.presetsChanged.emit()  # dialog can catch and apply
@@ -152,7 +147,7 @@ class PresetPane(QObject):
         if not items:
             return
         preset_id = items[0].data(Qt.UserRole)
-        self._media.dao.execute("DELETE FROM presets WHERE id=?", (preset_id,))
+        self._media.delete_preset(preset_id)
         self.presetsChanged.emit()
 
     # ---- inline edits ----
