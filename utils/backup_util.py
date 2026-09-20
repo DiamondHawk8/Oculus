@@ -8,20 +8,24 @@ import sqlite3
 
 logger = logging.getLogger(__name__)
 
-BACKUP_DIR = pathlib.Path("backups")
-BACKUP_DIR.mkdir(exist_ok=True)
 MAX_BACKUPS = 100  # keep latest N files
 COMPRESS = True  # gzip the JSON to save space
 
 
-def export_db_to_json(conn: sqlite3.Connection) -> pathlib.Path:
+def export_db_to_json(
+        conn: sqlite3.Connection,
+        backup_dir: str | pathlib.Path = "backups",
+) -> pathlib.Path:
     """
     Dump every user table in conn to a single JSON object and write it to
     backups/db_YYYYMMDD_HHMMSS.json(.gz). Returns the path.
     """
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     name = f"db_{ts}.json"
-    out = BACKUP_DIR / (name + (".gz" if COMPRESS else ""))
+    backup_dir = pathlib.Path(backup_dir)
+    # Directory creation belongs to the operation, not module import.
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    out = backup_dir / (name + (".gz" if COMPRESS else ""))
 
     cur = conn.cursor()
     tables = [
@@ -45,11 +49,11 @@ def export_db_to_json(conn: sqlite3.Connection) -> pathlib.Path:
         out.write_text(raw, encoding="utf-8")
 
     logger.info("Database exported to %s", out)
-    _prune_old_backups()
+    _prune_old_backups(backup_dir)
     return out
 
 
-def _prune_old_backups():
-    files = sorted(BACKUP_DIR.glob("db_*.json*"), key=os.path.getmtime, reverse=True)
+def _prune_old_backups(backup_dir: pathlib.Path):
+    files = sorted(backup_dir.glob("db_*.json*"), key=os.path.getmtime, reverse=True)
     for f in files[MAX_BACKUPS:]:
         f.unlink(missing_ok=True)
