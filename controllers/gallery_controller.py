@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QModelIndex, QEvent, QObject
 from PySide6.QtGui import QIcon, QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QListView, QMenu, QWidget, QApplication,
-    QStyle, QAbstractItemView, QDialog, QFileDialog, QMessageBox
+    QStyle, QAbstractItemView, QFileDialog, QMessageBox
 )
 
 from controllers.utils import view_utils, path_utils
@@ -85,8 +85,8 @@ class GalleryController:
         self._add_shortcut("Ctrl+M", self._on_move_triggered)
 
         # ---------- size combo ----------
-        # TODO derive sizes dynamically
-        self.ui.cmb_gallery_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
+        # TODO derive sizes dynamically from user resolution
+        self.ui.cmb_gallery_size.addItems(view_utils.icon_preset_names())
         self.ui.cmb_gallery_size.setCurrentText(self._gallery_preset)
         self.ui.cmb_gallery_size.currentTextChanged.connect(self._change_size)
 
@@ -326,8 +326,9 @@ class GalleryController:
         if not (dlg.exec() and dlg.result_path):
             return
         new_path = dlg.result_path
-        if self.media_manager.rename_media(old_path, new_path):
-            self._on_renamed(old_path, new_path)
+
+        # RenameService emits through MediaManager
+        self.media_manager.rename_media(old_path, new_path)
 
     def _on_renamed(self, old_path: str, new_path: str) -> None:
         """
@@ -363,7 +364,11 @@ class GalleryController:
             self.media_manager.thumb(new_path)
             self._apply_sort()
 
-    def _on_move_triggered(self, sel):
+    def _on_move_triggered(self, sel=None):
+        # QAction.triggered supplies a boolean, while the context menu supplies
+        # an explicit list. TODO Normalize both entry points here and revise method calls
+        if not isinstance(sel, list):
+            sel = self.get_selected_paths()
         if not sel:
             return
 
