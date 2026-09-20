@@ -11,8 +11,7 @@ from PySide6.QtCore import QObject, Signal
 
 from widgets.collision_dialog import CollisionDialog
 
-_BACKUP_DIR = Path.home() / "OculusBackups" / "overwritten"
-_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+_DEFAULT_BACKUP_DIR = Path.home() / "OculusBackups" / "overwritten"
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +36,12 @@ class RenameEntry:
 class RenameService(QObject):
     renamed = Signal(str, str)  # emits (oldPath, newPath)
 
-    def __init__(self, dao, parent=None):
+    def __init__(self, dao, backup_dir: str | Path | None = None, parent=None):
         super().__init__(parent)
         self.dao = dao
         self.undo_manager = None
+        self.backup_dir = Path(backup_dir) if backup_dir else _DEFAULT_BACKUP_DIR
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
 
     def attach_undo_manager(self, undo_mgr):
         self.undo_manager = undo_mgr
@@ -85,20 +86,25 @@ class RenameService(QObject):
             elif choice == "overwrite":
                 return self.overwrite(str(old_path), str(new_path))
 
+        moved = False
         try:
             old_path.rename(new_path)
-        except OSError as exc:
-            logger.error("Rename failed on disk: %s", exc)
+            moved = True
+            with self.dao.conn:
+                self.dao.cur.execute(
+                    "UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path))
+                )
+                if self.dao.cur.rowcount != 1:
+                    raise RuntimeError(f"No database row found for {old_path}")
+        except Exception as exc:
+            logger.error("Rename failed: %s", exc)
+            if moved:
+                self._restore_path(new_path, old_path)
             return False
-
-        with self.dao.conn:
-            self.dao.cur.execute(
-                "UPDATE media SET path=? WHERE path=?", (str(new_path), str(old_path))
-            )
 
         self._log_rename(old_path, new_path)
         if self.undo_manager:
-            self.undo_manager.push(RenameEntry(str(old_path), str(new_path)))
+            self._push_undo(RenameEntry(str(old_path), str(new_path)))
 
         self.renamed.emit(str(old_path), str(new_path))
         return True
@@ -108,32 +114,47 @@ class RenameService(QObject):
         old_path = Path(old_abs).expanduser().resolve()
         new_path = Path(new_abs).expanduser().resolve()
         backup = self._backup_path(new_path)
+        destination_backed_up = False
+        source_moved = False
 
         try:
             if new_path.exists():
                 new_path.replace(backup)
-                self.renamed.emit(str(new_path), str(backup))
+                destination_backed_up = True
 
             old_path.replace(new_path)
-            self.renamed.emit(str(old_path), str(new_path))
+            source_moved = True
 
             with self.dao.conn:
-                self.dao.cur.execute(
-                    "UPDATE media SET path=? WHERE path=?",
-                    (str(backup), str(new_path))
-                )
+                if destination_backed_up:
+                    self.dao.cur.execute(
+                        "UPDATE media SET path=? WHERE path=?",
+                        (str(backup), str(new_path))
+                    )
                 self.dao.cur.execute(
                     "UPDATE media SET path=? WHERE path=?",
                     (str(new_path), str(old_path))
                 )
+                if self.dao.cur.rowcount != 1:
+                    raise RuntimeError(f"No database row found for {old_path}")
 
             self._log_rename(old_path, new_path)
             if self.undo_manager:
-                self.undo_manager.push(RenameEntry(str(old_path), str(new_path), str(backup)))
+                backup_value = str(backup) if destination_backed_up else None
+                self._push_undo(RenameEntry(str(old_path), str(new_path), backup_value))
+            if destination_backed_up:
+                self.renamed.emit(str(new_path), str(backup))
+            self.renamed.emit(str(old_path), str(new_path))
             return True
 
         except Exception as exc:
             logger.error("Safe-overwrite failed: %s", exc)
+            # Compensate in reverse order so the caller sees the pre-operation
+            # filesystem whenever the database transaction cannot complete.
+            if source_moved:
+                self._restore_path(new_path, old_path)
+            if destination_backed_up:
+                self._restore_path(backup, new_path)
             return False
 
     # ------------------------------------------------------------------
@@ -141,36 +162,59 @@ class RenameService(QObject):
         old_path, new_path = Path(entry.old), Path(entry.new)
         backup = Path(entry.backup) if entry.backup else None
 
+        source_restored = False
+        backup_restored = False
         try:
             new_path.replace(old_path)
-            self.renamed.emit(str(new_path), str(old_path))
+            source_restored = True
 
             if backup and backup.exists():
                 backup.replace(new_path)
-                self.renamed.emit(str(backup), str(new_path))
+                backup_restored = True
 
             with self.dao.conn:
                 self.dao.cur.execute("UPDATE media SET path=? WHERE path=?", (str(old_path), str(new_path)))
                 if backup:
                     self.dao.cur.execute("UPDATE media SET path=? WHERE path=?", (str(new_path), str(backup)))
+            self.renamed.emit(str(new_path), str(old_path))
+            if backup_restored and backup is not None:
+                self.renamed.emit(str(backup), str(new_path))
             return True
 
         except Exception as exc:
             logger.error("Undo rename failed: %s", exc)
+            if backup_restored and backup is not None:
+                self._restore_path(new_path, backup)
+            if source_restored:
+                self._restore_path(old_path, new_path)
             return False
 
     # ------------------------------------------------------------------
-    @staticmethod
-    def _backup_path(original: Path) -> Path:
-        return _BACKUP_DIR / f"{uuid.uuid4()}{original.suffix}"
+    def _backup_path(self, original: Path) -> Path:
+        return self.backup_dir / f"{uuid.uuid4()}{original.suffix}"
 
     @staticmethod
-    def _log_rename(old_path: Path, new_path: Path):
-        log_file = _BACKUP_DIR.parent / "rename_log.json"
+    def _restore_path(source: Path, destination: Path) -> None:
+        try:
+            if source.exists():
+                source.replace(destination)
+        except OSError:
+            logger.exception("Could not restore %s to %s", source, destination)
+
+    def _push_undo(self, entry: RenameEntry) -> None:
+        try:
+            self.undo_manager.push(entry)
+        except OSError:
+            # A failed audit/undo write must not reverse an otherwise complete
+            # filesystem and database operation.
+            logger.exception("Rename succeeded, but its undo record could not be saved")
+
+    def _log_rename(self, old_path: Path, new_path: Path):
+        log_file = self.backup_dir.parent / "rename_log.json"
         entry = {"timestamp": time.time(), "old": str(old_path), "new": str(new_path)}
         try:
             data = json.loads(log_file.read_text()) if log_file.exists() else []
-        except json.JSONDecodeError:
-            data = []
-        data.append(entry)
-        log_file.write_text(json.dumps(data, indent=2))
+            data.append(entry)
+            log_file.write_text(json.dumps(data, indent=2))
+        except (OSError, json.JSONDecodeError, TypeError):
+            logger.exception("Rename succeeded, but its audit log could not be saved")

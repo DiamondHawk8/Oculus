@@ -62,7 +62,14 @@ class MediaManager(QObject):
     renamed = Signal(str, str)
     import_finished = Signal(object)
 
-    def __init__(self, conn, undo_manager, thumb_size: int = 256, parent=None):
+    def __init__(
+            self,
+            conn,
+            undo_manager,
+            thumb_size: int = 256,
+            operation_backup_dir: str | Path | None = None,
+            parent=None,
+    ):
         QObject.__init__(self, parent)
 
         self.dao = MediaDAO(conn)
@@ -71,7 +78,7 @@ class MediaManager(QObject):
         self.pool = QThreadPool.globalInstance()
 
         self.importer = ImportService(self.dao, self.variants, self.pool)
-        self.rename_service = RenameService(self.dao)
+        self.rename_service = RenameService(self.dao, backup_dir=operation_backup_dir)
         undo_manager.set_rename_service(self.rename_service)
         self.rename_service.attach_undo_manager(undo_manager)
 
@@ -94,11 +101,8 @@ class MediaManager(QObject):
     def update_media_path(self, mid: int, new_path: str, mtime: int) -> None:
         self.dao.update_media_path(mid, new_path, mtime)
 
-    def fetch_many_inodes(self, inodes: list[int]) -> dict[int, tuple[int, str]]:
-        """
-        Return {inode: (id, path)} for any rows whose inode is in inodes.
-        """
-        return self.dao.fetch_many_inodes(inodes)
+    def fetch_many_file_identities(self, identities: list[tuple[str, str]]):
+        return self.dao.fetch_many_file_identities(identities)
 
     def get_media_id(self, path: str) -> int | None:
         row = self.dao.fetchone("SELECT id FROM media WHERE path=?", (path,))
@@ -124,6 +128,9 @@ class MediaManager(QObject):
 
     def folder_paths(self) -> list[str]:
         return self.dao.folder_paths()
+
+    def paths_in_folder(self, folder: str | Path) -> list[str]:
+        return self.dao.paths_in_folder(folder)
 
     def root_folders(self) -> list[str]:
         """
@@ -238,6 +245,14 @@ class MediaManager(QObject):
     def list_presets_in_group(self, group_id: str):
         return self.dao.list_presets_in_group(group_id)
 
+    def preset_by_id(self, preset_id: int):
+        return self.dao.fetchone(
+            "SELECT zoom, pan_x, pan_y FROM presets WHERE id=?", (preset_id,)
+        )
+
+    def delete_preset(self, preset_id: int) -> None:
+        self.dao.execute("DELETE FROM presets WHERE id=?", (preset_id,))
+
     def update_preset_transform(self, group_id: str, zoom: float, pan_x: int, pan_y: int):
         self.dao.execute(
             "UPDATE presets SET zoom=?, pan_x=?, pan_y=? WHERE group_id=?",
@@ -257,8 +272,9 @@ class MediaManager(QObject):
         ) is not None
 
     def set_default_preset(self, media_id: int | None, group_id: str):
-        self.dao.execute("UPDATE presets SET is_default=0 WHERE media_id IS ?", (media_id,))
-        self.dao.execute("UPDATE presets SET is_default=1 WHERE group_id=?", (group_id,))
+        with self.dao.conn:
+            self.dao.cur.execute("UPDATE presets SET is_default=0 WHERE media_id IS ?", (media_id,))
+            self.dao.cur.execute("UPDATE presets SET is_default=1 WHERE group_id=?", (group_id,))
 
     def update_hotkey(self, group_id: str, hotkey: str | None):
         self.dao.execute("UPDATE presets SET hotkey=? WHERE group_id=?", (hotkey, group_id))

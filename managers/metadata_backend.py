@@ -1,8 +1,5 @@
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal
-
-
 class MetadataBackend:
     """
     Helper for DB operations related to the metadata backend.
@@ -34,15 +31,11 @@ class MetadataBackend:
 
         elif scope == "folder":
             folder = str(Path(paths[0]).parent)
-            rows = self._media.dao.fetchall(
-                "SELECT path FROM media WHERE path LIKE ?", (f"{folder}%",)
-            )
-            for r in rows:
-                path = r["path"]
+            for path in self._media.paths_in_folder(folder):
                 if include_variants:
                     ids.extend(self.ids_with_variants(path, True))
                 else:
                     if not self._media.is_variant(path):
                         ids.append(self.id_for_path(path))
         # dedupe keep-order
-        return list(dict.fromkeys(ids))
+        return [media_id for media_id in dict.fromkeys(ids) if media_id >= 0]
