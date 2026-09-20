@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 
-from PySide6.QtCore import QSize, QModelIndex, Qt, QEvent, QObject
+from PySide6.QtCore import QModelIndex, Qt, QEvent, QObject
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QStyle
 
@@ -65,7 +65,7 @@ class SearchController(QObject):
         self.ui.btn_search_view.toggled.connect(self._toggle_view)
 
         # size combo
-        self.ui.cmb_search_size.addItems(view_utils.icon_preset.__globals__["_SIZE_PRESETS"].keys())
+        self.ui.cmb_search_size.addItems(view_utils.icon_preset_names())
         self.ui.cmb_search_size.setCurrentText(self._search_preset)
         self.ui.cmb_search_size.currentTextChanged.connect(self.change_size)
 
