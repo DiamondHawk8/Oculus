@@ -40,12 +40,24 @@ class MediaDAO(BaseManager):
 
     # ---------- Core Operations ----------
 
-    def insert_media(self, path: str, st: os.stat_result | None = None) -> int:
+    @staticmethod
+    def file_identity(st: os.stat_result) -> tuple[str, str]:
+        # Windows may expose a 128-bit file ID in st_ino. A non-numeric prefix
+        # prevents SQLite INTEGER affinity from coercing it to a lossy REAL.
+        return f"d:{st.st_dev}", f"i:{st.st_ino}"
+
+    def insert_media(
+            self,
+            path: str,
+            st: os.stat_result | None = None,
+            *,
+            commit: bool = True,
+    ) -> int:
         p = Path(path)
         st = st or p.stat()
         is_dir = int(p.is_dir())
         size = 0 if is_dir else st.st_size
-        inode = st.st_ino
+        device, inode = self.file_identity(st)
         mtime = int(st.st_mtime)
         ftype = (
             "gif" if p.suffix.lower() == ".gif" else
@@ -54,47 +66,110 @@ class MediaDAO(BaseManager):
             "dir"
         )
 
-        with self.conn:
+        try:
+            # noinspection SqlResolve -- device is added by the runtime schema migration.
             self.cur.execute(
                 """
                 INSERT INTO media(path, added, is_dir, byte_size,
-                                  type, inode, mtime)
-                VALUES (?,?,?,?,?,?,?)
+                                  type, device, inode, mtime)
+                VALUES (?,?,?,?,?,?,?,?)
                 ON CONFLICT(path) DO NOTHING
                 """,
-                (str(p), int(time.time()), is_dir, size, ftype, inode, mtime),
+                (str(p), int(time.time()), is_dir, size, ftype, device, inode, mtime),
             )
             if self.cur.rowcount:
-                return self.cur.lastrowid
+                media_id = self.cur.lastrowid
+                if media_id is None:
+                    raise RuntimeError("SQLite did not return an id for inserted media")
+                if commit:
+                    self.conn.commit()
+                return int(media_id)
+
+            # Refresh identity data for rows created before device tracking was
+            # introduced, without treating the existing path as a new import.
+            # noinspection SqlResolve -- device is added by the runtime schema migration.
+            self.cur.execute(
+                """UPDATE media
+                   SET is_dir=?, byte_size=?, type=?, device=?, inode=?, mtime=?
+                   WHERE path=?""",
+                (is_dir, size, ftype, device, inode, mtime, str(p)),
+            )
+            if commit:
+                self.conn.commit()
+        except Exception:
+            if commit:
+                self.conn.rollback()
+            raise
 
         row = self.cur.execute(
             "SELECT id FROM media WHERE path = ?", (str(p),)
         ).fetchone()
         return row["id"] if row else 0
 
-    def update_media_path(self, mid: int, new_path: str, mtime: int) -> None:
-        with self.conn:
+    def update_media_path(
+            self,
+            mid: int,
+            new_path: str,
+            mtime: int,
+            *,
+            commit: bool = True,
+    ) -> None:
+        try:
             self.cur.execute(
                 "UPDATE media SET path = ?, mtime = ? WHERE id = ?",
                 (new_path, mtime, mid),
             )
+            if commit:
+                self.conn.commit()
+        except Exception:
+            if commit:
+                self.conn.rollback()
+            raise
 
-    def fetch_many_inodes(self, inodes: list[int]) -> dict[int, tuple[int, str]]:
-        """
-        Return {inode: (id, path)} for any rows whose inode is in inodes.
-        """
-        if not inodes:
+    def fetch_many_file_identities(
+            self,
+            identities: list[tuple[str, str]],
+    ) -> dict[tuple[str, str], list[tuple[int, str]]]:
+        """Return every row for each ``(device, inode)`` identity."""
+        if not identities:
             return {}
-        q = ",".join("?" * len(inodes))
-        rows = self.cur.execute(
-            f"SELECT id, path, inode FROM media WHERE inode IN ({q})", inodes
-        ).fetchall()
-        return {r["inode"]: (r["id"], r["path"]) for r in rows}
+        result: dict[tuple[str, str], list[tuple[int, str]]] = {}
+        unique = list(dict.fromkeys(identities))
+        for start in range(0, len(unique), 400):
+            chunk = unique[start:start + 400]
+            clauses = " OR ".join("(device=? AND inode=?)" for _ in chunk)
+            params = tuple(value for identity in chunk for value in identity)
+            rows = self.cur.execute(
+                f"SELECT id, path, device, inode FROM media WHERE {clauses}",
+                params,
+            ).fetchall()
+            for row in rows:
+                key = (row["device"], row["inode"])
+                result.setdefault(key, []).append((row["id"], row["path"]))
+        return result
+
+    def fetch_many_paths(self, paths: list[str]) -> dict[str, int]:
+        result: dict[str, int] = {}
+        for start in range(0, len(paths), 900):
+            chunk = paths[start:start + 900]
+            if not chunk:
+                continue
+            placeholders = ",".join("?" for _ in chunk)
+            rows = self.cur.execute(
+                f"SELECT id, path FROM media WHERE path IN ({placeholders})",
+                chunk,
+            ).fetchall()
+            result.update((row["path"], row["id"]) for row in rows)
+        return result
 
     def set_attr(self, media_id: int, **kwargs):
         logger.debug(f"Setting attributes for {media_id} with args {kwargs}")
         if not kwargs:
             return
+        allowed = {"favorite", "weight", "artist"}
+        invalid = set(kwargs) - allowed
+        if invalid:
+            raise ValueError(f"Unsupported media attributes: {sorted(invalid)}")
         cols = ", ".join(f"{k}=?" for k in kwargs)
         with self.conn:
             self.cur.execute(f"UPDATE media SET {cols} WHERE id=?", (*kwargs.values(), media_id))
@@ -149,14 +224,20 @@ class MediaDAO(BaseManager):
                 self.add_variant(row["id"], media_id, int(idx))
             return
 
-        # look for any _vN already in DB
+        # Search the exact parent without SQL wildcards, filenames can
+        # contain '%' and '_' and should not alter matching semantics
         base_stem = p.stem
-        like_pattern = f"{base_stem}_v%{p.suffix}"
-        rows = self.fetchall("SELECT id, path FROM media WHERE path LIKE ?", (like_pattern,))
+        parent_prefix = str(p.parent) + os.sep
+        rows = self.fetchall(
+            "SELECT id, path FROM media WHERE substr(path, 1, ?) = ?",
+            (len(parent_prefix), parent_prefix),
+        )
         for v_id, v_path in rows:
             m2 = _VARIANT_RE.match(Path(v_path).stem)
-            if m2:
-                _, idx2 = m2.groups()
+            if m2 and Path(v_path).parent == p.parent and Path(v_path).suffix.lower() == p.suffix.lower():
+                candidate_base, idx2 = m2.groups()
+                if candidate_base.casefold() != base_stem.casefold():
+                    continue
                 self.add_variant(media_id, v_id, int(idx2))
 
     def stack_ids_for_base(self, base_id: int) -> List[int]:
@@ -210,17 +291,22 @@ class MediaDAO(BaseManager):
         if sort_key == "name":
             return sorted(subset, key=natural_key, reverse=not asc)
 
-        clause = _SORT_SQL.get((sort_key, asc), _SORT_SQL[("name", True)])
-        ordered: list[str] = []
-        CHUNK = 900
-        for i in range(0, len(subset), CHUNK):
-            chunk = subset[i: i + CHUNK]
+        value_sql = {
+            "date": "CASE WHEN typeof(added) IN ('integer', 'real') "
+                    "THEN added ELSE COALESCE(strftime('%s', added), 0) END",
+            "size": "COALESCE(byte_size, 0)",
+            "weight": "COALESCE(weight, 1)",
+        }.get(sort_key, "LOWER(path)")
+        values: dict[str, object] = {}
+        for i in range(0, len(subset), 900):
+            chunk = subset[i:i + 900]
             ph = ", ".join("?" for _ in chunk)
-            sql = f"SELECT path FROM media WHERE path IN ({ph}) {clause};"
+            sql = f"SELECT path, {value_sql} AS sort_value FROM media WHERE path IN ({ph});"
             self.cur.execute(sql, chunk)
-            ordered.extend(row["path"] for row in self.cur.fetchall())
+            values.update((row["path"], row["sort_value"]) for row in self.cur.fetchall())
 
-        missing = [p for p in subset if p not in ordered]
+        ordered = sorted(values, key=lambda path: (values[path], path.lower()), reverse=not asc)
+        missing = [p for p in subset if p not in values]
         return ordered + missing
 
     # ------------------------------ Universal Helpers ------------------------------
@@ -236,6 +322,16 @@ class MediaDAO(BaseManager):
         logger.info("Obtaining folder paths")
         self.cur.execute("SELECT path FROM media WHERE is_dir = 1")
         return [r["path"] for r in self.cur.fetchall()]
+
+    def paths_in_folder(self, folder: str | Path) -> list[str]:
+        """Return media whose immediate parent is exactly ``folder``."""
+        folder = Path(folder)
+        prefix = str(folder) + os.sep
+        rows = self.fetchall(
+            "SELECT path FROM media WHERE is_dir=0 AND substr(path, 1, ?) = ?",
+            (len(prefix), prefix),
+        )
+        return [row["path"] for row in rows if Path(row["path"]).parent == folder]
 
     def root_folders(self) -> list[str]:
         self.cur.execute("SELECT path FROM media WHERE is_dir=1")
@@ -310,18 +406,18 @@ class MediaDAO(BaseManager):
         with self.conn:
             self.cur.execute("DELETE FROM comments WHERE id=?", (comment_id,))
 
-    def update_comment(self, comment_id: int, text: str) -> int:
+    def update_comment(self, comment_id: int, text: str) -> None:
         with self.conn:
             self.cur.execute(
                 "UPDATE comments SET text=? WHERE id=?", (text, comment_id)
             )
 
     def update_comment_sequence(self, media_id: int, ordered_ids: list[int]):
-        # build WHEN ... THEN ... clauses without commas
-        cases = " ".join(
-            f"WHEN {cid} THEN {idx}" for idx, cid in enumerate(ordered_ids)
+        cases = " ".join("WHEN ? THEN ?" for _ in ordered_ids)
+        ids = ", ".join("?" for _ in ordered_ids)
+        case_params = tuple(
+            value for idx, comment_id in enumerate(ordered_ids) for value in (comment_id, idx)
         )
-        ids = ", ".join(str(cid) for cid in ordered_ids)
 
         sql = (
             "UPDATE comments "
@@ -329,7 +425,7 @@ class MediaDAO(BaseManager):
             f"WHERE id IN ({ids}) AND media_id=?"
         )
         with self.conn:
-            self.cur.execute(sql, (media_id,))
+            self.cur.execute(sql, (*case_params, *ordered_ids, media_id))
 
     def bookmarks_for_path(self, path: str) -> list[int]:
         rows = self.cur.execute(
