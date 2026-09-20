@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal, QThreadPool
 from workers.scan_worker import ScanWorker, ScanResult
@@ -41,47 +40,49 @@ class ImportService(QObject):
         newly_added: list[tuple[int, str]] = []
         parents: set[Path] = set()
 
-        # pre-fetch existing inodes for all scanned files
-        stats = {}
-        for path in result.files:
-            try:
-                stats[path] = os.stat(path, follow_symlinks=False)
-            except OSError:
-                # A file may disappear between the worker scan and this pass.
-                logger.debug("Skipping missing file discovered during scan: %s", path)
-        inode_map = self.dao.fetch_many_inodes([st.st_ino for st in stats.values()])
+        stats = {item.path: item.stat for item in result.files}
+        identity_map = self.dao.fetch_many_file_identities(
+            [self.dao.file_identity(st) for st in stats.values()]
+        )
+        path_map = self.dao.fetch_many_paths(list(stats))
 
         with self.dao.conn:  # single transaction, rolls back on error
             for path, st in stats.items():
-                inode = st.st_ino
-                rec = inode_map.get(inode)
+                identity = self.dao.file_identity(st)
+                candidates = identity_map.get(identity, [])
                 # Keep parent folders discoverable even when an existing
                 # inode was moved into a previously unindexed directory.
                 parents.add(Path(path).parent)
 
-                # exact match -> skip
-                if rec and rec[1] == path:
+                # Exact paths may come from databases created before device
+                # tracking; insert_media refreshes their stored identity.
+                if path in path_map:
+                    self.dao.insert_media(path, st, commit=False)
                     skipped += 1
                     continue
 
-                # inode known but path moved -> update
-                if rec:
-                    self.dao.update_media_path(rec[0], path, int(st.st_mtime))
+                # A surviving old path indicates a hard link, not a move. Only
+                # reuse an identity when exactly one former path disappeared.
+                missing_candidates = [rec for rec in candidates if not Path(rec[1]).exists()]
+                if len(missing_candidates) == 1:
+                    self.dao.update_media_path(
+                        missing_candidates[0][0], path, int(st.st_mtime), commit=False
+                    )
                     skipped += 1
                     continue
 
                 # brand-new file -> insert
-                mid = self.dao.insert_media(path, st)
+                mid = self.dao.insert_media(path, st, commit=False)
                 newly_added.append((mid, path))
                 added += 1
 
             # ensure all parent folders exist in DB
             for folder in parents:
-                self.dao.insert_media(str(folder))
+                self.dao.insert_media(str(folder), commit=False)
 
             # Ensure import root itself is included
             if result.root.is_dir():
-                self.dao.insert_media(str(result.root))
+                self.dao.insert_media(str(result.root), commit=False)
 
         # second pass: stack only the new ones
         for mid, p in newly_added:
