@@ -2,6 +2,19 @@
 
 A **modern, high-performance** desktop media manager and viewer built with **PySide6**.
 
+## Configuration
+
+Runtime paths and maintenance utilities are configured in `config.toml`. Relative
+paths are resolved from the configuration file, such that launching Oculus from another
+working directory does not create a second database or log tree.
+
+Legacy Drive-comment migration is disabled by default. Enable
+`maintenance.migrate_drive_comments` only on a checkout that contains the optional
+`utils/migrate_drive_comments.py` utility.
+
+Oculus requires Python 3.11 or newer. Install runtime dependencies with
+`pip install -r requirements.txt`.
+
 ---
 
 ## Project Status
@@ -70,7 +83,7 @@ A **modern, high-performance** desktop media manager and viewer built with **PyS
 
 ---
 
-## Immediate Milestones
+## Milestones
 
 1. **Complete Phase 4**  
    - Integrate GIF playback pipeline  
