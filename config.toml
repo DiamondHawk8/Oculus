@@ -1,0 +1,13 @@
+[paths]
+# Relative paths are resolved from this file
+database = "oculus.db"
+log = "logs/oculus.log"
+backup_dir = "backups"
+operation_backup_dir = "~/OculusBackups"
+collection_root = 'C:\Collection'
+
+[maintenance]
+# These utilities remain available for dev but can now be disabled
+backup_on_startup = true
+migrate_drive_comments = false
+migration_root = 'C:\Collection'
