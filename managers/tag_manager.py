@@ -39,18 +39,24 @@ class TagManager(BaseManager):
 
     def get_attr(self, media_id: int) -> Dict[str, Any]:
         logger.info(f"Getting attributes for media with id {media_id}")
-        row = self.fetchone("SELECT * FROM attributes WHERE media_id=?", (media_id,))
+        row = self.fetchone(
+            "SELECT favorite, weight, artist FROM media WHERE id=?", (media_id,)
+        )
         return dict(row) if row else {}
 
     def set_attr(self, media_id: int, **kwargs):
         logger.info(f"Setting attributes for media with id {media_id}")
-        cols = ", ".join(kwargs)
-        sql = (
-                f"INSERT INTO attributes(media_id, {cols}) VALUES ({','.join(['?'] * (len(kwargs) + 1))}) "
-                f"ON CONFLICT(media_id) DO UPDATE SET " +
-                ", ".join(f"{k}=excluded.{k}" for k in kwargs)
+        allowed = {"favorite", "weight", "artist"}
+        invalid = set(kwargs) - allowed
+        if invalid:
+            raise ValueError(f"Unsupported media attributes: {sorted(invalid)}")
+        if not kwargs:
+            return
+        assignments = ", ".join(f"{column}=?" for column in kwargs)
+        self.execute(
+            f"UPDATE media SET {assignments} WHERE id=?",
+            (*kwargs.values(), media_id),
         )
-        self.execute(sql, (media_id, *kwargs.values()))
 
     def save_preset(self, group_id, media_id: int, name: str, zoom: float, pan_x: int, pan_y: int):
         logger.debug(f"Creating new preset for media with id {media_id}")
