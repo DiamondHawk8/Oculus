@@ -3,11 +3,13 @@ from __future__ import annotations
 import logging
 import os
 import re
+import stat
 import time
 from pathlib import Path
 from typing import List, Dict, Any
 
 from controllers.utils.path_utils import natural_key
+from domain.media import file_identity as filesystem_identity, media_kind
 from .base import BaseManager
 
 logger = logging.getLogger(__name__)
@@ -44,7 +46,7 @@ class MediaDAO(BaseManager):
     def file_identity(st: os.stat_result) -> tuple[str, str]:
         # Windows may expose a 128-bit file ID in st_ino. A non-numeric prefix
         # prevents SQLite INTEGER affinity from coercing it to a lossy REAL.
-        return f"d:{st.st_dev}", f"i:{st.st_ino}"
+        return filesystem_identity(st)
 
     def insert_media(
             self,
@@ -55,19 +57,14 @@ class MediaDAO(BaseManager):
     ) -> int:
         p = Path(path)
         st = st or p.stat()
-        is_dir = int(p.is_dir())
+        is_dir = int(stat.S_ISDIR(st.st_mode))
         size = 0 if is_dir else st.st_size
         device, inode = self.file_identity(st)
         mtime = int(st.st_mtime)
-        ftype = (
-            "gif" if p.suffix.lower() == ".gif" else
-            "video" if p.suffix.lower() in (".mp4", ".mkv", ".webm", ".mov", ".avi") else
-            "image" if not is_dir else
-            "dir"
-        )
+        ftype = media_kind(p, bool(is_dir))
 
         try:
-            # noinspection SqlResolve -- device is added by the runtime schema migration.
+            # noinspection SqlResolve -- device is part of the current catalog schema.
             self.cur.execute(
                 """
                 INSERT INTO media(path, added, is_dir, byte_size,
@@ -87,7 +84,7 @@ class MediaDAO(BaseManager):
 
             # Refresh identity data for rows created before device tracking was
             # introduced, without treating the existing path as a new import.
-            # noinspection SqlResolve -- device is added by the runtime schema migration.
+            # noinspection SqlResolve -- device is part of the current catalog schema.
             self.cur.execute(
                 """UPDATE media
                    SET is_dir=?, byte_size=?, type=?, device=?, inode=?, mtime=?
@@ -386,7 +383,7 @@ class MediaDAO(BaseManager):
 
     # ------------------------------ Comments ------------------------------
 
-    def add_comment(self, media_id: int, text: str, seq: int) -> int:
+    def add_comment(self, media_id: int, text: str, seq: int) -> int | None:
         with self.conn:
             self.cur.execute(
                 "INSERT INTO comments(media_id, text, seq) VALUES (?,?,?)",
