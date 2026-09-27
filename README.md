@@ -8,12 +8,12 @@ Runtime paths and maintenance utilities are configured in `config.toml`. Relativ
 paths are resolved from the configuration file, such that launching Oculus from another
 working directory does not create a second database or log tree.
 
-Legacy Drive-comment migration is disabled by default. Enable
-`maintenance.migrate_drive_comments` only on a checkout that contains the optional
-`utils/migrate_drive_comments.py` utility.
 
 Oculus requires Python 3.11 or newer. Install runtime dependencies with
 `pip install -r requirements.txt`.
+
+Startup creates a fresh database or validates an existing current-format catalog.
+It does **not** upgrade or repair existing databases automatically.
 
 ---
 
