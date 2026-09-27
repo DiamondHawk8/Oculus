@@ -5,6 +5,8 @@ import os
 import sqlite3
 from typing import Optional, Sequence, Tuple
 
+from infrastructure.sqlite.schema import SCHEMA_VERSION, ensure_schema
+
 try:
     import psycopg2
 except ModuleNotFoundError:
@@ -12,121 +14,7 @@ except ModuleNotFoundError:
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 3
-
-# ALTER TABLE accepts only one column at a time. Keeping the definitions here
-_MEDIA_COLUMNS = {
-    "added": "TIMESTAMP",
-    "is_dir": "BOOLEAN DEFAULT 0",
-    "byte_size": "INTEGER DEFAULT 0",
-    "favorite": "INTEGER NOT NULL DEFAULT 0",
-    "weight": "REAL",
-    "artist": "TEXT",
-    "type": "TEXT NOT NULL DEFAULT 'image'",
-    "device": "TEXT",
-    "inode": "TEXT",
-    "mtime": "INTEGER",
-}
-
-
-def ensure_schema(conn: sqlite3.Connection) -> None:
-    """Create a fresh schema or repair an older, partially upgraded schema."""
-    cur = conn.cursor()
-
-    # These statements run on every connection intentionally, IF NOT EXISTS prevents overhead
-    cur.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS media (
-            id        INTEGER PRIMARY KEY,
-            path      TEXT UNIQUE,
-            added     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_dir    BOOLEAN DEFAULT 0,
-            byte_size INTEGER DEFAULT 0,
-            favorite  INTEGER NOT NULL DEFAULT 0,
-            weight    REAL,
-            artist    TEXT,
-            type      TEXT NOT NULL,
-            device    TEXT,
-            inode     TEXT,
-            mtime     INTEGER
-        );
-
-        CREATE TABLE IF NOT EXISTS presets (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            group_id    TEXT NOT NULL,
-            name        TEXT NOT NULL,
-            media_id    INTEGER,
-            zoom        REAL NOT NULL,
-            pan_x       INTEGER NOT NULL,
-            pan_y       INTEGER NOT NULL,
-            is_default  INTEGER NOT NULL DEFAULT 0,
-            hotkey      TEXT,
-            FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
-            UNIQUE (media_id, name),
-            CHECK (is_default IN (0,1))
-        );
-
-        CREATE TABLE IF NOT EXISTS tags (
-            media_id INTEGER,
-            tag      TEXT,
-            FOREIGN KEY(media_id) REFERENCES media(id) ON DELETE CASCADE,
-            UNIQUE(media_id, tag)
-        );
-
-        CREATE TABLE IF NOT EXISTS comments (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_id INTEGER NOT NULL,
-            created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            text     TEXT NOT NULL,
-            seq      INTEGER,
-            FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS bookmarks (
-            path    TEXT NOT NULL,
-            time_ms INTEGER NOT NULL,
-            PRIMARY KEY (path, time_ms)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_presets_group ON presets(group_id);
-        CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
-        CREATE INDEX IF NOT EXISTS idx_comments_media ON comments(media_id);
-        """
-    )
-
-    existing_columns = {
-        row["name"] if isinstance(row, sqlite3.Row) else row[1]
-        for row in cur.execute("PRAGMA table_info(media)")
-    }
-    for name, definition in _MEDIA_COLUMNS.items():
-        if name not in existing_columns:
-            logger.info("Adding missing media.%s column", name)
-            cur.execute(f"ALTER TABLE media ADD COLUMN {name} {definition}")
-
-    ensure_variants_schema(conn, commit=False)
-    cur.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-    conn.commit()
-    logger.debug("Schema verified at version %d", SCHEMA_VERSION)
-
-
-def ensure_variants_schema(conn, *, commit: bool = True) -> None:
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS variants (
-            base_id     INTEGER NOT NULL,
-            variant_id  INTEGER NOT NULL UNIQUE,
-            rank        INTEGER DEFAULT 0,
-            FOREIGN KEY(base_id)    REFERENCES media(id) ON DELETE CASCADE,
-            FOREIGN KEY(variant_id) REFERENCES media(id) ON DELETE CASCADE
-        )
-        """
-    )
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_variants_base ON variants(base_id)")
-    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_variants_rank ON variants(base_id, rank)")
-    if commit:
-        conn.commit()
-
+__all__ = ["SCHEMA_VERSION", "ensure_schema", "get_db_connection", "generate_insert_sql"]
 
 def get_db_connection(
         *,
@@ -161,8 +49,13 @@ def get_db_connection(
     conn = sqlite3.connect(sqlite_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
-    if initialize_schema:
-        ensure_schema(conn)
+    try:
+        if initialize_schema:
+            # Startup creates fresh catalogs and validates existing ones only
+            ensure_schema(conn)
+    except BaseException:
+        conn.close()
+        raise
     return conn
 
 
