@@ -175,6 +175,9 @@ oculus.db
 oculus.db-shm
 oculus.db-wal
 
+# Local-only one-offs, development tools, and generated sample media
+_local/
+
 # Ruff stuff:
 .ruff_cache/
 
