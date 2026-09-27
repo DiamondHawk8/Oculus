@@ -7,6 +7,7 @@ from typing import List
 
 from PySide6.QtCore import QObject, Signal, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
+from domain.media import MEDIA_EXTENSIONS
 
 from services.comment_service import CommentService
 from services.rename_service import RenameService
@@ -18,7 +19,7 @@ from workers.thumb_worker import ThumbWorker
 from .dao import MediaDAO
 from .utils.thumb_cache import ThumbCache
 
-MEDIA_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
+MEDIA_EXT = MEDIA_EXTENSIONS
 logger = logging.getLogger(__name__)
 
 
@@ -61,6 +62,7 @@ class MediaManager(QObject):
     thumb_ready = Signal(str, object)
     renamed = Signal(str, str)
     import_finished = Signal(object)
+    import_progress = Signal(object)
 
     def __init__(
             self,
@@ -77,7 +79,8 @@ class MediaManager(QObject):
         self.comments = CommentService(self.dao)
         self.pool = QThreadPool.globalInstance()
 
-        self.importer = ImportService(self.dao, self.variants, self.pool)
+        database = next(row[2] for row in conn.execute("PRAGMA database_list") if row[1] == "main")
+        self.importer = ImportService(Path(database) if database else None, parent=self)
         self.rename_service = RenameService(self.dao, backup_dir=operation_backup_dir)
         undo_manager.set_rename_service(self.rename_service)
         self.rename_service.attach_undo_manager(undo_manager)
@@ -85,6 +88,7 @@ class MediaManager(QObject):
         self.undo_manager = undo_manager
 
         self.importer.import_completed.connect(self.import_finished)
+        self.importer.progress_changed.connect(self.import_progress)
         self.rename_service.renamed.connect(self.renamed)
 
         self.thumb_size = thumb_size
@@ -108,13 +112,12 @@ class MediaManager(QObject):
         row = self.dao.fetchone("SELECT id FROM media WHERE path=?", (path,))
         return row["id"] if row else None
 
-    def scan_folder(self, folder: str | Path) -> None:
-        """
-        Begin an async scan; results arrive in _on_scan_completed().
-        :param folder:
-        :return:
-        """
-        self.importer.scan(Path(folder))
+    def scan_folder(self, folder: str | Path) -> str:
+        """Return the job ID; progress and terminal summaries arrive as signals."""
+        return self.importer.scan(Path(folder))
+
+    def cancel_import(self) -> None:
+        self.importer.cancel()
 
     # ----------------------------- Path Getters -----------------------------
 
