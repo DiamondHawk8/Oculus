@@ -1,3 +1,7 @@
+# Current PRAGMA user_version: 4. Startup creates or validates this schema only.
+# The explicit one-off converter preserves the owner's existing tables/affinities.
+# No migration history table is required or created.
+
 media:  # table of every file known about
   id:          INTEGER PRIMARY KEY
   path:        TEXT UNIQUE  # abs path on disk
@@ -21,7 +25,7 @@ variants:  # 'stacks' of related images
 presets: # saved zoom / pan rectangles
   id:          INTEGER PRIMARY KEY
   group_id:    TEXT
-  media_id:    INTEGER  # NULL folder-level default
+  media_id:    INTEGER  # NULL legacy folder default; no folder ID was stored
   name:        TEXT  # "Profile-crop", etc.
   zoom:        REAL # e.g. 1.75
   pan_x:       INTEGER
