@@ -1,48 +1,76 @@
-import os
+"""Qt adapter for one indexing job; its SQLite connection lives on the worker."""
+
+from __future__ import annotations
+
+import logging
+import sqlite3
 import time
-from dataclasses import dataclass
+from contextlib import closing
 from pathlib import Path
+from threading import Event, Lock
 
-from PySide6.QtCore import QRunnable, Signal, QObject
+from PySide6.QtCore import QObject, QRunnable, Signal
 
-IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".mp4", ".mkv", ".webm", ".mov", ".avi"}
+from application.indexing import BATCH_SIZE, ImportProgress, ImportSummary, run_indexing
+from infrastructure.filesystem.scanner import scan_batches
+from infrastructure.sqlite.index_repository import SQLiteIndexRepository
+from infrastructure.sqlite.schema import validate_schema
 
-
-@dataclass(frozen=True)
-class ScannedFile:
-    path: str
-    stat: os.stat_result
-
-
-@dataclass(frozen=True)
-class ScanResult:
-    root: Path
-    files: list[ScannedFile]
-    duration: float
+logger = logging.getLogger(__name__)
 
 
-class ScanWorker(QRunnable, QObject):
+class JobProgress:
+    """One coalesced snapshot, not an unbounded queue of GUI progress events."""
+
+    def __init__(self, initial: ImportProgress):
+        self._latest = initial
+        self._lock = Lock()
+
+    def publish(self, progress: ImportProgress) -> None:
+        with self._lock:
+            self._latest = progress
+
+    def latest(self) -> ImportProgress:
+        with self._lock:
+            return self._latest
+
+
+class ScanSignals(QObject):
     finished = Signal(object)
 
-    def __init__(self, root: Path):
-        QRunnable.__init__(self)
-        QObject.__init__(self)
-        self.root = root
+
+class ScanWorker(QRunnable):
+    def __init__(self, database: Path, root: Path, job_id: str,
+                 cancel: Event, progress: JobProgress, signals: ScanSignals,
+                 *, batch_size: int = BATCH_SIZE):
+        super().__init__()
+        self.database, self.root, self.job_id = database, root, job_id
+        self.cancel, self.progress, self.signals = cancel, progress, signals
+        self.batch_size = batch_size
         self.setAutoDelete(True)
 
-    def run(self):
-        start = time.time()
-        found: list[ScannedFile] = []
-        for dirpath, _, files in os.walk(self.root):
-            for fn in files:
-                if Path(fn).suffix.lower() in IMAGE_EXT:
-                    path = str(Path(dirpath) / fn)
-                    try:
-                        # Stat on the worker thread; large network collections
-                        # should not perform this I/O after returning to the UI.
-                        found.append(ScannedFile(path, os.stat(path, follow_symlinks=False)))
-                    except OSError:
-                        continue
-        self.finished.emit(
-            ScanResult(self.root, found, time.time() - start)
-        )
+    def run(self) -> None:
+        started = time.monotonic()
+        try:
+            # Open/validate/close on this thread. Never pass the GUI connection
+            # across threads or turn off sqlite3's thread-affinity protection.
+            with closing(sqlite3.connect(
+                    self.database.as_uri() + "?mode=rw", uri=True, timeout=0.1,
+            )) as conn:
+                conn.row_factory = sqlite3.Row
+                conn.execute("PRAGMA foreign_keys=ON")
+                validate_schema(conn)
+                repository = SQLiteIndexRepository(conn)
+                with closing(scan_batches(self.root, self.cancel, batch_size=self.batch_size)) as batches:
+                    summary = run_indexing(self.job_id, self.root, batches, repository,
+                                           self.cancel, self.progress.publish)
+        except Exception as error:
+            logger.exception("Unable to run index job %s", self.job_id)
+            summary = ImportSummary(
+                self.job_id, self.root, duration=time.monotonic() - started,
+                phase="finished", status="cancelled" if self.cancel.is_set() else "failed",
+                errors=0 if self.cancel.is_set() else 1,
+                error=None if self.cancel.is_set() else str(error),
+            )
+        # Every terminal signal is emitted after the worker's DB handle closes.
+        self.signals.finished.emit(summary)

@@ -1,93 +1,99 @@
+"""GUI-thread lifecycle adapter; indexing and database work happen in ScanWorker."""
+
+from __future__ import annotations
+
+from dataclasses import replace
 from pathlib import Path
-from PySide6.QtCore import QObject, Signal, QThreadPool
-from workers.scan_worker import ScanWorker, ScanResult
-from managers.dao import MediaDAO
-from services.variant_service import VariantService
-import logging
+from threading import Event
+from uuid import uuid4
 
-logger = logging.getLogger(__name__)
+from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Signal, Slot
 
+from application.indexing import BATCH_SIZE, ImportProgress, ImportSummary
+from workers.scan_worker import JobProgress, ScanSignals, ScanWorker
 
-class ImportSummary:
-    def __init__(self, root, added, skipped, duration):
-        self.root, self.added, self.skipped, self.duration = root, added, skipped, duration
+__all__ = ["ImportService", "ImportSummary"]
 
 
 class ImportService(QObject):
-    """
-    Walks folders, inserts media rows, stacks variants.
-    """
+    import_completed = Signal(object)
+    progress_changed = Signal(object)
 
-    import_completed = Signal(object)  # emits ScanResult
-
-    def __init__(self, dao: MediaDAO, variants: VariantService,
-                 pool: QThreadPool, parent=None):
+    def __init__(self, database: Path | None, parent=None, *, batch_size: int = BATCH_SIZE):
         super().__init__(parent)
-        self.dao = dao
-        self.variants = variants
-        self.pool = pool
+        if not 1 <= batch_size <= BATCH_SIZE:
+            raise ValueError(f"batch_size must be between 1 and {BATCH_SIZE}")
+        self.database, self.batch_size = database, batch_size
+        # Imports do not compete with the unbounded legacy thumbnail pool.
+        # Only one import is accepted at a time; there is no pending-job queue.
+        self.pool = QThreadPool(self)
+        self.pool.setMaxThreadCount(1)
+        self._worker = None
+        self._cancel = Event()
+        self._progress = None
+        self._last_progress = None
+        self._job_id = None
+        self._closing = False
+        self._timer = QTimer(self)
+        self._timer.setInterval(100)
+        self._timer.timeout.connect(self._poll_progress)
 
-    def scan(self, root: Path):
-        logger.info("Scanning folder %s", root)
-        worker = ScanWorker(root)
-        worker.finished.connect(self._on_scan_done)
-        self.pool.start(worker)
+    @property
+    def busy(self) -> bool:
+        return self._worker is not None
 
-    # ----------------------------------------------------------
+    def scan(self, root: Path) -> str:
+        if self._closing:
+            raise RuntimeError("Imports are shutting down")
+        if self.busy:
+            raise RuntimeError("An import is already running; cancel it or wait for completion")
+        if self.database is None:
+            raise ValueError("Background indexing requires a file-backed SQLite catalog")
+        self._job_id = uuid4().hex
+        root = root.expanduser().absolute()
+        self._cancel = Event()
+        self._progress = JobProgress(ImportProgress(self._job_id, root))
+        self._last_progress = None
+        signals = ScanSignals(self)
+        signals.finished.connect(self._on_done, Qt.ConnectionType.QueuedConnection)
+        self._worker = ScanWorker(self.database, root, self._job_id, self._cancel,
+                                  self._progress, signals, batch_size=self.batch_size)
+        self.pool.start(self._worker)
+        self._timer.start()
+        return self._job_id
 
-    def _on_scan_done(self, result: ScanResult):
-        added = skipped = 0
-        newly_added: list[tuple[int, str]] = []
-        parents: set[Path] = set()
+    def cancel(self) -> None:
+        if self.busy:
+            self._cancel.set()
 
-        stats = {item.path: item.stat for item in result.files}
-        identity_map = self.dao.fetch_many_file_identities(
-            [self.dao.file_identity(st) for st in stats.values()]
-        )
-        path_map = self.dao.fetch_many_paths(list(stats))
+    def shutdown(self) -> bool:
+        """Request cancellation; return immediately with whether workers have exited."""
+        self._closing = True
+        self.cancel()
+        self._timer.stop()
+        # The window retries close through its event loop, never a blocking join.
+        return self.pool.waitForDone(0)
 
-        with self.dao.conn:  # single transaction, rolls back on error
-            for path, st in stats.items():
-                identity = self.dao.file_identity(st)
-                candidates = identity_map.get(identity, [])
-                # Keep parent folders discoverable even when an existing
-                # inode was moved into a previously unindexed directory.
-                parents.add(Path(path).parent)
+    @Slot()
+    def _poll_progress(self) -> None:
+        if self._progress is None or self._closing:
+            return
+        progress = self._progress.latest()
+        if self._cancel.is_set():
+            progress = replace(progress, phase="cancelling")
+        if progress != self._last_progress:
+            self._last_progress = progress
+            self.progress_changed.emit(progress)
 
-                # Exact paths may come from databases created before device
-                # tracking; insert_media refreshes their stored identity.
-                if path in path_map:
-                    self.dao.insert_media(path, st, commit=False)
-                    skipped += 1
-                    continue
-
-                # A surviving old path indicates a hard link, not a move. Only
-                # reuse an identity when exactly one former path disappeared.
-                missing_candidates = [rec for rec in candidates if not Path(rec[1]).exists()]
-                if len(missing_candidates) == 1:
-                    self.dao.update_media_path(
-                        missing_candidates[0][0], path, int(st.st_mtime), commit=False
-                    )
-                    skipped += 1
-                    continue
-
-                # brand-new file -> insert
-                mid = self.dao.insert_media(path, st, commit=False)
-                newly_added.append((mid, path))
-                added += 1
-
-            # ensure all parent folders exist in DB
-            for folder in parents:
-                self.dao.insert_media(str(folder), commit=False)
-
-            # Ensure import root itself is included
-            if result.root.is_dir():
-                self.dao.insert_media(str(result.root), commit=False)
-
-        # second pass: stack only the new ones
-        for mid, p in newly_added:
-            self.variants.detect_and_stack(mid, p)
-
-        self.import_completed.emit(
-            ImportSummary(result.root, added, skipped, result.duration)
-        )
+    @Slot(object)
+    def _on_done(self, summary: ImportSummary) -> None:
+        if summary.job_id != self._job_id:
+            return  # Ignore late results belonging to a different UI session.
+        self._timer.stop()
+        self._worker.signals.deleteLater()
+        self._worker = None
+        self._progress = None
+        self._job_id = None
+        if not self._closing:
+            self.progress_changed.emit(summary)
+            self.import_completed.emit(summary)
