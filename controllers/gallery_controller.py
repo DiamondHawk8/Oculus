@@ -187,6 +187,7 @@ class GalleryController:
         asc = not self.ui.btn_gallery_sortDir.isChecked()
         dirs, files = path_utils.split_dirs_files(paths)
         dirs = [p for p in dirs if p != self.state.current_folder]
+        dirs.sort(key=lambda p: (Path(p).name.casefold(), Path(p).name), reverse=not asc)
         ordered_files = self.media_manager.order_subset(files, key, asc)
         return dirs + ordered_files
 
