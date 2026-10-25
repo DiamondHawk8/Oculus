@@ -20,6 +20,7 @@ class CommentWidget(QWidget):
         self._drag_start = None
 
         self.ui.labelAuthor.setText(f"<b>{author}</b>")
+        self.ui.labelText.setTextFormat(Qt.PlainText)
         self.ui.labelText.setText(text)
         self.ui.labelTime.setText(f"<i>{ts}</i>")
 
@@ -64,7 +65,7 @@ class CommentWidget(QWidget):
     def _finish_edit(self, save: bool):
         if not hasattr(self, "_editor"):
             return
-        new_text = self._editor.toPlainText().strip()
+        new_text = self._editor.toPlainText()
 
         lay = self.layout()
         lay.removeWidget(self._editor)
@@ -75,7 +76,7 @@ class CommentWidget(QWidget):
             w.setParent(None)
 
         self.ui.labelText.show()
-        if save and new_text and new_text != self._orig_text:
+        if save and new_text.strip() and new_text != self._orig_text:
             self._orig_text = new_text
             self.ui.labelText.setText(new_text)
             self.editSaved.emit(self.comment_id, new_text)

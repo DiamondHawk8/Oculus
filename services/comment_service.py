@@ -32,8 +32,7 @@ class CommentService(QObject):
         return self.dao.list_comments(media_id)
 
     def edit_comment(self, comment_id: int, new_text: str):
-        new_text = new_text.strip()
-        if not new_text:
+        if not new_text.strip():
             return
 
         self.dao.update_comment(comment_id, new_text)

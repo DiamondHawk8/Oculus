@@ -35,6 +35,7 @@ class CommentsPanel(QWidget):
 
         # Post button / Return key
         self.ui.btnPost.clicked.connect(self._post_comment)
+        self.ui.editComment.setAcceptRichText(False)
         self.ui.editComment.installEventFilter(self)
 
     def load_comments(self, media_id: int):
@@ -110,10 +111,10 @@ class CommentsPanel(QWidget):
 
     def _post_comment(self):
 
-        txt = self.ui.editComment.toPlainText().strip()
+        txt = self.ui.editComment.toPlainText()
         clear_fn = self.ui.editComment.clear
 
-        if not txt:
+        if not txt.strip():
             return
         if self._media_id is None:
             QMessageBox.warning(self, "No media", "No file selected.")
